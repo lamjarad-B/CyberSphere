@@ -1,26 +1,82 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f6f8fa;
+  --surface: #ffffff;
+  --foreground: #111827;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --accent: #0e7490;
+  --accent-contrast: #ffffff;
+}
+
+.dark {
+  --background: #0a0f16;
+  --surface: #0f1622;
+  --foreground: #e6edf3;
+  --muted: #8b98a9;
+  --border: #1e293b;
+  --accent: #22d3ee;
+  --accent-contrast: #06222b;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-contrast: var(--accent-contrast);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* ---- Rendu Markdown des articles ---- */
+
+.prose code::before,
+.prose code::after {
+  content: none;
+}
+
+.prose :not(pre) > code {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 0.3rem;
+  padding: 0.15rem 0.35rem;
+  font-weight: 500;
+}
+
+.prose pre {
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+.prose figure[data-rehype-pretty-code-figure] figcaption[data-rehype-pretty-code-title] {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.8rem;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 0.6rem 0.6rem 0 0;
+  padding: 0.4rem 1rem;
+  margin-bottom: 0;
+}
+
+.prose
+  figure[data-rehype-pretty-code-figure]
+  figcaption[data-rehype-pretty-code-title]
+  + pre {
+  border-radius: 0 0 0.6rem 0.6rem;
+  margin-top: 0;
 }
