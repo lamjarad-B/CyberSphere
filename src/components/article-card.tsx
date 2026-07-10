@@ -1,0 +1,59 @@
+import Link from "next/link";
+import { formatDate } from "@/lib/format";
+import { cardClass } from "./ui";
+
+export type ArticleCardData = {
+  slug: string;
+  title: string;
+  excerpt: string;
+  coverImage: string | null;
+  publishedAt: Date | null;
+  category: { name: string; slug: string };
+  author: { name: string };
+};
+
+export function ArticleCard({ article }: { article: ArticleCardData }) {
+  return (
+    <article
+      className={`${cardClass} group flex flex-col overflow-hidden transition-colors hover:border-accent/60`}
+    >
+      <Link href={`/articles/${article.slug}`} className="block">
+        {article.coverImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={article.coverImage}
+            alt=""
+            loading="lazy"
+            className="aspect-video w-full object-cover"
+          />
+        ) : (
+          <div className="flex aspect-video w-full items-center justify-center bg-gradient-to-br from-accent/15 via-surface to-surface">
+            <span className="font-mono text-2xl font-bold text-accent/50" aria-hidden>
+              &gt;_
+            </span>
+          </div>
+        )}
+      </Link>
+      <div className="flex flex-1 flex-col gap-3 p-5">
+        <Link
+          href={`/categories/${article.category.slug}`}
+          className="w-fit rounded-full border border-accent/40 px-2.5 py-0.5 font-mono text-xs text-accent transition-colors hover:bg-accent/10"
+        >
+          {article.category.name}
+        </Link>
+        <h3 className="text-lg font-semibold leading-snug">
+          <Link
+            href={`/articles/${article.slug}`}
+            className="transition-colors group-hover:text-accent"
+          >
+            {article.title}
+          </Link>
+        </h3>
+        <p className="line-clamp-3 text-sm text-muted">{article.excerpt}</p>
+        <p className="mt-auto pt-2 text-xs text-muted">
+          {formatDate(article.publishedAt)} · {article.author.name}
+        </p>
+      </div>
+    </article>
+  );
+}

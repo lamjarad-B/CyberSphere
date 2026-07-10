@@ -32,6 +32,15 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+!.env.production.example
+
+# fichiers uploadés (images d'articles et avatars)
+/uploads
+
+# uploads (fichiers téléversés par l'admin/les membres)
+/uploads/*
+!/uploads/.gitkeep
 
 # vercel
 .vercel

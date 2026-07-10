@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CyberSphere
 
-## Getting Started
+Blog de cybersécurité : articles en Markdown, catégories & sous-catégories, tags,
+espace membre, commentaires réservés aux membres connectés, et administration intégrée.
 
-First, run the development server:
+## Stack
+
+- **Next.js 16** (App Router) + **React 19** + **TypeScript**
+- **Tailwind CSS 4** (thème sombre par défaut)
+- **PostgreSQL 17** (Docker) + **Prisma 6**
+- **better-auth** (email/mot de passe, sessions en base, rôles, bannissement)
+- Rendu Markdown : `unified` + `rehype-pretty-code` (coloration Shiki)
+
+## Démarrage
 
 ```bash
+# 1. Base de données (PostgreSQL sur le port 5433)
+docker compose up -d
+
+# 2. Dépendances
+npm install
+
+# 3. Schéma + données de démonstration
+npx prisma migrate dev
+npm run db:seed
+
+# 4. Serveur de développement
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Le site est disponible sur http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Comptes de démonstration (créés par le seed)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Admin** : identifiants définis dans `.env` (`ADMIN_EMAIL` / `ADMIN_PASSWORD`)
+- **Membre** : `membre@cybersphere.test` / `membre1234`
 
-## Learn More
+## Vérification d'e-mail
 
-To learn more about Next.js, take a look at the following resources:
+L'inscription exige une confirmation par e-mail (`requireEmailVerification`).
+En développement, **laissez `SMTP_HOST` vide** dans `.env` : le lien de vérification
+s'affiche directement dans la console du serveur (`npm run dev`). En production,
+renseignez les variables `SMTP_*` (voir `.env.example`) pour un envoi réel.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Déploiement Docker (production)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+L'image utilise la sortie autonome de Next.js ; les migrations Prisma sont
+appliquées automatiquement au démarrage (`docker-entrypoint.sh`).
 
-## Deploy on Vercel
+```bash
+cp .env.production.example .env.production   # puis renseigner les secrets
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Pour créer le compte admin en production, lancez le seed une fois avec la
+`DATABASE_URL` de production (depuis une machine disposant du code source) :
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+DATABASE_URL="postgresql://…" npm run db:seed
+```
+
+Volumes persistants : `db-data` (base) et `uploads` (images téléversées).
+
+## Scripts
+
+| Commande | Rôle |
+|----------|------|
+| `npm run dev` | Serveur de développement |
+| `npm run build` / `npm run start` | Build et serveur de production |
+| `npm run lint` | ESLint |
+| `npm run db:migrate` | Migrations Prisma |
+| `npm run db:seed` | Données de démonstration |
+| `npm run db:studio` | Interface Prisma Studio |
+
+## Structure
+
+- `src/app/(public)/` — pages publiques + espace membre
+- `src/app/admin/` — administration (protégée, rôle `admin`)
+- `src/actions/` — Server Actions (articles, catégories, tags, commentaires, membres, profil)
+- `src/lib/` — db, auth, session, markdown, uploads, validations (Zod)
+- `src/proxy.ts` — protection optimiste de `/admin` et `/membre`
+- `uploads/` — images téléversées (servies via `src/app/uploads/[...path]`)
+
+## Sécurité
+
+Mots de passe hachés (scrypt), sessions en base révocables, rate limiting sur l'auth,
+double vérification du rôle admin (proxy + chaque Server Action), validation Zod,
+Markdown assaini (pas de HTML brut exécuté), en-têtes CSP / X-Frame-Options / nosniff.
