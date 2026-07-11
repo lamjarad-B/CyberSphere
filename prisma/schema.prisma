@@ -10,22 +10,61 @@ datasource db {
 // ---------- Auth (better-auth + plugin admin) ----------
 
 model User {
-  id            String    @id
-  name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  image         String?
-  role          String    @default("user")
-  banned        Boolean   @default(false)
-  banReason     String?
-  banExpires    DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id               String    @id
+  name             String
+  email            String    @unique
+  emailVerified    Boolean   @default(false)
+  image            String?
+  role             String    @default("user")
+  banned           Boolean   @default(false)
+  banReason        String?
+  banExpires       DateTime?
+  twoFactorEnabled Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  sessions Session[]
-  accounts Account[]
-  articles Article[]
-  comments Comment[]
+  sessions   Session[]
+  accounts   Account[]
+  articles   Article[]
+  comments   Comment[]
+  twofactors TwoFactor[]
+  passkeys   Passkey[]
+  reactions  Reaction[]
+  bookmarks  Bookmark[]
+  reports    CommentReport[]
+  auditLogs  AuditLog[]
+}
+
+model TwoFactor {
+  id                      String    @id
+  secret                  String
+  backupCodes             String
+  verified                Boolean   @default(true)
+  failedVerificationCount Int       @default(0)
+  lockedUntil             DateTime?
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([secret])
+}
+
+model Passkey {
+  id           String    @id
+  name         String?
+  publicKey    String
+  credentialID String
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  aaguid       String?
+  createdAt    DateTime? @default(now())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([credentialID])
 }
 
 model Session {
@@ -75,12 +114,15 @@ model Verification {
 
 enum ArticleStatus {
   DRAFT
+  SUBMITTED
   PUBLISHED
 }
 
 model Category {
   id          String     @id @default(cuid())
   name        String
+  // Traduction anglaise optionnelle (repli : valeur française)
+  nameEn      String?
   slug        String     @unique
   description String?
   position    Int        @default(0)
@@ -92,26 +134,70 @@ model Category {
 }
 
 model Article {
-  id          String        @id @default(cuid())
-  title       String
-  slug        String        @unique
-  excerpt     String
-  content     String
-  coverImage  String?
-  status      ArticleStatus @default(DRAFT)
-  publishedAt DateTime?
-  views       Int           @default(0)
-  authorId    String
-  author      User          @relation(fields: [authorId], references: [id])
-  categoryId  String
-  category    Category      @relation(fields: [categoryId], references: [id])
-  tags        Tag[]
-  comments    Comment[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id             String                @id @default(cuid())
+  title          String
+  slug           String                @unique
+  excerpt        String
+  content        String
+  coverImage     String?
+  status         ArticleStatus         @default(DRAFT)
+  publishedAt    DateTime?
+  views          Int                   @default(0)
+  authorId       String
+  author         User                  @relation(fields: [authorId], references: [id])
+  categoryId     String
+  category       Category              @relation(fields: [categoryId], references: [id])
+  seriesId       String?
+  series         Series?               @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+  seriesPosition Int?
+  // Colonne générée en base (migration SQL) : vecteur de recherche français
+  search         Unsupported("tsvector")?
+  translations   ArticleTranslation[]
+  tags           Tag[]
+  comments       Comment[]
+  reactions      Reaction[]
+  bookmarks      Bookmark[]
+  dailyViews     ArticleDailyView[]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
 
   @@index([status, publishedAt])
   @@index([categoryId])
+  @@index([seriesId])
+  @@index([search], type: Gin)
+}
+
+model Series {
+  id            String    @id @default(cuid())
+  title         String
+  slug          String    @unique
+  description   String?
+  // Traduction anglaise optionnelle (repli : valeurs françaises)
+  titleEn       String?
+  descriptionEn String?
+  articles      Article[]
+  createdAt     DateTime  @default(now())
+}
+
+// Traduction d'un article (le slug reste commun aux deux langues).
+// La traduction est rédigée à la main par l'équipe — pas de traduction
+// automatique — et reste optionnelle : sans traduction, la version
+// française est servie avec un avertissement.
+model ArticleTranslation {
+  id        String                   @id @default(cuid())
+  articleId String
+  article   Article                  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  locale    String
+  title     String
+  excerpt   String
+  content   String
+  // Vecteur de recherche anglais, entretenu par trigger (migration SQL)
+  search    Unsupported("tsvector")?
+  createdAt DateTime                 @default(now())
+  updatedAt DateTime                 @updatedAt
+
+  @@unique([articleId, locale])
+  @@index([search], type: Gin)
 }
 
 model Tag {
@@ -122,17 +208,104 @@ model Tag {
 }
 
 model Comment {
-  id        String    @id @default(cuid())
+  id        String          @id @default(cuid())
   content   String
   articleId String
-  article   Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  article   Article         @relation(fields: [articleId], references: [id], onDelete: Cascade)
   authorId  String
-  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author    User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
   parentId  String?
-  parent    Comment?  @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies   Comment[] @relation("Replies")
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  parent    Comment?        @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[]       @relation("Replies")
+  reports   CommentReport[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 
   @@index([articleId])
+}
+
+// ---------- Communauté ----------
+
+model Reaction {
+  id        String   @id @default(cuid())
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([articleId, userId])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([articleId, userId])
+}
+
+model CommentReport {
+  id         String    @id @default(cuid())
+  commentId  String
+  comment    Comment   @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reporterId String
+  reporter   User      @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  reason     String?
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([commentId, reporterId])
+  @@index([resolvedAt])
+}
+
+model NewsletterSubscriber {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  token       String    @unique
+  // Langue choisie à l'inscription : les e-mails sont envoyés dans cette langue
+  locale      String    @default("fr")
+  confirmed   Boolean   @default(false)
+  confirmedAt DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+// ---------- Sécurité & statistiques ----------
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorEmail String?
+  targetType String?
+  targetId   String?
+  detail     String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId])
+}
+
+model ArticleDailyView {
+  id        String   @id @default(cuid())
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  day       DateTime @db.Date
+  views     Int      @default(0)
+
+  @@unique([articleId, day])
+}
+
+model ReferrerStat {
+  id    String   @id @default(cuid())
+  host  String
+  day   DateTime @db.Date
+  count Int      @default(0)
+
+  @@unique([host, day])
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { useI18n } from "@/components/i18n-provider";
 import {
   buttonClass,
   errorClass,
@@ -11,6 +12,8 @@ import {
 } from "@/components/ui";
 
 export function PasswordForm() {
+  const { t } = useI18n();
+  const labels = t.member.password;
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -27,11 +30,11 @@ export function PasswordForm() {
     setSaved(false);
 
     if (newPassword.length < 8) {
-      setError("Le nouveau mot de passe doit contenir au moins 8 caractères.");
+      setError(labels.tooShort);
       return;
     }
     if (newPassword !== confirm) {
-      setError("Les deux mots de passe ne correspondent pas.");
+      setError(t.auth.passwordsMismatch);
       return;
     }
 
@@ -45,9 +48,7 @@ export function PasswordForm() {
 
     if (error) {
       setError(
-        error.code === "INVALID_PASSWORD"
-          ? "Mot de passe actuel incorrect."
-          : "Une erreur est survenue. Réessayez.",
+        error.code === "INVALID_PASSWORD" ? labels.wrongCurrent : t.auth.genericError,
       );
       return;
     }
@@ -59,11 +60,11 @@ export function PasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && <p className={errorClass}>{error}</p>}
-      {saved && <p className={successClass}>Mot de passe modifié.</p>}
+      {saved && <p className={successClass}>{labels.saved}</p>}
 
       <div>
         <label htmlFor="current" className={labelClass}>
-          Mot de passe actuel
+          {labels.current}
         </label>
         <input
           id="current"
@@ -76,7 +77,7 @@ export function PasswordForm() {
       </div>
       <div>
         <label htmlFor="new" className={labelClass}>
-          Nouveau mot de passe
+          {labels.new}
         </label>
         <input
           id="new"
@@ -89,7 +90,7 @@ export function PasswordForm() {
       </div>
       <div>
         <label htmlFor="confirm" className={labelClass}>
-          Confirmez le nouveau mot de passe
+          {labels.confirm}
         </label>
         <input
           id="confirm"
@@ -102,7 +103,7 @@ export function PasswordForm() {
       </div>
 
       <button type="submit" disabled={loading} className={buttonClass}>
-        {loading ? "Modification…" : "Changer le mot de passe"}
+        {loading ? labels.submitting : labels.submit}
       </button>
     </form>
   );

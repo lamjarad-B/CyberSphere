@@ -1,15 +1,22 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
+import { getAdminSession } from "@/lib/session";
 import { buttonClass, cardClass } from "@/components/ui";
 
 export default async function AdminDashboardPage() {
-  const [articleCount, publishedCount, commentCount, memberCount, viewsAgg, latestComments, latestArticles] =
+  // Les auteurs n'ont pas de tableau de bord : direction leurs articles
+  if (!(await getAdminSession())) redirect("/admin/articles");
+
+  const [articleCount, publishedCount, submittedCount, commentCount, memberCount, pendingReports, viewsAgg, latestComments, latestArticles] =
     await Promise.all([
       db.article.count(),
       db.article.count({ where: { status: "PUBLISHED" } }),
+      db.article.count({ where: { status: "SUBMITTED" } }),
       db.comment.count(),
       db.user.count(),
+      db.commentReport.count({ where: { resolvedAt: null } }),
       db.article.aggregate({ _sum: { views: true } }),
       db.comment.findMany({
         orderBy: { createdAt: "desc" },
@@ -26,9 +33,21 @@ export default async function AdminDashboardPage() {
       }),
     ]);
 
-  const stats = [
+  const stats: { label: string; value: number; hint?: string; href?: string }[] = [
     { label: "Articles", value: articleCount, hint: `dont ${publishedCount} publiés` },
+    {
+      label: "À valider",
+      value: submittedCount,
+      hint: "articles soumis par les auteurs",
+      href: "/admin/articles",
+    },
     { label: "Commentaires", value: commentCount },
+    {
+      label: "Signalements",
+      value: pendingReports,
+      hint: "en attente de modération",
+      href: "/admin/signalements",
+    },
     { label: "Membres", value: memberCount },
     { label: "Vues totales", value: viewsAgg._sum.views ?? 0 },
   ];
@@ -42,16 +61,31 @@ export default async function AdminDashboardPage() {
         </Link>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <div key={stat.label} className={`${cardClass} p-5`}>
-            <p className="text-sm text-muted">{stat.label}</p>
-            <p className="mt-1 font-mono text-3xl font-bold text-accent">
-              {stat.value}
-            </p>
-            {stat.hint && <p className="mt-1 text-xs text-muted">{stat.hint}</p>}
-          </div>
-        ))}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {stats.map((stat) => {
+          const body = (
+            <>
+              <p className="text-sm text-muted">{stat.label}</p>
+              <p className="mt-1 font-mono text-3xl font-bold text-accent">
+                {stat.value}
+              </p>
+              {stat.hint && <p className="mt-1 text-xs text-muted">{stat.hint}</p>}
+            </>
+          );
+          return stat.href ? (
+            <Link
+              key={stat.label}
+              href={stat.href}
+              className={`${cardClass} block p-5 transition-colors hover:border-accent`}
+            >
+              {body}
+            </Link>
+          ) : (
+            <div key={stat.label} className={`${cardClass} p-5`}>
+              {body}
+            </div>
+          );
+        })}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -101,10 +135,16 @@ export default async function AdminDashboardPage() {
                     className={`shrink-0 rounded-full px-2 py-0.5 font-mono text-[11px] font-semibold ${
                       article.status === "PUBLISHED"
                         ? "bg-emerald-500/15 text-emerald-500"
-                        : "bg-amber-500/15 text-amber-500"
+                        : article.status === "SUBMITTED"
+                          ? "bg-sky-500/15 text-sky-500"
+                          : "bg-amber-500/15 text-amber-500"
                     }`}
                   >
-                    {article.status === "PUBLISHED" ? "Publié" : "Brouillon"}
+                    {article.status === "PUBLISHED"
+                      ? "Publié"
+                      : article.status === "SUBMITTED"
+                        ? "À valider"
+                        : "Brouillon"}
                   </span>
                 </li>
               ))}

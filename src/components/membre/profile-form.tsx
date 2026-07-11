@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { updateProfile } from "@/actions/profile";
+import { useI18n } from "@/components/i18n-provider";
 import {
   buttonClass,
   errorClass,
@@ -19,6 +20,8 @@ export function ProfileForm({
   image: string | null;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const labels = t.member.profile;
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -31,7 +34,7 @@ export function ProfileForm({
     startTransition(async () => {
       const result = await updateProfile(formData);
       if (!result.ok) {
-        setError(result.error ?? "Une erreur est survenue.");
+        setError(result.error ?? t.auth.genericError);
         return;
       }
       setSaved(true);
@@ -42,14 +45,14 @@ export function ProfileForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && <p className={errorClass}>{error}</p>}
-      {saved && <p className={successClass}>Profil mis à jour.</p>}
+      {saved && <p className={successClass}>{labels.saved}</p>}
 
       <div className="flex items-center gap-4">
         {image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={image}
-            alt="Avatar actuel"
+            alt={labels.avatarAlt}
             className="h-16 w-16 rounded-full border border-border object-cover"
           />
         ) : (
@@ -59,7 +62,8 @@ export function ProfileForm({
         )}
         <div className="flex-1">
           <label htmlFor="avatar" className={labelClass}>
-            Avatar <span className="font-normal text-muted">(png, jpg, webp — 5 Mo max)</span>
+            {labels.avatarLabel}{" "}
+            <span className="font-normal text-muted">{labels.avatarHint}</span>
           </label>
           <input
             id="avatar"
@@ -73,7 +77,7 @@ export function ProfileForm({
 
       <div>
         <label htmlFor="name" className={labelClass}>
-          Nom (pseudonyme)
+          {labels.nameLabel}
         </label>
         <input
           id="name"
@@ -86,7 +90,7 @@ export function ProfileForm({
       </div>
 
       <button type="submit" disabled={pending} className={buttonClass}>
-        {pending ? "Enregistrement…" : "Enregistrer"}
+        {pending ? labels.saving : labels.save}
       </button>
     </form>
   );

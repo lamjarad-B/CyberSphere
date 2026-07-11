@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { addComment, deleteComment, updateComment } from "@/actions/comments";
+import { reportComment } from "@/actions/reports";
+import { localeHref } from "@/lib/i18n";
+import { useI18n } from "@/components/i18n-provider";
 import {
   buttonClass,
   buttonGhostClass,
@@ -41,16 +44,19 @@ function CommentForm({
   placeholder: string;
   onDone?: () => void;
 }) {
+  const { t } = useI18n();
   const [content, setContent] = useState("");
+  // Honeypot anti-bot : champ invisible, jamais rempli par un humain
+  const [website, setWebsite] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function submit() {
     setError(null);
     startTransition(async () => {
-      const result = await addComment({ articleId, parentId, content });
+      const result = await addComment({ articleId, parentId, content, website });
       if (!result.ok) {
-        setError(result.error ?? "Une erreur est survenue.");
+        setError(result.error ?? t.comments.genericError);
         return;
       }
       setContent("");
@@ -68,6 +74,16 @@ function CommentForm({
         maxLength={2000}
         className={textareaClass}
       />
+      <input
+        type="text"
+        name="website"
+        value={website}
+        onChange={(e) => setWebsite(e.target.value)}
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        className="absolute -left-[9999px] h-0 w-0 opacity-0"
+      />
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -75,11 +91,11 @@ function CommentForm({
           disabled={pending || content.trim().length < 2}
           className={buttonClass}
         >
-          {pending ? "Envoi…" : "Publier"}
+          {pending ? t.comments.sending : t.comments.publish}
         </button>
         {onDone && (
           <button type="button" onClick={onDone} className={buttonGhostClass}>
-            Annuler
+            {t.comments.cancel}
           </button>
         )}
       </div>
@@ -98,21 +114,37 @@ function CommentItem({
   viewer: Viewer;
   isReply: boolean;
 }) {
+  const { t } = useI18n();
   const [replying, setReplying] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(comment.content);
   const [error, setError] = useState<string | null>(null);
+  const [reported, setReported] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const isOwner = viewer?.id === comment.author.id;
   const canDelete = isOwner || viewer?.isAdmin;
+
+  function report() {
+    const reason = window.prompt(t.comments.reportPrompt);
+    if (reason === null) return; // annulé
+    setError(null);
+    startTransition(async () => {
+      const result = await reportComment(comment.id, reason);
+      if (!result.ok) {
+        setError(result.error ?? t.comments.genericError);
+        return;
+      }
+      setReported(true);
+    });
+  }
 
   function saveEdit() {
     setError(null);
     startTransition(async () => {
       const result = await updateComment(comment.id, draft);
       if (!result.ok) {
-        setError(result.error ?? "Une erreur est survenue.");
+        setError(result.error ?? t.comments.genericError);
         return;
       }
       setEditing(false);
@@ -120,11 +152,11 @@ function CommentItem({
   }
 
   function remove() {
-    if (!window.confirm("Supprimer ce commentaire ?")) return;
+    if (!window.confirm(t.comments.confirmDelete)) return;
     setError(null);
     startTransition(async () => {
       const result = await deleteComment(comment.id);
-      if (!result.ok) setError(result.error ?? "Une erreur est survenue.");
+      if (!result.ok) setError(result.error ?? t.comments.genericError);
     });
   }
 
@@ -165,7 +197,7 @@ function CommentItem({
                 disabled={pending}
                 className={buttonClass}
               >
-                {pending ? "Enregistrement…" : "Enregistrer"}
+                {pending ? t.comments.saving : t.comments.save}
               </button>
               <button
                 type="button"
@@ -175,7 +207,7 @@ function CommentItem({
                 }}
                 className={buttonGhostClass}
               >
-                Annuler
+                {t.comments.cancel}
               </button>
             </div>
           </div>
@@ -193,7 +225,7 @@ function CommentItem({
                 onClick={() => setReplying((v) => !v)}
                 className="font-medium text-accent hover:underline"
               >
-                Répondre
+                {t.comments.reply}
               </button>
             )}
             {isOwner && (
@@ -202,7 +234,7 @@ function CommentItem({
                 onClick={() => setEditing(true)}
                 className="font-medium text-muted hover:text-accent"
               >
-                Modifier
+                {t.comments.edit}
               </button>
             )}
             {canDelete && (
@@ -212,9 +244,22 @@ function CommentItem({
                 disabled={pending}
                 className="font-medium text-red-500 hover:underline disabled:opacity-50"
               >
-                Supprimer
+                {t.comments.delete}
               </button>
             )}
+            {!isOwner &&
+              (reported ? (
+                <span className="text-muted">{t.comments.reported}</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={report}
+                  disabled={pending}
+                  className="font-medium text-muted hover:text-red-500 disabled:opacity-50"
+                >
+                  {t.comments.report}
+                </button>
+              ))}
           </div>
         )}
 
@@ -223,7 +268,7 @@ function CommentItem({
             <CommentForm
               articleId={articleId}
               parentId={comment.id}
-              placeholder={`Répondre à ${comment.author.name}…`}
+              placeholder={t.comments.replyPlaceholder(comment.author.name)}
               onDone={() => setReplying(false)}
             />
           </div>
@@ -249,46 +294,47 @@ export function CommentSection({
   comments,
   viewer,
 }: CommentSectionProps) {
+  const { locale, t } = useI18n();
   const count =
     comments.length + comments.reduce((sum, c) => sum + c.replies.length, 0);
+  const articlePath = localeHref(locale, `/articles/${articleSlug}`);
 
   return (
-    <section className="space-y-4" aria-label="Commentaires">
+    <section className="space-y-4" aria-label={t.comments.aria}>
       <h2 className="text-xl font-bold">
-        Commentaires <span className="font-mono text-accent">({count})</span>
+        {t.comments.title} <span className="font-mono text-accent">({count})</span>
       </h2>
 
       {viewer ? (
         <div className={`${cardClass} p-5`}>
           <p className="mb-3 text-sm text-muted">
-            Connecté en tant que{" "}
+            {t.comments.signedInAs}{" "}
             <span className="font-medium text-foreground">{viewer.name}</span>
           </p>
-          <CommentForm articleId={articleId} placeholder="Votre commentaire…" />
+          <CommentForm articleId={articleId} placeholder={t.comments.placeholder} />
         </div>
       ) : (
         <div className={`${cardClass} flex flex-col items-start gap-3 p-5`}>
-          <p className="text-sm text-muted">
-            Les commentaires sont réservés aux membres connectés.
-          </p>
+          <p className="text-sm text-muted">{t.comments.membersOnly}</p>
           <div className="flex gap-2">
             <Link
-              href={`/connexion?redirection=/articles/${articleSlug}`}
+              href={localeHref(
+                locale,
+                `/connexion?redirection=${encodeURIComponent(articlePath)}`,
+              )}
               className={buttonClass}
             >
-              Connexion
+              {t.comments.login}
             </Link>
-            <Link href="/inscription" className={buttonGhostClass}>
-              Inscription
+            <Link href={localeHref(locale, "/inscription")} className={buttonGhostClass}>
+              {t.comments.register}
             </Link>
           </div>
         </div>
       )}
 
       {comments.length === 0 ? (
-        <p className="py-4 text-sm text-muted">
-          Aucun commentaire pour le moment. Lancez la discussion !
-        </p>
+        <p className="py-4 text-sm text-muted">{t.comments.empty}</p>
       ) : (
         <div className="divide-y divide-border">
           {comments.map((comment) => (

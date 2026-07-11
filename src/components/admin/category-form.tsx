@@ -15,6 +15,7 @@ type CategoryFormProps = {
   category?: {
     id: string;
     name: string;
+    nameEn: string;
     description: string;
     parentId: string;
   };
@@ -34,6 +35,7 @@ export function CategoryForm({ category, parents }: CategoryFormProps) {
     startTransition(async () => {
       const result = await saveCategory(category?.id ?? null, {
         name: String(data.get("name") ?? ""),
+        nameEn: String(data.get("nameEn") ?? ""),
         description: String(data.get("description") ?? ""),
         parentId: String(data.get("parentId") ?? ""),
       });
@@ -61,6 +63,23 @@ export function CategoryForm({ category, parents }: CategoryFormProps) {
           type="text"
           required
           defaultValue={category?.name}
+          className={inputClass}
+        />
+      </div>
+
+      <div>
+        <label htmlFor="nameEn" className={labelClass}>
+          Nom anglais{" "}
+          <span className="font-normal text-muted">
+            (optionnel — affiché sur le site en anglais)
+          </span>
+        </label>
+        <input
+          id="nameEn"
+          name="nameEn"
+          type="text"
+          maxLength={60}
+          defaultValue={category?.nameEn}
           className={inputClass}
         />
       </div>

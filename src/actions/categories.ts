@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
 import { getAdminSession } from "@/lib/session";
 import { slugify, uniqueSlug } from "@/lib/slug";
 import { categorySchema, firstError } from "@/lib/validations";
@@ -9,7 +10,7 @@ import type { ActionResult } from "./comments";
 
 export async function saveCategory(
   id: string | null,
-  input: { name: string; description: string; parentId: string },
+  input: { name: string; nameEn: string; description: string; parentId: string },
 ): Promise<ActionResult> {
   const session = await getAdminSession();
   if (!session) return { ok: false, error: "Accès refusé." };
@@ -49,7 +50,12 @@ export async function saveCategory(
     if (id) {
       await db.category.update({
         where: { id },
-        data: { name: data.name, description: data.description || null, parentId },
+        data: {
+          name: data.name,
+          nameEn: data.nameEn || null,
+          description: data.description || null,
+          parentId,
+        },
       });
     } else {
       const slug = await uniqueSlug(slugify(data.name), async (candidate) => {
@@ -60,12 +66,26 @@ export async function saveCategory(
         return found !== null;
       });
       await db.category.create({
-        data: { name: data.name, slug, description: data.description || null, parentId },
+        data: {
+          name: data.name,
+          nameEn: data.nameEn || null,
+          slug,
+          description: data.description || null,
+          parentId,
+        },
       });
     }
   } catch {
     return { ok: false, error: "Enregistrement impossible. Réessayez." };
   }
+
+  await logAudit({
+    action: id ? "categorie.modification" : "categorie.creation",
+    actorId: session.user.id,
+    targetType: "category",
+    targetId: id ?? undefined,
+    detail: data.name,
+  });
 
   revalidatePath("/", "layout");
   return { ok: true };
@@ -92,6 +112,13 @@ export async function deleteCategory(id: string): Promise<ActionResult> {
   } catch {
     return { ok: false, error: "Suppression impossible." };
   }
+
+  await logAudit({
+    action: "categorie.suppression",
+    actorId: session.user.id,
+    targetType: "category",
+    targetId: id,
+  });
 
   revalidatePath("/", "layout");
   return { ok: true };

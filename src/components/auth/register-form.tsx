@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { registerSchema, firstError } from "@/lib/validations";
+import { localeHref } from "@/lib/i18n";
+import { useI18n } from "@/components/i18n-provider";
+import type { Dictionary } from "@/i18n/dictionaries";
 import {
   buttonClass,
   errorClass,
@@ -11,23 +14,38 @@ import {
   labelClass,
   successClass,
 } from "@/components/ui";
+import {
+  TurnstileWidget,
+  captchaEnabled,
+  captchaHeaders,
+} from "@/components/auth/turnstile-widget";
 
-function messageFor(code: string | undefined, status: number): string {
-  if (status === 429) return "Trop de tentatives. Réessayez dans une minute.";
+function messageFor(
+  code: string | undefined,
+  status: number,
+  t: Dictionary["auth"],
+): string {
+  if (status === 429) return t.tooManyAttempts;
   switch (code) {
     case "USER_ALREADY_EXISTS":
-      return "Un compte existe déjà avec cette adresse e-mail.";
+      return t.register.alreadyExists;
     case "PASSWORD_TOO_SHORT":
-      return "Le mot de passe doit contenir au moins 8 caractères.";
+      return t.register.passwordTooShort;
+    case "PASSWORD_COMPROMISED":
+      return t.passwordCompromised;
     default:
-      return "Une erreur est survenue. Réessayez.";
+      return t.genericError;
   }
 }
 
 export function RegisterForm() {
+  const { locale, t } = useI18n();
+  const labels = t.auth.register;
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const onCaptcha = useCallback((token: string | null) => setCaptchaToken(token), []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,16 +62,18 @@ export function RegisterForm() {
       return;
     }
     if (parsed.data.password !== String(form.get("confirm") ?? "")) {
-      setError("Les deux mots de passe ne correspondent pas.");
+      setError(t.auth.passwordsMismatch);
       return;
     }
 
     setLoading(true);
-    const { error } = await authClient.signUp.email(parsed.data);
+    const { error } = await authClient.signUp.email(parsed.data, {
+      headers: captchaHeaders(captchaToken),
+    });
     setLoading(false);
 
     if (error) {
-      setError(messageFor(error.code, error.status));
+      setError(messageFor(error.code, error.status, t.auth));
       return;
     }
 
@@ -66,15 +86,12 @@ export function RegisterForm() {
     return (
       <div className="space-y-4">
         <p className={successClass}>
-          Compte créé ! Un e-mail de confirmation vient d&apos;être envoyé à{" "}
+          {labels.created}{" "}
           <span className="font-medium">{registeredEmail}</span>.
         </p>
-        <p className="text-sm text-muted">
-          Cliquez sur le lien reçu pour activer votre compte, puis connectez-vous.
-          Pensez à vérifier vos courriers indésirables.
-        </p>
-        <Link href="/connexion" className={`${buttonClass} w-full`}>
-          Aller à la connexion
+        <p className="text-sm text-muted">{labels.checkInbox}</p>
+        <Link href={localeHref(locale, "/connexion")} className={`${buttonClass} w-full`}>
+          {labels.goToLogin}
         </Link>
       </div>
     );
@@ -85,7 +102,7 @@ export function RegisterForm() {
       {error && <p className={errorClass}>{error}</p>}
       <div>
         <label htmlFor="name" className={labelClass}>
-          Nom (pseudonyme)
+          {labels.name}
         </label>
         <input
           id="name"
@@ -98,7 +115,7 @@ export function RegisterForm() {
       </div>
       <div>
         <label htmlFor="email" className={labelClass}>
-          Adresse e-mail
+          {t.auth.email}
         </label>
         <input
           id="email"
@@ -111,7 +128,8 @@ export function RegisterForm() {
       </div>
       <div>
         <label htmlFor="password" className={labelClass}>
-          Mot de passe <span className="font-normal text-muted">(8 caractères minimum)</span>
+          {t.auth.password}{" "}
+          <span className="font-normal text-muted">{t.auth.passwordMin}</span>
         </label>
         <input
           id="password"
@@ -124,7 +142,7 @@ export function RegisterForm() {
       </div>
       <div>
         <label htmlFor="confirm" className={labelClass}>
-          Confirmez le mot de passe
+          {labels.confirmPassword}
         </label>
         <input
           id="confirm"
@@ -135,13 +153,22 @@ export function RegisterForm() {
           className={inputClass}
         />
       </div>
-      <button type="submit" disabled={loading} className={`${buttonClass} w-full`}>
-        {loading ? "Création du compte…" : "Créer mon compte"}
+      <TurnstileWidget onToken={onCaptcha} />
+
+      <button
+        type="submit"
+        disabled={loading || (captchaEnabled && !captchaToken)}
+        className={`${buttonClass} w-full`}
+      >
+        {loading ? labels.submitting : labels.submit}
       </button>
       <p className="text-center text-sm text-muted">
-        Déjà membre ?{" "}
-        <Link href="/connexion" className="font-medium text-accent hover:underline">
-          Connectez-vous
+        {labels.alreadyMember}{" "}
+        <Link
+          href={localeHref(locale, "/connexion")}
+          className="font-medium text-accent hover:underline"
+        >
+          {labels.loginLink}
         </Link>
       </p>
     </form>

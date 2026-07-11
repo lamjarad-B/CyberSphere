@@ -33,14 +33,15 @@ async function ensureAdmin() {
 
 async function category(
   name: string,
+  nameEn: string,
   description: string,
   parentId: string | null,
   position: number,
 ) {
   return db.category.upsert({
     where: { slug: slugify(name) },
-    update: {},
-    create: { name, slug: slugify(name), description, parentId, position },
+    update: { nameEn },
+    create: { name, nameEn, slug: slugify(name), description, parentId, position },
   });
 }
 
@@ -58,18 +59,21 @@ async function main() {
   // --- Catégories et sous-catégories ---
   const offensive = await category(
     "Sécurité offensive",
+    "Offensive security",
     "Pentest, exploitation et techniques d'attaque éthique.",
     null,
     1,
   );
   const defensive = await category(
     "Sécurité défensive",
+    "Defensive security",
     "Détection, durcissement et réponse à incident.",
     null,
     2,
   );
   const crypto = await category(
     "Cryptographie",
+    "Cryptography",
     "Chiffrement, protocoles et confidentialité.",
     null,
     3,
@@ -77,13 +81,14 @@ async function main() {
 
   const webPentest = await category(
     "Pentest Web",
+    "Web pentesting",
     "OWASP, injections et failles applicatives.",
     offensive.id,
     1,
   );
-  await category("Réseau", "Reconnaissance et attaques réseau.", offensive.id, 2);
-  await category("Blue Team", "SOC, SIEM et threat hunting.", defensive.id, 1);
-  await category("Durcissement", "Hardening système et bonnes pratiques.", defensive.id, 2);
+  await category("Réseau", "Networking", "Reconnaissance et attaques réseau.", offensive.id, 2);
+  await category("Blue Team", "Blue Team", "SOC, SIEM et threat hunting.", defensive.id, 1);
+  await category("Durcissement", "Hardening", "Hardening système et bonnes pratiques.", defensive.id, 2);
 
   // --- Tags ---
   const [tPentest, tOwasp, tLinux, tCrypto, tWeb] = await Promise.all([
@@ -208,13 +213,94 @@ Un bon durcissement réduit drastiquement la surface d'attaque.`,
     });
   }
 
+  // --- Traduction anglaise de démonstration (article SQL) ---
+  const sqlArticle = await db.article.findUnique({
+    where: { slug: slugify("Comprendre les injections SQL et s'en protéger") },
+    select: { id: true },
+  });
+  if (sqlArticle) {
+    await db.articleTranslation.upsert({
+      where: { articleId_locale: { articleId: sqlArticle.id, locale: "en" } },
+      update: {},
+      create: {
+        articleId: sqlArticle.id,
+        locale: "en",
+        title: "Understanding SQL injection and defending against it",
+        excerpt:
+          "How SQL injection works, why it still tops vulnerability rankings, and how to protect your applications for good.",
+        content: `## What is a SQL injection?
+
+A SQL injection happens when user input is concatenated into a SQL query without any escaping. An attacker can then alter the query's logic.
+
+\`\`\`sql
+-- Vulnerable query
+SELECT * FROM users WHERE login = '$login' AND password = '$password';
+-- With $login = admin' --
+SELECT * FROM users WHERE login = 'admin' --' AND password = '';
+\`\`\`
+
+The \`--\` comments out the rest of the query: authentication is bypassed.
+
+## How to protect yourself
+
+### Parameterized queries
+
+The one fix that matters: never concatenate, always bind parameters.
+
+\`\`\`js
+// With Prisma, queries are parameterized by design
+const user = await prisma.user.findUnique({ where: { login } });
+\`\`\`
+
+### Least privilege
+
+The application's database account should only hold the permissions it needs. No \`DROP\`, no \`GRANT\`, no access to other schemas.
+
+### Defense in depth
+
+- Validate input server-side (allow-lists);
+- Log and monitor database errors;
+- A WAF can slow an attacker down, but never replaces the fixes above.
+
+## Testing your application
+
+Tools like sqlmap automate detection — **only on applications you are authorized to test**.`,
+      },
+    });
+  }
+
+  // --- Série de démonstration ---
+  const serie = await db.series.upsert({
+    where: { slug: slugify("Pentest web de A à Z") },
+    update: {
+      titleEn: "Web pentesting from A to Z",
+      descriptionEn:
+        "From reconnaissance to exploitation: a complete walkthrough of web penetration testing.",
+    },
+    create: {
+      title: "Pentest web de A à Z",
+      slug: slugify("Pentest web de A à Z"),
+      description:
+        "De la reconnaissance à l'exploitation : un parcours complet du test d'intrusion web.",
+      titleEn: "Web pentesting from A to Z",
+      descriptionEn:
+        "From reconnaissance to exploitation: a complete walkthrough of web penetration testing.",
+    },
+  });
+  await db.article.updateMany({
+    where: { slug: slugify("Comprendre les injections SQL et s'en protéger") },
+    data: { seriesId: serie.id, seriesPosition: 1 },
+  });
+
   // --- Membre de démonstration + commentaire ---
+  // NB : mot de passe volontairement atypique — le plugin haveIBeenPwned
+  // rejette les mots de passe présents dans des fuites connues.
   let member = await db.user.findUnique({ where: { email: "membre@cybersphere.test" } });
   if (!member) {
     await auth.api.signUpEmail({
       body: {
         email: "membre@cybersphere.test",
-        password: "membre1234",
+        password: "cybersphere-demo-2026",
         name: "Alex",
       },
     });
@@ -224,6 +310,23 @@ Un bon durcissement réduit drastiquement la surface d'attaque.`,
   member = await db.user.update({
     where: { email: "membre@cybersphere.test" },
     data: { emailVerified: true },
+  });
+
+  // --- Auteur de démonstration (rôle "author" : rédige, l'admin publie) ---
+  const authorEmail = "auteur@cybersphere.test";
+  const existingAuthor = await db.user.findUnique({ where: { email: authorEmail } });
+  if (!existingAuthor) {
+    await auth.api.signUpEmail({
+      body: {
+        email: authorEmail,
+        password: "cybersphere-auteur-2026",
+        name: "Sam",
+      },
+    });
+  }
+  await db.user.update({
+    where: { email: authorEmail },
+    data: { emailVerified: true, role: "author" },
   });
 
   const welcome = await db.article.findUnique({

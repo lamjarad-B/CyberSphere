@@ -3,16 +3,29 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { deleteArticle } from "@/actions/articles";
 import { formatDateTime } from "@/lib/format";
+import { requireStaff } from "@/lib/session";
 import { ActionButton } from "@/components/admin/action-button";
 import { buttonClass, buttonDangerClass, cardClass } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Articles" };
 
+const statusBadge: Record<string, { label: string; className: string }> = {
+  PUBLISHED: { label: "Publié", className: "bg-emerald-500/15 text-emerald-500" },
+  SUBMITTED: { label: "À valider", className: "bg-sky-500/15 text-sky-500" },
+  DRAFT: { label: "Brouillon", className: "bg-amber-500/15 text-amber-500" },
+};
+
 export default async function AdminArticlesPage() {
+  const session = await requireStaff();
+  const isAdmin = session.user.role === "admin";
+
   const articles = await db.article.findMany({
-    orderBy: { updatedAt: "desc" },
+    // Un auteur ne voit que ses propres articles
+    where: isAdmin ? undefined : { authorId: session.user.id },
+    orderBy: [{ status: "desc" }, { updatedAt: "desc" }],
     include: {
       category: { select: { name: true } },
+      author: { select: { name: true } },
       _count: { select: { comments: true } },
     },
   });
@@ -57,16 +70,17 @@ export default async function AdminArticlesPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`rounded-full px-2 py-0.5 font-mono text-[11px] font-semibold ${
-                        article.status === "PUBLISHED"
-                          ? "bg-emerald-500/15 text-emerald-500"
-                          : "bg-amber-500/15 text-amber-500"
-                      }`}
+                      className={`rounded-full px-2 py-0.5 font-mono text-[11px] font-semibold ${statusBadge[article.status].className}`}
                     >
-                      {article.status === "PUBLISHED" ? "Publié" : "Brouillon"}
+                      {statusBadge[article.status].label}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-muted">{article.category.name}</td>
+                  <td className="px-4 py-3 text-muted">
+                    {article.category.name}
+                    {isAdmin && (
+                      <span className="block text-xs">{article.author.name}</span>
+                    )}
+                  </td>
                   <td className="whitespace-nowrap px-4 py-3 text-muted">
                     {formatDateTime(article.updatedAt)}
                   </td>

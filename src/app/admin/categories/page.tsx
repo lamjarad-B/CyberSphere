@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { deleteCategory } from "@/actions/categories";
+import { requireAdmin } from "@/lib/session";
 import { ActionButton } from "@/components/admin/action-button";
 import { CategoryForm } from "@/components/admin/category-form";
 import { buttonDangerClass, buttonGhostClass, cardClass } from "@/components/ui";
@@ -13,6 +14,7 @@ export default async function AdminCategoriesPage({
 }: {
   searchParams: Promise<{ edit?: string }>;
 }) {
+  await requireAdmin();
   const { edit } = await searchParams;
 
   const tops = await db.category.findMany({
@@ -113,6 +115,7 @@ export default async function AdminCategoriesPage({
                 ? {
                     id: editing.id,
                     name: editing.name,
+                    nameEn: editing.nameEn ?? "",
                     description: editing.description ?? "",
                     parentId: editing.parentId ?? "",
                   }
