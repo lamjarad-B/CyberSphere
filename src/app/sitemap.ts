@@ -1,6 +1,11 @@
 import type { MetadataRoute } from "next";
 import { db } from "@/lib/db";
 
+// Rendu à la requête : le contenu vient de la base, indisponible à la build
+// (la CI compile sans PostgreSQL). Sans ceci, `next build` tente de prérendre
+// le sitemap et échoue sur la connexion Prisma.
+export const dynamic = "force-dynamic";
+
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 /** Entrée bilingue : URL française canonique + alternates hreflang fr/en. */
