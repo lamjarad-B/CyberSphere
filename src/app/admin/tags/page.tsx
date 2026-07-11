@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { deleteTag } from "@/actions/tags";
+import { requireAdmin } from "@/lib/session";
 import { ActionButton } from "@/components/admin/action-button";
 import { TagForm } from "@/components/admin/tag-form";
 import { buttonDangerClass, cardClass } from "@/components/ui";
@@ -9,6 +10,7 @@ import { buttonDangerClass, cardClass } from "@/components/ui";
 export const metadata: Metadata = { title: "Tags" };
 
 export default async function AdminTagsPage() {
+  await requireAdmin();
   const tags = await db.tag.findMany({
     orderBy: { name: "asc" },
     include: { _count: { select: { articles: true } } },

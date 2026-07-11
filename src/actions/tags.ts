@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
 import { getAdminSession } from "@/lib/session";
 import { slugify } from "@/lib/slug";
 import type { ActionResult } from "./comments";
@@ -21,6 +22,13 @@ export async function createTag(name: string): Promise<ActionResult> {
     return { ok: false, error: "Ce tag existe déjà." };
   }
 
+  await logAudit({
+    action: "tag.creation",
+    actorId: session.user.id,
+    targetType: "tag",
+    detail: trimmed,
+  });
+
   revalidatePath("/admin/tags");
   return { ok: true };
 }
@@ -34,6 +42,13 @@ export async function deleteTag(id: string): Promise<ActionResult> {
   } catch {
     return { ok: false, error: "Suppression impossible." };
   }
+
+  await logAudit({
+    action: "tag.suppression",
+    actorId: session.user.id,
+    targetType: "tag",
+    targetId: id,
+  });
 
   revalidatePath("/", "layout");
   return { ok: true };

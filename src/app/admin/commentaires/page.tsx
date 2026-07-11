@@ -3,12 +3,14 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { deleteComment } from "@/actions/comments";
 import { formatDateTime } from "@/lib/format";
+import { requireAdmin } from "@/lib/session";
 import { ActionButton } from "@/components/admin/action-button";
 import { buttonDangerClass, cardClass } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Commentaires" };
 
 export default async function AdminCommentairesPage() {
+  await requireAdmin();
   const comments = await db.comment.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { localeHref } from "@/lib/i18n";
+import { useI18n } from "@/components/i18n-provider";
 
 type UserMenuProps = {
   name: string;
@@ -13,12 +15,13 @@ type UserMenuProps = {
 
 export function UserMenu({ name, image, isAdmin }: UserMenuProps) {
   const router = useRouter();
+  const { locale, t } = useI18n();
   const [signingOut, setSigningOut] = useState(false);
 
   async function handleSignOut() {
     setSigningOut(true);
     await authClient.signOut();
-    router.push("/");
+    router.push(localeHref(locale, "/"));
     router.refresh();
   }
 
@@ -43,17 +46,17 @@ export function UserMenu({ name, image, isAdmin }: UserMenuProps) {
       </summary>
       <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-lg border border-border bg-surface p-1.5 shadow-xl">
         <Link
-          href="/membre"
+          href={localeHref(locale, "/membre")}
           className="block rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent/10"
         >
-          Mon profil
+          {t.userMenu.profile}
         </Link>
         {isAdmin && (
           <Link
             href="/admin"
             className="block rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent/10"
           >
-            Administration
+            {t.userMenu.admin}
           </Link>
         )}
         <button
@@ -62,7 +65,7 @@ export function UserMenu({ name, image, isAdmin }: UserMenuProps) {
           disabled={signingOut}
           className="block w-full rounded-md px-3 py-2 text-left text-sm text-red-500 transition-colors hover:bg-red-500/10 disabled:opacity-50"
         >
-          {signingOut ? "Déconnexion…" : "Se déconnecter"}
+          {signingOut ? t.userMenu.signingOut : t.userMenu.signOut}
         </button>
       </div>
     </details>

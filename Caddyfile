@@ -1,0 +1,15 @@
+# Reverse proxy CyberSphere : TLS automatique (Let's Encrypt) + HSTS.
+# SITE_DOMAIN est injecté par docker-compose.prod.yml.
+
+{$SITE_DOMAIN} {
+	encode gzip zstd
+
+	header {
+		# 2 ans, sous-domaines inclus — servi uniquement en HTTPS
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+		# Caddy ne divulgue pas sa version
+		-Server
+	}
+
+	reverse_proxy app:3000
+}

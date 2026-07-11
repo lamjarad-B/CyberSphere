@@ -2,23 +2,47 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
 import { getSession } from "@/lib/session";
 import { commentSchema, firstError } from "@/lib/validations";
 
 export type ActionResult = { ok: boolean; error?: string };
 
+/** Fenêtre anti-spam : 3 commentaires maximum par minute et par membre. */
+const SPAM_WINDOW_MS = 60_000;
+const SPAM_MAX_COMMENTS = 3;
+
 export async function addComment(input: {
   articleId: string;
   parentId?: string;
   content: string;
+  /** Honeypot : champ invisible pour les humains, rempli par les bots. */
+  website?: string;
 }): Promise<ActionResult> {
   const session = await getSession();
   if (!session || session.user.banned) {
     return { ok: false, error: "Connectez-vous pour commenter." };
   }
 
+  // Un bot a rempli le champ piège : on répond « succès » sans rien créer,
+  // pour ne pas lui apprendre qu'il est détecté.
+  if (input.website) return { ok: true };
+
   const parsed = commentSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
+
+  const recentCount = await db.comment.count({
+    where: {
+      authorId: session.user.id,
+      createdAt: { gt: new Date(Date.now() - SPAM_WINDOW_MS) },
+    },
+  });
+  if (recentCount >= SPAM_MAX_COMMENTS) {
+    return {
+      ok: false,
+      error: "Vous commentez trop vite. Patientez une minute avant de réessayer.",
+    };
+  }
 
   const article = await db.article.findUnique({
     where: { id: parsed.data.articleId },
@@ -101,6 +125,17 @@ export async function deleteComment(id: string): Promise<ActionResult> {
   }
 
   await db.comment.delete({ where: { id } });
+
+  // Seule la modération (suppression du commentaire d'autrui) est auditée
+  if (comment.authorId !== session.user.id) {
+    await logAudit({
+      action: "commentaire.moderation",
+      actorId: session.user.id,
+      targetType: "comment",
+      targetId: id,
+    });
+  }
+
   revalidatePath(`/articles/${comment.article.slug}`);
   revalidatePath("/admin/commentaires");
   return { ok: true };

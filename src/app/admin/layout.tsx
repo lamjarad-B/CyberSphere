@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { requireAdmin } from "@/lib/session";
+import { db } from "@/lib/db";
+import { requireStaff } from "@/lib/session";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { buttonClass, cardClass } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: { default: "Administration", template: "%s — Admin CyberSphere" },
@@ -11,7 +13,32 @@ export const metadata: Metadata = {
 export default async function AdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  await requireAdmin();
+  const session = await requireStaff();
+
+  // 2FA obligatoire pour accéder à l'administration : un compte à
+  // privilèges compromis par simple mot de passe est le pire scénario.
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { twoFactorEnabled: true },
+  });
+  if (!user?.twoFactorEnabled) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16">
+        <div className={`${cardClass} space-y-4 p-8`}>
+          <h1 className="text-2xl font-bold">Double authentification requise</h1>
+          <p className="text-sm text-muted">
+            L&apos;accès à l&apos;administration exige la double
+            authentification (TOTP). Activez-la depuis votre profil — cela
+            prend moins de deux minutes avec une application comme Aegis,
+            Google Authenticator ou Bitwarden.
+          </p>
+          <Link href="/membre" className={buttonClass}>
+            Activer la 2FA sur mon profil
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
@@ -24,10 +51,10 @@ export default async function AdminLayout({
             Cyber<span className="text-accent">Sphere</span>
           </span>
           <span className="rounded bg-accent/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-accent">
-            admin
+            {session.user.role === "admin" ? "admin" : "auteur"}
           </span>
         </Link>
-        <AdminNav />
+        <AdminNav role={session.user.role ?? "user"} />
         <Link
           href="/"
           className="mt-auto rounded-md px-3 py-2 text-sm text-muted transition-colors hover:text-accent"

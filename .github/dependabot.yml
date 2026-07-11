@@ -1,0 +1,26 @@
+version: 2
+updates:
+  # Dépendances npm : PR hebdomadaire, groupées pour limiter le bruit
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Europe/Paris
+    groups:
+      mineures-et-correctifs:
+        update-types: ["minor", "patch"]
+    open-pull-requests-limit: 5
+
+  # Actions GitHub utilisées par la CI
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+
+  # Images de base Docker
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
