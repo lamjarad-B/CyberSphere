@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@better-auth/passkey": "^1.6.23",
-    "@prisma/client": "^6.19.3",
+    "@prisma/client": "^7.8.0",
     "better-auth": "^1.6.23",
     "github-slugger": "^2.0.0",
     "next": "16.2.10",
