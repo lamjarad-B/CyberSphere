@@ -292,59 +292,68 @@ Tools like sqlmap automate detection — **only on applications you are authoriz
     data: { seriesId: serie.id, seriesPosition: 1 },
   });
 
-  // --- Membre de démonstration + commentaire ---
-  // NB : mot de passe volontairement atypique — le plugin haveIBeenPwned
-  // rejette les mots de passe présents dans des fuites connues.
-  let member = await db.user.findUnique({ where: { email: "membre@cybersphere.test" } });
-  if (!member) {
-    await auth.api.signUpEmail({
-      body: {
-        email: "membre@cybersphere.test",
-        password: "cybersphere-demo-2026",
-        name: "Alex",
-      },
-    });
-  }
-  // Compte de démonstration : marqué comme vérifié pour être utilisable
-  // directement (la vérification e-mail est active pour les vrais comptes).
-  member = await db.user.update({
-    where: { email: "membre@cybersphere.test" },
-    data: { emailVerified: true },
-  });
-
-  // --- Auteur de démonstration (rôle "author" : rédige, l'admin publie) ---
-  const authorEmail = "auteur@cybersphere.test";
-  const existingAuthor = await db.user.findUnique({ where: { email: authorEmail } });
-  if (!existingAuthor) {
-    await auth.api.signUpEmail({
-      body: {
-        email: authorEmail,
-        password: "cybersphere-auteur-2026",
-        name: "Sam",
-      },
-    });
-  }
-  await db.user.update({
-    where: { email: authorEmail },
-    data: { emailVerified: true, role: "author" },
-  });
-
-  const welcome = await db.article.findUnique({
-    where: { slug: slugify("Bienvenue sur CyberSphere") },
-  });
-  if (member && welcome) {
-    const already = await db.comment.findFirst({
-      where: { articleId: welcome.id, authorId: member.id },
-    });
-    if (!already) {
-      await db.comment.create({
-        data: {
-          content: "Super initiative, hâte de lire la suite des articles sur le pentest web !",
-          articleId: welcome.id,
-          authorId: member.id,
+  // --- Comptes de démonstration ---
+  // Jamais en production : leurs mots de passe figurent en clair dans ce
+  // dépôt, ce serait une porte d'entrée authentifiée (dont un compte "author"
+  // avec accès à l'administration). Réservés au développement/à la démo.
+  // Forcer malgré tout avec SEED_DEMO=1 (base jetable uniquement).
+  if (process.env.NODE_ENV !== "production" || process.env.SEED_DEMO === "1") {
+    // --- Membre de démonstration + commentaire ---
+    // NB : mot de passe volontairement atypique — le plugin haveIBeenPwned
+    // rejette les mots de passe présents dans des fuites connues.
+    let member = await db.user.findUnique({ where: { email: "membre@cybersphere.test" } });
+    if (!member) {
+      await auth.api.signUpEmail({
+        body: {
+          email: "membre@cybersphere.test",
+          password: "cybersphere-demo-2026",
+          name: "Alex",
         },
       });
     }
+    // Compte de démonstration : marqué comme vérifié pour être utilisable
+    // directement (la vérification e-mail est active pour les vrais comptes).
+    member = await db.user.update({
+      where: { email: "membre@cybersphere.test" },
+      data: { emailVerified: true },
+    });
+
+    // --- Auteur de démonstration (rôle "author" : rédige, l'admin publie) ---
+    const authorEmail = "auteur@cybersphere.test";
+    const existingAuthor = await db.user.findUnique({ where: { email: authorEmail } });
+    if (!existingAuthor) {
+      await auth.api.signUpEmail({
+        body: {
+          email: authorEmail,
+          password: "cybersphere-auteur-2026",
+          name: "Sam",
+        },
+      });
+    }
+    await db.user.update({
+      where: { email: authorEmail },
+      data: { emailVerified: true, role: "author" },
+    });
+
+    const welcome = await db.article.findUnique({
+      where: { slug: slugify("Bienvenue sur CyberSphere") },
+    });
+    if (member && welcome) {
+      const already = await db.comment.findFirst({
+        where: { articleId: welcome.id, authorId: member.id },
+      });
+      if (!already) {
+        await db.comment.create({
+          data: {
+            content: "Super initiative, hâte de lire la suite des articles sur le pentest web !",
+            articleId: welcome.id,
+            authorId: member.id,
+          },
+        });
+      }
+    }
+  } else {
+    console.log("→ Comptes de démonstration ignorés (NODE_ENV=production).");
   }
 
   console.log("✓ Seed terminé.");

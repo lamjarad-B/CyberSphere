@@ -6,6 +6,13 @@ const SECRET = process.env.BETTER_AUTH_SECRET ?? "";
 const DEFAULT_TTL_SECONDS = 72 * 3600; // 3 jours
 
 function sign(payload: string): string {
+  // Sans secret, les jetons seraient forgeables : on refuse de signer plutôt
+  // que d'émettre/valider un jeton avec une clé vide (défaut de configuration).
+  if (!SECRET) {
+    throw new Error(
+      "BETTER_AUTH_SECRET est requis pour signer les jetons de prévisualisation.",
+    );
+  }
   return createHmac("sha256", SECRET).update(payload).digest("base64url");
 }
 
