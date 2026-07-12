@@ -11,5 +11,10 @@
 		-Server
 	}
 
-	reverse_proxy app:3000
+	reverse_proxy app:3000 {
+		# Écrase tout X-Forwarded-For envoyé par le client : l'application ne
+		# doit lire que l'IP réelle vue par Caddy (journal d'audit fiable).
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Real-IP {remote_host}
+	}
 }
