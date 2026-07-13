@@ -1,6 +1,6 @@
 # CyberSphere — Cahier des spécifications techniques et fonctionnelles
 
-**Version du document :** 2.1 · **Date :** 10 juillet 2026 · **État du projet :** **v2.1 livrée** (v1 : commit `402fb40`)
+**Version du document :** 2.2 · **Date :** 13 juillet 2026 · **État du projet :** **v2.2 livrée** (v1 : commit `402fb40`)
 
 > **Note v2** — La montée de version proposée au §7 a été **entièrement
 > implémentée** le 10 juillet 2026 : les trois paliers (durcissement sécurité,
@@ -9,6 +9,12 @@
 >
 > **Note v2.1** — Le site est désormais **bilingue français/anglais** avec
 > détection automatique de la langue du visiteur. Spécification complète au §9.
+>
+> **Note v2.2** — Passe de durcissement de sécurité (commit `5e5aa7e`,
+> 12 juillet 2026) : assainissement des schémas d'URL Markdown, isolement des
+> comptes de démonstration hors production, échappement HTML des e-mails,
+> fiabilisation des IP d'audit derrière Caddy, colmatage d'un open-redirect et
+> exigence stricte du secret de signature des aperçus. Détails au §10.
 
 ---
 
@@ -166,7 +172,8 @@ src/
 
 ### 3.4 Pipeline Markdown
 
-- `unified` : `remark-parse` → `remark-gfm` → `remark-rehype` (**sans** `allowDangerousHtml` : tout HTML brut écrit dans le Markdown est **ignoré**, neutralisant l'injection de script à la source) → `rehype-slug` → `rehype-pretty-code` (Shiki, `defaultLang: text`) → `rehype-stringify`.
+- `unified` : `remark-parse` → `remark-gfm` → `remark-rehype` (**sans** `allowDangerousHtml` : tout HTML brut écrit dans le Markdown est **ignoré**, neutralisant l'injection de script à la source) → `rehype-slug` → `rehype-pretty-code` (Shiki, `defaultLang: text`) → **`rehypeSafeUrls`** → `rehype-stringify`.
+- **Assainissement des URL** (`rehypeSafeUrls`, v2.2) : les attributs `href`/`src` portant un schéma exécutable (`javascript:`, `data:`, `vbscript:`…) sont supprimés ; http(s), `mailto:`, `tel:`, ancres (`#`) et chemins relatifs passent. Ferme le seul vecteur restant — un lien Markdown `[x](javascript:…)` — indépendamment de la CSP (protège aussi les rendus hors navigateur : e-mails, flux). Cf. §10.
 - Pipeline **partagé** entre le rendu public et l'aperçu de l'éditeur admin (fidélité garantie) ; aperçu plafonné à 100 000 caractères.
 
 ### 3.5 Téléversement de fichiers
@@ -194,7 +201,7 @@ src/
 ### 4.1 Développement
 - `docker-compose.yml` : PostgreSQL 17-alpine sur le port **5433** (5432 occupé par un autre projet sur la machine), volume `db-data`, healthcheck `pg_isready`.
 - `.env` : `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_NAME` (seed), variables `SMTP_*` optionnelles. Modèles fournis : `.env.example`, `.env.production.example`.
-- Seed (`prisma/seed.ts`) : crée l'admin depuis les variables d'environnement **via l'API better-auth** (hachage correct), marque son e-mail vérifié ; catégories/sous-catégories, tags, articles et commentaires de démonstration ; compte membre de test. Idempotent (upserts).
+- Seed (`prisma/seed.ts`) : crée l'admin depuis les variables d'environnement **via l'API better-auth** (hachage correct), marque son e-mail vérifié ; catégories/sous-catégories, tags, articles et commentaires de démonstration. Idempotent (upserts). Les **comptes de démonstration** (membre `membre@cybersphere.test`, auteur `auteur@cybersphere.test` — mots de passe en clair dans le dépôt) ne sont créés **qu'hors production** (`NODE_ENV !== "production"`) ; forçage possible sur base jetable via `SEED_DEMO=1` (cf. §10).
 
 ### 4.2 Production (Docker)
 - **Dockerfile multi-étapes** (deps → build → runner) sur `node:22-bookworm-slim` : sortie autonome Next.js (`output: "standalone"`), image finale minimale.
@@ -225,8 +232,9 @@ src/
 ### 5.3 Entrées et contenu
 - **Zod sur toutes les entrées** de mutation (longueurs bornées, enums, e-mail) ; message d'erreur générique en cas d'échec d'écriture (pas de fuite d'erreur interne).
 - Slugs **générés côté serveur** (translittération, caractères sûrs `[a-z0-9-]`, unicité par suffixe) — jamais fournis par le client.
-- Markdown : HTML brut **non interprété** (§3.4) → pas de XSS stockée via les articles ; commentaires en texte brut échappé par React.
-- Sortie RSS : échappement XML systématique.
+- Markdown : HTML brut **non interprété** (§3.4) → pas de XSS stockée via les articles ; schémas d'URL exécutables **supprimés** (`rehypeSafeUrls`) ; commentaires en texte brut échappé par React.
+- Sortie RSS : échappement XML systématique. Modèles d'e-mail : titres/extraits d'article **échappés HTML** avant interpolation (§10).
+- Redirections après connexion : uniquement les chemins internes (rejet de `//` **et** `/\`, que certains navigateurs normalisent vers une autre origine) — pas d'open-redirect.
 - Recherche : requête bornée (100 car.), paramétrée par Prisma (pas d'injection SQL).
 
 ### 5.4 Téléversements
@@ -451,3 +459,86 @@ bandeau, recherche anglaise sur le vecteur `english`, flux RSS `<language>`
 fr/en avec titres traduits, sitemap avec alternates `hreflang`, gardes
 `/en/membre` → `/en/connexion` et `/admin` → `/connexion`, `security.txt`
 accessible hors locale, 404 localisées, en-tête CSP à nonce inchangé.
+
+---
+
+## 10. Durcissement de sécurité — CyberSphere v2.2
+
+Passe de revue de sécurité (commit `5e5aa7e`, 12 juillet 2026) : six correctifs
+ciblés, chacun fermant un vecteur résiduel sans régression fonctionnelle.
+Aucun n'introduit de nouvelle dépendance.
+
+| # | Correctif | Fichier | Menace fermée |
+|---|---|---|---|
+| 10.1 | **Assainissement des URL Markdown** | `src/lib/markdown.ts` | XSS par lien `[x](javascript:…)` |
+| 10.2 | **Comptes de démo hors production** | `prisma/seed.ts` | Accès authentifié via mots de passe publics du dépôt |
+| 10.3 | **Échappement HTML des e-mails** | `src/lib/email.ts` | Injection HTML dans la boîte mail des abonnés |
+| 10.4 | **IP d'audit non usurpables** | `Caddyfile` | Falsification de l'IP dans le journal d'audit |
+| 10.5 | **Colmatage d'open-redirect** | `src/components/auth/login-form.tsx` | Redirection vers une origine externe (`/\`) |
+| 10.6 | **Secret d'aperçu obligatoire** | `src/lib/draft-preview.ts` | Jetons de prévisualisation forgeables si secret vide |
+
+### 10.1 Assainissement des schémas d'URL Markdown
+
+Nouveau plugin rehype `rehypeSafeUrls` inséré en fin de pipeline (§3.4). Il
+parcourt l'arbre HAST et supprime tout attribut `href`/`src` dont le schéma
+est exécutable (`javascript:`, `data:`, `vbscript:`…). Sont autorisés :
+`http(s):`, `mailto:`, `tel:`, ancres (`#…`) et chemins relatifs (`/…`, `.…`).
+Le HTML brut était déjà neutralisé par `remark-rehype` ; ce plugin ferme le
+**seul** vecteur restant — l'URL d'un lien Markdown légitime — sans dépendre
+uniquement de la CSP, ce qui protège également les rendus hors navigateur
+(e-mails, flux RSS). La coloration Shiki n'est pas affectée (le plugin agit
+après `rehype-pretty-code`).
+
+### 10.2 Isolement des comptes de démonstration
+
+Les comptes `membre@cybersphere.test` et **`auteur@cybersphere.test`** (ce
+dernier a le rôle `author`, donc un accès à l'administration) portent des mots
+de passe en clair dans le dépôt. Le seed ne les crée désormais **qu'hors
+production** (`NODE_ENV !== "production"`). Un opérateur peut forcer leur
+création sur une base jetable via `SEED_DEMO=1` ; en production sans ce drapeau,
+le seed les ignore et journalise la décision. L'admin (issu des variables
+d'environnement) reste créé dans tous les cas.
+
+### 10.3 Échappement HTML des modèles d'e-mail
+
+Le gabarit d'e-mail (`layout`) interpole titre et introduction dans du HTML.
+Les titres/extraits d'article, bien que rédigés par le staff, restent des
+**données** : une nouvelle fonction `escapeHtml` échappe `& < > "` avant
+interpolation, empêchant qu'un titre contenant du balisage ne s'exécute dans
+le client mail des abonnés à la newsletter.
+
+### 10.4 Fiabilisation des IP du journal d'audit
+
+Le journal d'audit (§8, 1.6) enregistre l'IP réelle via `X-Forwarded-For`.
+Sans précaution, un client peut envoyer un `X-Forwarded-For` arbitraire et
+usurper l'IP tracée. Le `reverse_proxy` de Caddy **réécrit** désormais
+`X-Forwarded-For` et `X-Real-IP` avec `{remote_host}` (l'IP réelle vue par
+Caddy), écrasant toute valeur fournie par le client. L'application ne lit que
+cette valeur de confiance.
+
+### 10.5 Colmatage d'un open-redirect (connexion)
+
+Le paramètre `?redirection=` de `/connexion` n'acceptait auparavant qu'un
+chemin commençant par `/` mais pas par `//`. Or certains navigateurs
+normalisent `/\` en `//`, ouvrant une redirection *protocol-relative* vers une
+origine externe. La validation est resserrée à l'expression `^\/(?![/\\])` :
+chemin interne strict, rejetant à la fois `//…` et `/\…`.
+
+### 10.6 Exigence du secret de signature des aperçus
+
+La signature HMAC des liens de prévisualisation de brouillon (§8, 2.7) repose
+sur `BETTER_AUTH_SECRET`. Si cette variable était vide, la clé HMAC l'était
+aussi et les jetons devenaient forgeables. La fonction `sign` **lève désormais
+une erreur** en l'absence de secret plutôt que d'émettre ou de valider un jeton
+avec une clé vide — un défaut de configuration échoue immédiatement au lieu de
+dégrader silencieusement la sécurité.
+
+### 10.7 Vérifications effectuées (v2.2)
+
+Build de production et ESLint sans erreur ; lien Markdown `javascript:` rendu
+sans attribut `href` (http/mailto/ancre/relatif intacts), coloration Shiki
+inchangée ; seed en `NODE_ENV=production` sans `SEED_DEMO` → comptes de démo
+ignorés (message journalisé), admin toujours créé ; titre d'article contenant
+`<b>` échappé dans l'e-mail newsletter ; `X-Forwarded-For` client écrasé par
+Caddy ; `?redirection=/\evil.com` rejeté → repli sur l'accueil ; signature
+d'aperçu levant une erreur si `BETTER_AUTH_SECRET` absent.
