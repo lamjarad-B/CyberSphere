@@ -118,9 +118,10 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Tout sauf les routes API, les assets Next et les fichiers téléversés.
+    // Tout sauf les routes API, les assets Next, les fichiers téléversés
+    // (uploads) et les assets statiques du dépôt (public/covers).
     // (Les préchargements de next/link passent aussi par ici : la réécriture
     // de locale doit s'appliquer pour qu'ils résolvent la bonne route.)
-    "/((?!api|_next/static|_next/image|uploads|favicon.ico).*)",
+    "/((?!api|_next/static|_next/image|uploads|covers|favicon.ico).*)",
   ],
 };
