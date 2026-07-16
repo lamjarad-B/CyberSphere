@@ -31,6 +31,13 @@ export async function generateMetadata(): Promise<Metadata> {
     description: english
       ? "CyberSphere: cybersecurity articles, analyses and tutorials — pentesting, defense, cryptography and infosec news."
       : "CyberSphere : articles, analyses et tutoriels de cybersécurité — pentest, défense, cryptographie et actualité de la sécurité informatique.",
+    icons: {
+      icon: [
+        { url: "/images/Logo/cybersphere-favicon-64.png", type: "image/png", sizes: "64x64" },
+        { url: "/images/Logo/cybersphere-favicon-256.png", type: "image/png", sizes: "256x256" },
+      ],
+      apple: "/images/Logo/cybersphere-favicon-256.png",
+    },
   };
 }
 
