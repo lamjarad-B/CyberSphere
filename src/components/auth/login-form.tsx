@@ -32,8 +32,10 @@ export function LoginForm({ redirection }: { redirection?: string }) {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const onCaptcha = useCallback((token: string | null) => setCaptchaToken(token), []);
 
+  // Chemin interne uniquement : commence par « / » mais pas par « // » ni
+  // « /\ » (que certains navigateurs normalisent en « // » → autre origine).
   const target =
-    redirection && redirection.startsWith("/") && !redirection.startsWith("//")
+    redirection && /^\/(?![/\\])/.test(redirection)
       ? redirection
       : localeHref(locale, "/");
 

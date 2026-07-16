@@ -100,26 +100,70 @@ async function main() {
   ]);
 
   // --- Articles de démonstration ---
-  const articles = [
+  const articles: {
+    title: string;
+    excerpt: string;
+    categoryId: string;
+    coverImage?: string;
+    tags: string[];
+    content: string;
+  }[] = [
     {
       title: "Bienvenue sur CyberSphere",
       excerpt:
         "Présentation du blog, de sa ligne éditoriale et de ce que vous y trouverez : pentest, défense, crypto et actualité de la sécurité.",
       categoryId: crypto.id,
+      coverImage: "/covers/bienvenue.svg",
       tags: [tCrypto.id],
       content: `## Bienvenue !
 
-**CyberSphere** est un blog dédié à la **cybersécurité**. Vous y trouverez des articles techniques, des analyses et des tutoriels pratiques.
+**CyberSphere** est un blog indépendant dédié à la **cybersécurité**. On y parle de sécurité offensive et défensive, de cryptographie et d'actualité de la sécurité informatique — avec un parti pris assumé : des articles **techniques, honnêtes et reproductibles**, pas du survol marketing.
 
-### Au programme
+Que vous soyez pentester en devenir, administrateur système, développeur soucieux de son code ou simplement curieux, l'objectif est le même : vous donner de quoi **comprendre** les attaques et **construire** des défenses qui tiennent.
 
-- Sécurité offensive (pentest, exploitation)
-- Sécurité défensive (détection, hardening)
-- Cryptographie et confidentialité
+## La ligne éditoriale
+
+Trois principes guident chaque publication :
+
+- **Montrer, pas seulement affirmer.** Un exemple vulnérable, la manip qui l'exploite, puis la correction — le tout copiable et testable.
+- **La défense d'abord.** Chaque technique offensive est présentée dans un cadre éthique et accompagnée de ses contre-mesures.
+- **Zéro poudre aux yeux.** Pas de « hacking » spectaculaire décorrélé du réel : on privilégie les fondamentaux qui protègent vraiment.
 
 > La sécurité n'est pas un produit, mais un processus. — Bruce Schneier
 
-Bonne lecture, et n'hésitez pas à **commenter** les articles après vous être connecté !`,
+## Au programme
+
+Les articles se répartissent en trois grandes familles :
+
+### Sécurité offensive
+
+Pentest web (OWASP, injections, failles applicatives), reconnaissance et attaques réseau. Toujours dans une optique de **test d'intrusion éthique**, sur des systèmes que l'on est autorisé à auditer.
+
+### Sécurité défensive
+
+Détection (SOC, SIEM, threat hunting côté Blue Team) et **durcissement** : SSH, pare-feu, principe du moindre privilège, bonnes pratiques système qui réduisent la surface d'attaque.
+
+### Cryptographie & confidentialité
+
+Chiffrement, protocoles, gestion des secrets et vie privée — pour comprendre ce qui protège réellement vos données, et pourquoi.
+
+Certains sujets s'étalent sur plusieurs épisodes : ce sont les **séries**, comme « Pentest web de A à Z », à suivre de la reconnaissance jusqu'à l'exploitation.
+
+## En français et en anglais
+
+CyberSphere est **bilingue** : la langue est détectée automatiquement et vous pouvez basculer entre 🇫🇷 et 🇬🇧 à tout moment depuis l'en-tête. Les articles traduits le sont **relus par un humain**, jamais publiés à l'aveugle.
+
+## Participez
+
+La lecture est libre pour tout le monde. En créant un **compte membre** (gratuit), vous débloquez de quoi faire vivre le blog :
+
+- **commenter** les articles et lancer la discussion ;
+- marquer un contenu comme **utile** et le mettre en **signets** ;
+- **signaler** une erreur ou un abus.
+
+Côté sécurité, on pratique ce que l'on prêche : vérification d'e-mail, refus des mots de passe compromis, **2FA** et **passkeys** disponibles dès votre espace membre.
+
+Bonne lecture — et à vos claviers dans les commentaires ! 🛡️`,
     },
     {
       title: "Comprendre les injections SQL et s'en protéger",
@@ -208,10 +252,24 @@ Un bon durcissement réduit drastiquement la surface d'attaque.`,
         views: Math.floor(Math.random() * 200),
         authorId: adminId,
         categoryId: article.categoryId,
+        ...(article.coverImage && { coverImage: article.coverImage }),
         tags: { connect: article.tags.map((id) => ({ id })) },
       },
     });
   }
+
+  // L'article de présentation est le seul dont le contenu et la couverture
+  // font office de « vitrine » : on les resynchronise même si l'article existe
+  // déjà (l'upsert ci-dessus ne touche pas les articles existants).
+  const welcomeSeed = articles[0];
+  await db.article.update({
+    where: { slug: slugify(welcomeSeed.title) },
+    data: {
+      excerpt: welcomeSeed.excerpt,
+      content: welcomeSeed.content,
+      coverImage: welcomeSeed.coverImage ?? null,
+    },
+  });
 
   // --- Traduction anglaise de démonstration (article SQL) ---
   const sqlArticle = await db.article.findUnique({
@@ -292,59 +350,68 @@ Tools like sqlmap automate detection — **only on applications you are authoriz
     data: { seriesId: serie.id, seriesPosition: 1 },
   });
 
-  // --- Membre de démonstration + commentaire ---
-  // NB : mot de passe volontairement atypique — le plugin haveIBeenPwned
-  // rejette les mots de passe présents dans des fuites connues.
-  let member = await db.user.findUnique({ where: { email: "membre@cybersphere.test" } });
-  if (!member) {
-    await auth.api.signUpEmail({
-      body: {
-        email: "membre@cybersphere.test",
-        password: "cybersphere-demo-2026",
-        name: "Alex",
-      },
-    });
-  }
-  // Compte de démonstration : marqué comme vérifié pour être utilisable
-  // directement (la vérification e-mail est active pour les vrais comptes).
-  member = await db.user.update({
-    where: { email: "membre@cybersphere.test" },
-    data: { emailVerified: true },
-  });
-
-  // --- Auteur de démonstration (rôle "author" : rédige, l'admin publie) ---
-  const authorEmail = "auteur@cybersphere.test";
-  const existingAuthor = await db.user.findUnique({ where: { email: authorEmail } });
-  if (!existingAuthor) {
-    await auth.api.signUpEmail({
-      body: {
-        email: authorEmail,
-        password: "cybersphere-auteur-2026",
-        name: "Sam",
-      },
-    });
-  }
-  await db.user.update({
-    where: { email: authorEmail },
-    data: { emailVerified: true, role: "author" },
-  });
-
-  const welcome = await db.article.findUnique({
-    where: { slug: slugify("Bienvenue sur CyberSphere") },
-  });
-  if (member && welcome) {
-    const already = await db.comment.findFirst({
-      where: { articleId: welcome.id, authorId: member.id },
-    });
-    if (!already) {
-      await db.comment.create({
-        data: {
-          content: "Super initiative, hâte de lire la suite des articles sur le pentest web !",
-          articleId: welcome.id,
-          authorId: member.id,
+  // --- Comptes de démonstration ---
+  // Jamais en production : leurs mots de passe figurent en clair dans ce
+  // dépôt, ce serait une porte d'entrée authentifiée (dont un compte "author"
+  // avec accès à l'administration). Réservés au développement/à la démo.
+  // Forcer malgré tout avec SEED_DEMO=1 (base jetable uniquement).
+  if (process.env.NODE_ENV !== "production" || process.env.SEED_DEMO === "1") {
+    // --- Membre de démonstration + commentaire ---
+    // NB : mot de passe volontairement atypique — le plugin haveIBeenPwned
+    // rejette les mots de passe présents dans des fuites connues.
+    let member = await db.user.findUnique({ where: { email: "membre@cybersphere.test" } });
+    if (!member) {
+      await auth.api.signUpEmail({
+        body: {
+          email: "membre@cybersphere.test",
+          password: "cybersphere-demo-2026",
+          name: "Alex",
         },
       });
     }
+    // Compte de démonstration : marqué comme vérifié pour être utilisable
+    // directement (la vérification e-mail est active pour les vrais comptes).
+    member = await db.user.update({
+      where: { email: "membre@cybersphere.test" },
+      data: { emailVerified: true },
+    });
+
+    // --- Auteur de démonstration (rôle "author" : rédige, l'admin publie) ---
+    const authorEmail = "auteur@cybersphere.test";
+    const existingAuthor = await db.user.findUnique({ where: { email: authorEmail } });
+    if (!existingAuthor) {
+      await auth.api.signUpEmail({
+        body: {
+          email: authorEmail,
+          password: "cybersphere-auteur-2026",
+          name: "Sam",
+        },
+      });
+    }
+    await db.user.update({
+      where: { email: authorEmail },
+      data: { emailVerified: true, role: "author" },
+    });
+
+    const welcome = await db.article.findUnique({
+      where: { slug: slugify("Bienvenue sur CyberSphere") },
+    });
+    if (member && welcome) {
+      const already = await db.comment.findFirst({
+        where: { articleId: welcome.id, authorId: member.id },
+      });
+      if (!already) {
+        await db.comment.create({
+          data: {
+            content: "Super initiative, hâte de lire la suite des articles sur le pentest web !",
+            articleId: welcome.id,
+            authorId: member.id,
+          },
+        });
+      }
+    }
+  } else {
+    console.log("→ Comptes de démonstration ignorés (NODE_ENV=production).");
   }
 
   console.log("✓ Seed terminé.");

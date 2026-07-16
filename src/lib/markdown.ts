@@ -7,6 +7,47 @@ import rehypePrettyCode from "rehype-pretty-code";
 import rehypeStringify from "rehype-stringify";
 import GithubSlugger from "github-slugger";
 
+type HastNode = {
+  type: string;
+  tagName?: string;
+  properties?: Record<string, unknown>;
+  children?: HastNode[];
+};
+
+/**
+ * Rejette les schémas d'URL exécutables (`javascript:`, `data:`, `vbscript:`…)
+ * tout en laissant passer http(s), mailto, tel, les ancres et les chemins
+ * relatifs. Le HTML brut est déjà ignoré par remark-rehype ; ceci ferme le
+ * seul vecteur restant — un lien Markdown `[x](javascript:…)` — sans dépendre
+ * de la seule CSP (protège aussi les rendus hors navigateur).
+ */
+function safeUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (/^(https?:|mailto:|tel:|#|\/|\.)/i.test(trimmed)) return value;
+  // Toute autre chaîne « schéma: » est refusée ; le relatif sans schéma passe.
+  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) return null;
+  return value;
+}
+
+function sanitizeUrls(node: HastNode): void {
+  if (node.type === "element" && node.properties) {
+    for (const attr of ["href", "src"] as const) {
+      if (attr in node.properties) {
+        const cleaned = safeUrl(node.properties[attr]);
+        if (cleaned === null) delete node.properties[attr];
+        else node.properties[attr] = cleaned;
+      }
+    }
+  }
+  node.children?.forEach(sanitizeUrls);
+}
+
+/** Plugin rehype : assainit les URL de tous les nœuds de l'arbre HTML. */
+function rehypeSafeUrls() {
+  return (tree: HastNode) => sanitizeUrls(tree);
+}
+
 // remark-rehype sans `allowDangerousHtml` : le HTML brut écrit dans le
 // Markdown est ignoré, ce qui neutralise toute injection de script.
 const processor = unified()
@@ -19,6 +60,7 @@ const processor = unified()
     keepBackground: true,
     defaultLang: "text",
   })
+  .use(rehypeSafeUrls)
   .use(rehypeStringify);
 
 export async function renderMarkdown(markdown: string): Promise<string> {
