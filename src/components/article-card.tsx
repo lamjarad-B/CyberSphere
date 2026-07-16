@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { formatDate } from "@/lib/format";
 import { localeHref, type Locale } from "@/lib/i18n";
 import { cardClass } from "./ui";
@@ -35,9 +36,14 @@ export function ArticleCard({
           />
         ) : (
           <div className="flex aspect-video w-full items-center justify-center bg-gradient-to-br from-accent/15 via-surface to-surface">
-            <span className="font-mono text-2xl font-bold text-accent/50" aria-hidden>
-              &gt;_
-            </span>
+            <Image
+              src="/images/Logo/cybersphere-icone.png"
+              alt=""
+              width={1024}
+              height={1024}
+              className="h-16 w-16 opacity-40"
+              aria-hidden
+            />
           </div>
         )}
       </Link>

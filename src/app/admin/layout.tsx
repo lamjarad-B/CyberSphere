@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/session";
 import { AdminNav } from "@/components/admin/admin-nav";
@@ -43,13 +44,23 @@ export default async function AdminLayout({
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <aside className="flex flex-col gap-6 border-b border-border bg-surface p-4 md:w-60 md:shrink-0 md:border-b-0 md:border-r">
-        <Link href="/" className="flex items-center gap-2 px-2 pt-2">
-          <span className="font-mono text-base font-bold text-accent" aria-hidden>
-            &gt;_
-          </span>
-          <span className="font-bold">
-            Cyber<span className="text-accent">Sphere</span>
-          </span>
+        <Link href="/" className="flex items-center gap-2 px-2 pt-2" aria-label="CyberSphere">
+          <Image
+            src="/images/Logo/cybersphere-lockup-sombre.png"
+            alt="CyberSphere"
+            width={1384}
+            height={320}
+            priority
+            className="hidden h-7 w-auto dark:block"
+          />
+          <Image
+            src="/images/Logo/cybersphere-lockup-clair.png"
+            alt="CyberSphere"
+            width={1384}
+            height={320}
+            priority
+            className="block h-7 w-auto dark:hidden"
+          />
           <span className="rounded bg-accent/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-accent">
             {session.user.role === "admin" ? "admin" : "auteur"}
           </span>

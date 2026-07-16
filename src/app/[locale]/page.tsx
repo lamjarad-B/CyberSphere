@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { db } from "@/lib/db";
 import { formatDate } from "@/lib/format";
 import { localeHref, toLocale } from "@/lib/i18n";
@@ -72,9 +73,14 @@ export default async function HomePage({
                 />
               ) : (
                 <div className="flex h-full min-h-56 items-center justify-center bg-gradient-to-br from-accent/20 via-surface to-surface">
-                  <span className="font-mono text-4xl font-bold text-accent/50" aria-hidden>
-                    &gt;_
-                  </span>
+                  <Image
+                    src="/images/Logo/cybersphere-icone.png"
+                    alt=""
+                    width={1024}
+                    height={1024}
+                    className="h-24 w-24 opacity-40"
+                    aria-hidden
+                  />
                 </div>
               )}
             </Link>

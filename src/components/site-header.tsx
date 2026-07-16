@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Suspense } from "react";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
@@ -28,13 +29,23 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
     <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4">
         <div className="flex items-center gap-8">
-          <Link href={href("/")} className="flex items-center gap-2">
-            <span className="font-mono text-lg font-bold text-accent" aria-hidden>
-              &gt;_
-            </span>
-            <span className="text-lg font-bold tracking-tight">
-              Cyber<span className="text-accent">Sphere</span>
-            </span>
+          <Link href={href("/")} className="flex items-center" aria-label="CyberSphere">
+            <Image
+              src="/images/Logo/cybersphere-lockup-sombre.png"
+              alt="CyberSphere"
+              width={1384}
+              height={320}
+              priority
+              className="hidden h-8 w-auto dark:block"
+            />
+            <Image
+              src="/images/Logo/cybersphere-lockup-clair.png"
+              alt="CyberSphere"
+              width={1384}
+              height={320}
+              priority
+              className="block h-8 w-auto dark:hidden"
+            />
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex" aria-label={t.nav.mainAria}>
