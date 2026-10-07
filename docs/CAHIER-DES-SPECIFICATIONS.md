@@ -1,6 +1,6 @@
 # CyberSphere — Cahier des spécifications techniques et fonctionnelles
 
-**Version du document :** 2.2 · **Date :** 13 juillet 2026 · **État du projet :** **v2.2 livrée** (v1 : commit `402fb40`)
+**Version du document :** 2.4 · **Date :** 7 octobre 2026 · **État du projet :** **v2.4 livrée** (v1 : commit `402fb40`)
 
 > **Note v2** — La montée de version proposée au §7 a été **entièrement
 > implémentée** le 10 juillet 2026 : les trois paliers (durcissement sécurité,
@@ -15,6 +15,17 @@
 > comptes de démonstration hors production, échappement HTML des e-mails,
 > fiabilisation des IP d'audit derrière Caddy, colmatage d'un open-redirect et
 > exigence stricte du secret de signature des aperçus. Détails au §10.
+>
+> **Note v2.3** — Revue de code complète (7 octobre 2026) : correctifs de
+> sécurité et de fiabilité, et fonctionnalités prévues au §7 restées
+> incomplètes (échecs de connexion audités, numéros de ligne, sommaire
+> flottant, navigation entre épisodes, période des statistiques). Détails au §11.
+>
+> **Note v2.4** — RGPD (export, suppression de compte, purge automatique),
+> alertes de sécurité par e-mail, notifications aux admins, publication
+> programmée, texte alternatif des couvertures, CAPTCHA newsletter, tests
+> automatisés (unitaires + bout en bout) et mise à jour de sécurité des
+> dépendances. Détails au §12.
 
 ---
 
@@ -258,7 +269,7 @@ src/
 4. ~~Pas de 2FA ni de CAPTCHA~~ → **résolu** : 2FA TOTP obligatoire pour le staff, passkeys, Turnstile (1.1, 1.2, 1.8).
 5. ~~Pas de journal d'audit~~ → **résolu** (1.6).
 6. ~~EXIF conservés~~ → **résolu** : ré-encodage sharp en WebP (1.9).
-7. Tests automatisés → **partiellement** : CI (lint, build, audit, gitleaks) en place ; pas encore de tests E2E (Playwright envisageable en v3).
+7. ~~Tests automatisés~~ → **résolu (v2.4)** : tests unitaires Vitest et parcours de bout en bout Playwright exécutés en CI (§12).
 8. ~~Pas de TLS~~ → **résolu** : Caddy + HSTS dans le compose de production (1.11).
 9. Uploads sur disque local (volume Docker) — inchangé, incompatible serverless ; à migrer vers un objet storage (S3/R2) si l'hébergement l'exige.
 
@@ -542,3 +553,96 @@ ignorés (message journalisé), admin toujours créé ; titre d'article contenan
 `<b>` échappé dans l'e-mail newsletter ; `X-Forwarded-For` client écrasé par
 Caddy ; `?redirection=/\evil.com` rejeté → repli sur l'accueil ; signature
 d'aperçu levant une erreur si `BETTER_AUTH_SECRET` absent.
+
+---
+
+## 11. Revue complète — CyberSphere v2.3
+
+Revue de l'ensemble du code (7 octobre 2026), au-delà du dernier commit.
+
+### 11.1 Sécurité
+
+| # | Correctif | Fichiers | Problème corrigé |
+|---|---|---|---|
+| 11.1.1 | **2FA vérifiée dans la couche d'accès** | `src/lib/session.ts`, `src/app/admin/layout.tsx`, `src/actions/comments.ts` | La 2FA obligatoire n'était contrôlée que dans le layout `/admin`. Or un layout n'est pas réexécuté lors des navigations client, et les Server Actions n'y passent jamais : un admin authentifié par simple mot de passe pouvait publier, bannir ou modérer. `getAdminSession`/`getStaffSession` exigent désormais `twoFactorEnabled` ; le layout garde l'invite d'activation (`requireStaffAccount`). |
+| 11.1.2 | **2FA sur les endpoints du plugin admin** | `src/lib/auth.ts` | `/api/auth/admin/*` (rôles, bans, usurpation) restait appelable sans 2FA : hook `before` better-auth. |
+| 11.1.3 | **Validation serveur de l'inscription et du profil** | `src/lib/auth.ts` | Le nom (2–50 car.) n'était validé que côté client ; `/update-user` acceptait une URL `image` arbitraire (pixel de pistage). |
+| 11.1.4 | **Brouillons cloisonnés entre auteurs** | `src/app/[locale]/articles/[slug]/page.tsx` | Un auteur pouvait lire les brouillons des autres auteurs via l'URL publique. |
+| 11.1.5 | **Jetons de session non exposés** | `src/actions/sessions.ts`, page `/membre` | « Mes sessions » envoyait au navigateur les jetons de toutes les sessions ; la révocation se fait désormais par identifiant. |
+| 11.1.6 | **Newsletter résistante aux scanners de liens** | `src/actions/newsletter.ts`, pages `newsletter/*` | Confirmation et désinscription agissaient sur un simple GET : les scanners des messageries (Safe Links…) désinscrivaient des abonnés ou confirmaient des adresses à leur insu. Un bouton (POST) est désormais requis. |
+
+### 11.2 Fiabilité
+
+- **Uploads > 1 Mo** : les Server Actions plafonnent le corps à 1 Mo par défaut alors que l'upload accepte 5 Mo — `serverActions.bodySizeLimit: "6mb"` (`next.config.ts`).
+- **Tags** : rapprochement par slug (`Web`/`web`, `C++`/`C` ont le même slug) ; l'enregistrement de l'article échouait sur doublon de slug.
+- **Sommaire** : les titres imbriqués (citation, liste) décalaient les suffixes d'ancre par rapport à `rehype-slug`.
+- **CAPTCHA** : le jeton Turnstile (usage unique) est régénéré après chaque tentative ; un premier échec bloquait le formulaire jusqu'au rechargement.
+- **Signalements** : « classer sans suite » traite tous les signalements du commentaire (une entrée par commentaire dans la file).
+- **Fichiers orphelins** : avatar/couverture remplacés et couverture d'un article supprimé sont effacés du disque (`deleteUpload`, protégé contre la traversée).
+- **Messages d'erreur** des actions membres (commentaires, réactions, signalements, profil, newsletter) dans la langue du visiteur (`src/lib/action-locale.ts`).
+- **URL du site** centralisée (`src/lib/site.ts`) : replis incohérents (3000/3001) supprimés.
+- **Pré-traduction IA** : refus des classifieurs (`stop_reason: "refusal"`) signalé clairement.
+- **Contenu** : 200 000 caractères maximum (FR et EN) ; **sitemap** complété par les séries ; **robots.txt** couvre `/en/membre`, aperçus et liens newsletter.
+
+### 11.3 Fonctionnalités prévues complétées
+
+| § | Fonctionnalité | Implémentation |
+|---|---|---|
+| 1.6 | Connexions échouées dans le journal d'audit | Hook `after` better-auth : `auth.connexion_echouee` (e-mail tenté, IP) et `auth.2fa_echouee` |
+| 2.2 | Sommaire flottant sur desktop | Marge droite fixe à partir de `xl`, sommaire en tête d'article en dessous |
+| 2.4 | Navigation précédent/suivant des séries | Cartes « Épisode précédent / suivant » en fin d'article |
+| 2.5 | Numéros et surlignage de lignes | Syntaxe rehype-pretty-code (` ```bash showLineNumbers {2,4-5} `) + CSS ; numéros exclus du texte copié |
+| 3.1 | Désabonnement en un clic | En-têtes `List-Unsubscribe` / `List-Unsubscribe-Post` (RFC 8058) → `POST /api/newsletter/desinscription` |
+| 3.4 | Statistiques par période | Sélecteur 7 / 30 / 90 / 365 jours sur `/admin/statistiques` |
+
+### 11.4 Vérifications effectuées (v2.3)
+
+`tsc --noEmit`, ESLint et build de production sans erreur ; ancres du sommaire identiques à celles du HTML rendu (titres imbriqués compris) ; attributs `data-line-numbers` / `data-highlighted-line` générés ; garde de `deleteUpload` rejetant `..` et les sous-chemins. Parcours avec base de données rejoués en v2.4 par la suite de bout en bout (§12.6).
+
+---
+
+## 12. Conformité, notifications et tests — CyberSphere v2.4
+
+Mise en œuvre des recommandations de la revue v2.3 (7 octobre 2026).
+
+### 12.1 RGPD
+
+| Droit / principe | Implémentation |
+|---|---|
+| Accès et portabilité (art. 15, 20) | `GET /api/compte/export` : JSON téléchargeable (profil, commentaires, réactions, signets, signalements, sessions, passkeys, appareils, articles, newsletter, journal de sécurité). Aucun secret exporté (hash, jetons, secret TOTP, clés publiques des passkeys). Bouton dans `/membre`, audité (`compte.export`). |
+| Effacement (art. 17) | Plugin `deleteUser` de better-auth depuis `/membre` : **mot de passe toujours exigé** (hook `before` ; better-auth l'accepterait sinon pour une session de moins de 24 h) et saisie de « SUPPRIMER ». Cascade : commentaires, réactions, signets, signalements, sessions, passkeys, appareils ; inscription newsletter et avatar supprimés (`afterDelete`), audit `compte.suppression`. Comptes admin/auteur exclus (ils signent des articles : suppression par un admin après rétrogradation). |
+| Minimisation / limitation de conservation | Purge automatique (§12.4) : sessions et jetons expirés, inscriptions newsletter non confirmées après 7 jours, journal d'audit au-delà de `AUDIT_RETENTION_DAYS` (365 j par défaut, minimum 30). |
+
+### 12.2 Alertes de sécurité et notifications
+
+- **Alertes au titulaire du compte** (`src/lib/notifications.ts`, e-mail dans la langue de la requête) : connexion depuis un **appareil inconnu** — empreinte SHA-256 du user-agent dans la table `LoginDevice`, sans alerte à la toute première connexion ni pour une session d'usurpation admin —, mot de passe modifié ou réinitialisé, 2FA désactivée, passkey ajoutée. Détails (date, appareil, IP) échappés, lien vers « Mon profil ».
+- **Notifications aux administrateurs** : article soumis par un auteur, premier signalement d'un commentaire. Envoi hors du chemin de réponse (`after()`), jamais bloquant.
+- **Audit** : nouveaux événements `auth.2fa_desactivee`, `auth.passkey_ajoutee`, `compte.export`, `compte.suppression`, `article.programmation`, `article.publication_programmee`.
+
+### 12.3 Publication programmée
+
+- Nouveau statut `SCHEDULED` : `publishedAt` porte la date de mise en ligne. Réservé aux admins ; date future (≥ 1 min, ≤ 1 an), saisie en heure locale du navigateur puis convertie en UTC.
+- Bascule `SCHEDULED → PUBLISHED` **conditionnelle** (`updateMany` sur le statut) : avec plusieurs instances, une seule publie et une seule newsletter part. Publier manuellement un article programmé l'avance (date = maintenant, newsletter envoyée) ; le repasser en brouillon annule la programmation.
+- Dates affichées dans un fuseau fixe (`NEXT_PUBLIC_DISPLAY_TIMEZONE`, `Europe/Paris` par défaut) : identiques côté serveur (UTC en conteneur) et navigateur.
+
+### 12.4 Tâches de fond
+
+`src/instrumentation.ts` démarre `src/lib/scheduler.ts` au lancement du serveur Node (jamais pendant la build ni en Edge) : publication programmée chaque minute, purge toutes les 6 h. Opérations idempotentes, sans cron externe ; `DISABLE_SCHEDULER=1` les désactive sur une instance.
+
+### 12.5 Autres améliorations
+
+- **Newsletter** : limite de 5 demandes / 10 min par IP (`src/lib/rate-limit.ts`) et CAPTCHA Turnstile vérifié côté serveur (`src/lib/captcha.ts`), widget chargé seulement quand le visiteur commence à saisir.
+- **Accessibilité** : texte alternatif des couvertures (FR + EN facultatif) ; liens-image doublons des cartes retirés de la tabulation et des lecteurs d'écran.
+- **Administration** : pagination des membres (avec recherche nom/e-mail) et des commentaires ; pastille de statut commune.
+- **2FA** : la page demandée avant connexion (`?redirection=`) est conservée à travers l'étape 2FA (`src/lib/redirect.ts`, même validation anti open-redirect).
+- **Dépendances** : Next 16.4.0 (faille critique d'exécution de code à distance sur serveurs Windows en 16.3.0), nodemailer 10, sharp 0.35.5, override `deepmerge-ts` ^8 (dépendance de la CLI Prisma) — `npm audit --omit=dev` : 0 vulnérabilité.
+- **Développement** : port hôte de PostgreSQL configurable (`POSTGRES_PORT`).
+
+### 12.6 Tests automatisés
+
+| Suite | Outil | Couverture |
+|---|---|---|
+| Unitaires (`npm test`, 48 tests) | Vitest | Schémas d'URL Markdown, HTML brut ignoré, jetons d'aperçu HMAC (falsification, expiration), anti open-redirect, limiteur de débit, anti-traversée des uploads, échappement des e-mails, ancres du sommaire, numéros de ligne, slugs, négociation de langue, user-agent |
+| Bout en bout (`npm run test:e2e`, 22 parcours) | Playwright | CSP à nonce et en-têtes, langues et redirections, gardes d'accès, validation serveur de l'inscription, absence de session avant vérification, audit des échecs, appareil inconnu, 2FA (codes TOTP calculés) avec retour à la page demandée, alertes mot de passe/2FA, commentaires/signets/signalements, jetons de session non exposés, export et suppression RGPD, double opt-in résistant aux scanners, désabonnement RFC 8058, 2FA exigée sur pages admin profondes et API admin, cloisonnement des brouillons, soumission auteur, publication programmée par la tâche de fond |
+
+Exécutés en CI (job `e2e` avec service PostgreSQL). Chaque parcours crée ses comptes et simule un client distinct (`X-Forwarded-For`) pour ne pas buter sur le limiteur de débit de l'authentification.

@@ -32,6 +32,11 @@ npm run db:seed
 npm run dev
 ```
 
+> Port 5433 déjà pris par un autre projet ? Lancez la base sur un autre port
+> (`POSTGRES_PORT=5436 docker compose up -d`) et reportez-le dans
+> `DATABASE_URL`. Sous Windows, préférez `127.0.0.1` à `localhost` dans
+> `DATABASE_URL` : le relais IPv6 de Docker Desktop est parfois instable.
+
 Le site est disponible sur **http://localhost:3001** (port fixé dans le script
 `dev`). Cette URL doit correspondre à `BETTER_AUTH_URL` et `NEXT_PUBLIC_APP_URL`
 dans `.env` : si vous ouvrez le site sur un autre port, better-auth rejette la
@@ -68,9 +73,9 @@ connexion (origine non approuvée).
 | Rôle | Capacités |
 |------|-----------|
 | Visiteur | Lecture, recherche full-text, RSS (global, par catégorie, par tag), newsletter |
-| Membre (`user`) | + Commentaires, réactions « utile », signets, signalements, profil, 2FA, passkeys, gestion de ses sessions |
-| Auteur (`author`) | + Rédaction d'articles (brouillon → soumission à validation) |
-| Admin (`admin`) | + Publication, catégories/tags/séries, modération + file de signalements, membres & rôles, statistiques, journal d'audit |
+| Membre (`user`) | + Commentaires, réactions « utile », signets, signalements, profil, 2FA, passkeys, gestion de ses sessions, export et suppression de son compte (RGPD) |
+| Auteur (`author`) | + Rédaction d'articles (brouillon → soumission à validation, les admins sont prévenus par e-mail) |
+| Admin (`admin`) | + Publication immédiate ou **programmée**, catégories/tags/séries, modération + file de signalements (notification e-mail), membres & rôles, statistiques, journal d'audit |
 
 ## Sécurité
 
@@ -82,13 +87,22 @@ connexion (origine non approuvée).
   révocation totale au changement de mot de passe et au bannissement.
 - **CSP stricte à nonces** (`proxy.ts`) : pas d'`unsafe-inline` sur les scripts,
   `strict-dynamic`, rendu dynamique global.
-- **Défense en profondeur** : proxy → layouts → chaque Server Action revérifie
-  session et rôle ; validation Zod partout ; Markdown sans HTML brut.
+- **Défense en profondeur** : proxy → layouts → chaque page et Server Action
+  revérifie session, rôle **et 2FA du staff** (`lib/session.ts`) ; validation
+  Zod partout ; Markdown sans HTML brut.
+- **Alertes de sécurité par e-mail** : connexion depuis un appareil inconnu,
+  mot de passe modifié, 2FA désactivée, passkey ajoutée.
 - **Uploads** : ré-encodage sharp en WebP (EXIF supprimés, fichiers polyglottes
   neutralisés), noms aléatoires, service anti-traversée + `nosniff`.
-- **Journal d'audit** (`/admin/journal`) : connexions, changements de mot de
-  passe, publications, bans, promotions… avec IP.
-- **Anti-spam** : honeypots + limitation de fréquence sur commentaires et newsletter.
+- **Journal d'audit** (`/admin/journal`) : connexions (réussies et échouées),
+  2FA, changements de mot de passe, publications, bans, promotions, exports et
+  suppressions de comptes… avec IP.
+- **Anti-spam** : honeypots + limitation de fréquence sur commentaires et
+  newsletter (par membre, et par IP + Turnstile pour la newsletter).
+- **RGPD** : export JSON des données (`/membre`), suppression du compte par le
+  membre (mot de passe exigé), purge automatique des sessions expirées, des
+  inscriptions newsletter non confirmées (7 j) et du journal d'audit
+  (`AUDIT_RETENTION_DAYS`, 365 j par défaut).
 - **Divulgation responsable** : `/.well-known/security.txt` (RFC 9116) + `/securite`.
 
 ## Multilingue (FR/EN)
@@ -147,9 +161,31 @@ Volumes persistants : `db-data`, `db-backups`, `uploads`, `caddy-data`.
 
 ## CI
 
-GitHub Actions (`.github/workflows/ci.yml`) : ESLint + build, `npm audit`
-(échec sur high/critical), scan de secrets **gitleaks**. **Dependabot**
-surveille npm, les actions GitHub et les images Docker.
+GitHub Actions (`.github/workflows/ci.yml`) : ESLint + tests unitaires +
+build, tests de bout en bout Playwright (avec un service PostgreSQL),
+`npm audit` (échec sur high/critical), scan de secrets **gitleaks**.
+**Dependabot** surveille npm, les actions GitHub et les images Docker.
+
+## Tests
+
+- **Unitaires** (`npm test`, Vitest — `tests/unit/`) : assainissement des URL
+  Markdown, liens d'aperçu signés, anti open-redirect, limiteur de débit,
+  anti-traversée des uploads, échappement des e-mails, sommaire, slugs, langues.
+  Aucune base nécessaire.
+- **De bout en bout** (`npm run test:e2e`, Playwright — `tests/e2e/`) :
+  en-têtes de sécurité, gardes d'accès, inscription, 2FA (codes TOTP calculés),
+  alertes, commentaires/signalements, export et suppression RGPD, newsletter
+  (double opt-in, désabonnement en un clic), exigence 2FA de l'admin,
+  cloisonnement des brouillons, publication programmée.
+
+```bash
+npx playwright install chromium     # une fois
+npx prisma migrate deploy && npm run db:seed
+npm run test:e2e                    # build + serveur sur :3001 (ou réutilise un serveur déjà lancé)
+```
+
+Les parcours créent leurs propres comptes (adresses `e2e-…@cybersphere.test`) :
+à lancer sur une **base de développement ou jetable**, jamais en production.
 
 ## Scripts
 
@@ -158,6 +194,8 @@ surveille npm, les actions GitHub et les images Docker.
 | `npm run dev` | Serveur de développement |
 | `npm run build` / `npm run start` | Build et serveur de production |
 | `npm run lint` | ESLint |
+| `npm test` | Tests unitaires (Vitest) |
+| `npm run test:e2e` | Tests de bout en bout (Playwright) |
 | `npm run db:migrate` | Migrations Prisma |
 | `npm run db:seed` | Données de démonstration |
 | `npm run db:studio` | Interface Prisma Studio |
@@ -167,9 +205,13 @@ surveille npm, les actions GitHub et les images Docker.
 - `src/app/[locale]/` — pages publiques FR/EN + espace membre + auth (2FA, reset…)
 - `src/app/admin/` — administration (2FA obligatoire ; auteurs restreints)
 - `src/actions/` — Server Actions (articles, pré-traduction IA, séries,
-  commentaires, réactions, signalements, newsletter, membres, profil)
+  commentaires, réactions, signalements, newsletter, membres, profil, sessions)
+- `src/app/api/` — auth (better-auth), export RGPD, désabonnement en un clic
 - `src/lib/` — db, auth, session, i18n, markdown (+ TOC), uploads (sharp), rss,
-  stats, newsletter, audit, draft-preview (liens signés), validations
+  stats, newsletter, audit, draft-preview (liens signés), validations,
+  notifications (alertes, e-mails admin), maintenance (programmation, purge)
 - `src/i18n/` — dictionnaires FR/EN de l'interface (traduits à la main)
 - `src/proxy.ts` — négociation de langue + CSP à nonces + garde `/admin`, `/membre`
+- `src/instrumentation.ts` — démarre les tâches de fond au lancement du serveur
+- `tests/` — tests unitaires (Vitest) et de bout en bout (Playwright)
 - `docs/CAHIER-DES-SPECIFICATIONS.md` — spécifications complètes
