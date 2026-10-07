@@ -8,7 +8,8 @@ services:
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?définissez POSTGRES_PASSWORD dans .env}"
       POSTGRES_DB: cybersphere
     ports:
-      - "5433:5432"
+      # Port hôte configurable (POSTGRES_PORT) si 5433 est déjà pris
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:

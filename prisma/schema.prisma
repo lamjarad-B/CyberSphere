@@ -33,6 +33,7 @@ model User {
   bookmarks  Bookmark[]
   reports    CommentReport[]
   auditLogs  AuditLog[]
+  devices    LoginDevice[]
 }
 
 model TwoFactor {
@@ -115,6 +116,9 @@ model Verification {
 enum ArticleStatus {
   DRAFT
   SUBMITTED
+  // Publication programmée : publishedAt porte la date de mise en ligne,
+  // appliquée par la tâche planifiée (src/lib/maintenance.ts)
+  SCHEDULED
   PUBLISHED
 }
 
@@ -140,6 +144,8 @@ model Article {
   excerpt        String
   content        String
   coverImage     String?
+  // Texte alternatif de la couverture (accessibilité)
+  coverAlt       String?
   status         ArticleStatus         @default(DRAFT)
   publishedAt    DateTime?
   views          Int                   @default(0)
@@ -191,6 +197,7 @@ model ArticleTranslation {
   title     String
   excerpt   String
   content   String
+  coverAlt  String?
   // Vecteur de recherche anglais, entretenu par trigger (migration SQL)
   search    Unsupported("tsvector")?
   createdAt DateTime                 @default(now())
@@ -308,4 +315,18 @@ model ReferrerStat {
   count Int      @default(0)
 
   @@unique([host, day])
+}
+
+// Appareils (navigateurs) déjà vus pour un compte : une connexion depuis un
+// appareil inconnu déclenche une alerte de sécurité par e-mail. Seule une
+// empreinte SHA-256 du user-agent est conservée.
+model LoginDevice {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  uaHash     String
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@unique([userId, uaHash])
 }
