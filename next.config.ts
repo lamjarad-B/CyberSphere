@@ -12,6 +12,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Sortie autonome pour une image Docker minimale (.next/standalone)
   output: "standalone",
+  // Pas d'en-tête « X-Powered-By: Next.js » : inutile d'annoncer la pile
+  poweredByHeader: false,
   experimental: {
     serverActions: {
       // Les Server Actions plafonnent le corps à 1 Mo par défaut : une

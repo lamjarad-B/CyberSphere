@@ -1,4 +1,4 @@
-import { unsubscribeNewsletter } from "@/actions/newsletter";
+import { unsubscribeNewsletter } from "@/lib/newsletter";
 
 /**
  * Désabonnement en un clic (RFC 8058) : cible de l'en-tête List-Unsubscribe

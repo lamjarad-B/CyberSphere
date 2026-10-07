@@ -14,6 +14,14 @@ async function ensureAdmin() {
 
   const existing = await db.user.findUnique({ where: { email } });
   if (existing) {
+    // Un compte non vérifié a pu être créé par n'importe qui via l'inscription
+    // publique, avec un mot de passe que l'opérateur ignore : on ne le
+    // promeut pas administrateur.
+    if (!existing.emailVerified) {
+      throw new Error(
+        `Le compte ${email} existe mais son e-mail n'est pas vérifié : vérifiez-le ou supprimez-le, puis relancez le seed.`,
+      );
+    }
     if (existing.role !== "admin") {
       await db.user.update({ where: { id: existing.id }, data: { role: "admin" } });
     }
@@ -353,9 +361,15 @@ Tools like sqlmap automate detection — **only on applications you are authoriz
   // --- Comptes de démonstration ---
   // Jamais en production : leurs mots de passe figurent en clair dans ce
   // dépôt, ce serait une porte d'entrée authentifiée (dont un compte "author"
-  // avec accès à l'administration). Réservés au développement/à la démo.
+  // avec accès à l'administration). NODE_ENV ne suffit pas à le garantir :
+  // un seed lancé à la main contre la base de production ne le définit
+  // généralement pas. Ils ne sont donc créés que pour une instance locale
+  // (NEXT_PUBLIC_APP_URL en http://localhost ou 127.0.0.1) hors production.
   // Forcer malgré tout avec SEED_DEMO=1 (base jetable uniquement).
-  if (process.env.NODE_ENV !== "production" || process.env.SEED_DEMO === "1") {
+  const localSite = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/.test(
+    process.env.NEXT_PUBLIC_APP_URL ?? "",
+  );
+  if ((localSite && process.env.NODE_ENV !== "production") || process.env.SEED_DEMO === "1") {
     // --- Membre de démonstration + commentaire ---
     // NB : mot de passe volontairement atypique — le plugin haveIBeenPwned
     // rejette les mots de passe présents dans des fuites connues.
@@ -411,7 +425,9 @@ Tools like sqlmap automate detection — **only on applications you are authoriz
       }
     }
   } else {
-    console.log("→ Comptes de démonstration ignorés (NODE_ENV=production).");
+    console.log(
+      "→ Comptes de démonstration ignorés (instance non locale ou NODE_ENV=production ; SEED_DEMO=1 pour forcer sur une base jetable).",
+    );
   }
 
   console.log("✓ Seed terminé.");

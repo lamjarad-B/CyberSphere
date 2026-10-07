@@ -97,10 +97,21 @@ export function LoginForm({ redirection }: { redirection?: string }) {
   async function resend() {
     if (!unverifiedEmail) return;
     setResent(false);
-    await authClient.sendVerificationEmail({
-      email: unverifiedEmail,
-      callbackURL: localeHref(locale, "/"),
-    });
+    setError(null);
+    // Renvoi protégé par le CAPTCHA comme la connexion : nouveau jeton requis
+    const { error } = await authClient.sendVerificationEmail(
+      {
+        email: unverifiedEmail,
+        callbackURL: localeHref(locale, "/"),
+      },
+      { headers: captchaHeaders(captchaToken) },
+    );
+    setCaptchaToken(null);
+    setCaptchaKey((key) => key + 1);
+    if (error) {
+      setError(error.status === 429 ? t.auth.tooManyAttempts : t.auth.genericError);
+      return;
+    }
     setResent(true);
   }
 
@@ -117,7 +128,12 @@ export function LoginForm({ redirection }: { redirection?: string }) {
           {resent ? (
             <p className={successClass}>{labels.resent}</p>
           ) : (
-            <button type="button" onClick={resend} className={buttonGhostClass}>
+            <button
+              type="button"
+              onClick={resend}
+              disabled={captchaEnabled && !captchaToken}
+              className={buttonGhostClass}
+            >
               {labels.resendLink}
             </button>
           )}

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { actionLocale } from "@/lib/action-locale";
+import { rateLimit } from "@/lib/rate-limit";
 import { getSession } from "@/lib/session";
 import { deleteUpload, saveImage } from "@/lib/uploads";
 import { profileSchema } from "@/lib/validations";
@@ -12,12 +13,16 @@ const messages = {
   fr: {
     loginRequired: "Connectez-vous pour modifier votre profil.",
     invalidName: "Le nom doit contenir entre 2 et 50 caractères.",
-    invalidImage: "Image refusée : png, jpg, webp ou gif lisible, 5 Mo maximum.",
+    invalidImage:
+      "Image refusée : png, jpg, webp ou gif lisible, 5 Mo et 40 mégapixels maximum.",
+    tooManyAvatars: "Trop de changements d'avatar. Réessayez dans une heure.",
   },
   en: {
     loginRequired: "Sign in to edit your profile.",
     invalidName: "Your name must be between 2 and 50 characters.",
-    invalidImage: "Image rejected: use a readable png, jpg, webp or gif of 5 MB at most.",
+    invalidImage:
+      "Image rejected: use a readable png, jpg, webp or gif of 5 MB and 40 megapixels at most.",
+    tooManyAvatars: "Too many avatar changes. Please try again in an hour.",
   },
 };
 
@@ -34,6 +39,11 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
   let image: string | undefined;
   const avatar = formData.get("avatar");
   if (avatar instanceof File && avatar.size > 0) {
+    // Le ré-encodage coûte du CPU et de la mémoire : 10 avatars par heure
+    // et par membre, pour qu'un compte ne puisse pas saturer le serveur
+    if (!rateLimit(`avatar:${session.user.id}`, 10, 60 * 60_000)) {
+      return { ok: false, error: t.tooManyAvatars };
+    }
     try {
       image = await saveImage(avatar);
     } catch {

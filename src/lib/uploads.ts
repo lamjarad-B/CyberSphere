@@ -14,6 +14,14 @@ const ALLOWED_TYPES = new Set([
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5 Mo
 const MAX_DIMENSION = 2560; // px, côté le plus long
+/**
+ * Pixels décodés au maximum, toutes images d'une animation comprises
+ * (≈ 6300 × 6300, ou 100 images de 630 × 630). Le défaut de sharp (~268 Mpx)
+ * laisse passer une « bombe » : un PNG de quelques dizaines d'octets peut
+ * annoncer 16 000 × 16 000 px, soit ~1 Go à décoder. sharp vérifie cette
+ * limite dès la lecture de l'en-tête, avant tout décodage.
+ */
+const MAX_INPUT_PIXELS = 40_000_000;
 
 /**
  * Enregistre une image téléversée dans uploads/ et retourne son URL
@@ -34,7 +42,7 @@ export async function saveImage(file: File): Promise<string> {
   try {
     // `animated` préserve les GIF/WebP animés ; sharp ignore les métadonnées
     // par défaut et échoue si le contenu n'est pas une image valide.
-    encoded = await sharp(source, { animated: true })
+    encoded = await sharp(source, { animated: true, limitInputPixels: MAX_INPUT_PIXELS })
       .rotate() // applique l'orientation EXIF avant de la supprimer
       .resize({
         width: MAX_DIMENSION,
@@ -44,7 +52,10 @@ export async function saveImage(file: File): Promise<string> {
       })
       .webp({ quality: 82 })
       .toBuffer();
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("pixel limit")) {
+      throw new Error("Image trop grande : 40 mégapixels maximum (animation comprise)");
+    }
     throw new Error("Fichier invalide : ce n'est pas une image lisible");
   }
 

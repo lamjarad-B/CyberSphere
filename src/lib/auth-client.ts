@@ -1,12 +1,13 @@
 "use client";
 
 import { createAuthClient } from "better-auth/react";
-import { adminClient, twoFactorClient } from "better-auth/client/plugins";
+import { twoFactorClient } from "better-auth/client/plugins";
 import { passkeyClient } from "@better-auth/passkey/client";
 
+// Pas de adminClient : l'API HTTP du plugin admin est fermée côté serveur
+// (lib/auth.ts) — l'administration passe par les Server Actions.
 export const authClient = createAuthClient({
   plugins: [
-    adminClient(),
     twoFactorClient({
       onTwoFactorRedirect() {
         // Connexion valide mais 2FA activée : saisie du code TOTP,

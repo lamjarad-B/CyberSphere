@@ -2,12 +2,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { admin, captcha, haveIBeenPwned, twoFactor } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
-import {
-  APIError,
-  createAuthMiddleware,
-  getSessionFromCtx,
-  isAPIError,
-} from "better-auth/api";
+import { APIError, createAuthMiddleware, isAPIError } from "better-auth/api";
 import { passkey } from "@better-auth/passkey";
 import { db } from "./db";
 import { logAudit, requestIp } from "./audit";
@@ -15,10 +10,22 @@ import { isNewLoginDevice, sendSecurityAlert } from "./notifications";
 import { deleteUpload } from "./uploads";
 import { sendEmail, verificationEmail, resetPasswordEmail } from "./email";
 import { LOCALE_COOKIE, type Locale } from "./i18n";
+import { rateLimit } from "./rate-limit";
 import { SITE_URL } from "./site";
 import { registerSchema } from "./validations";
 
 const baseURL = process.env.BETTER_AUTH_URL ?? SITE_URL;
+
+/**
+ * Plafond d'e-mails d'authentification par destinataire : 5 par heure et par
+ * type. Le rate limiting de better-auth est par IP ; sans ce plafond, un
+ * attaquant multipliant les IP pourrait bombarder une adresse de liens de
+ * vérification ou de réinitialisation (harcèlement, réputation SMTP).
+ * Au-delà, l'envoi est ignoré sans erreur : la réponse reste identique.
+ */
+function allowAuthEmail(kind: "verification" | "reinitialisation", email: string): boolean {
+  return rateLimit(`courriel-auth:${kind}:${email.toLowerCase()}`, 5, 60 * 60_000);
+}
 
 /**
  * Langue de l'utilisateur au moment de l'appel auth : cookie de préférence,
@@ -52,7 +59,12 @@ export const auth = betterAuth({
     requireEmailVerification: true,
     // Flux « mot de passe oublié » : lien valable 1 heure
     resetPasswordTokenExpiresIn: 3600,
+    // Réinitialiser son mot de passe — le geste conseillé par les alertes de
+    // sécurité — ferme toutes les sessions : une session volée n'y survit pas
+    // (better-auth les conserve par défaut).
+    revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }, request) => {
+      if (!allowAuthEmail("reinitialisation", user.email)) return;
       const locale = requestLocale(request);
       const { html, text } = resetPasswordEmail(url, locale);
       await sendEmail({
@@ -74,6 +86,7 @@ export const auth = betterAuth({
     autoSignInAfterVerification: true,
     expiresIn: 3600,
     sendVerificationEmail: async ({ user, url }, request) => {
+      if (!allowAuthEmail("verification", user.email)) return;
       const locale = requestLocale(request);
       const { html, text } = verificationEmail(url, locale);
       await sendEmail({
@@ -86,6 +99,13 @@ export const auth = betterAuth({
         text,
       });
     },
+  },
+  session: {
+    // Opérations exigeant une session « fraîche » (enregistrement d'une
+    // passkey) : 15 minutes au lieu de 24 h. Une session volée ne permet plus
+    // d'ajouter une passkey — qui contournerait mot de passe et 2FA et
+    // survivrait à une réinitialisation — sans se reconnecter.
+    freshAge: 15 * 60,
   },
   rateLimit: {
     enabled: true,
@@ -117,7 +137,7 @@ export const auth = betterAuth({
       }
 
       // Suppression de compte : mot de passe toujours exigé (better-auth
-      // l'accepterait sinon pour toute session de moins de 24 h)
+      // l'accepterait sinon pour toute session « fraîche », cf. freshAge)
       if (ctx.path === "/delete-user") {
         if (typeof body.password !== "string" || body.password.length === 0 || "token" in body) {
           throw new APIError("BAD_REQUEST", {
@@ -126,16 +146,17 @@ export const auth = betterAuth({
         }
       }
 
-      // Endpoints du plugin admin (rôles, bans, usurpation…) : même exigence
-      // de 2FA que l'interface /admin et les Server Actions.
+      // API HTTP du plugin admin (/admin/* : rôles, mots de passe, usurpation,
+      // création et suppression de comptes…) : fermée. Aucun écran ne s'en
+      // sert — bans et rôles passent par les Server Actions, qui appliquent
+      // les règles métier (un admin ne se bannit ni ne se rétrograde) et
+      // écrivent le journal d'audit. Ouverte, elle laissait une session admin
+      // compromise créer un autre admin ou changer un mot de passe sans trace.
+      // Le plugin reste chargé : rôles et blocage des comptes bannis.
       if (ctx.path.startsWith("/admin/")) {
-        const session = await getSessionFromCtx(ctx);
-        const user = session?.user as { twoFactorEnabled?: boolean | null } | undefined;
-        if (!user?.twoFactorEnabled) {
-          throw new APIError("FORBIDDEN", {
-            message: "Double authentification requise pour l'administration.",
-          });
-        }
+        throw new APIError("FORBIDDEN", {
+          message: "API d'administration désactivée.",
+        });
       }
     }),
     // Journal d'audit des échecs d'authentification (§ 1.6 du cahier) :
@@ -279,13 +300,21 @@ export const auth = betterAuth({
       customPasswordCompromisedMessage:
         "Ce mot de passe figure dans des fuites de données connues. Choisissez-en un autre.",
     }),
-    // CAPTCHA Cloudflare Turnstile sur inscription/connexion/mot de passe
-    // oublié — actif uniquement si la clé secrète est configurée
+    // CAPTCHA Cloudflare Turnstile sur inscription, connexion, mot de passe
+    // oublié et renvoi du lien de vérification (endpoint public qui envoie un
+    // e-mail, absent de la liste par défaut du plugin) — actif uniquement si
+    // la clé secrète est configurée
     ...(process.env.TURNSTILE_SECRET_KEY
       ? [
           captcha({
             provider: "cloudflare-turnstile",
             secretKey: process.env.TURNSTILE_SECRET_KEY,
+            endpoints: [
+              "/sign-up/email",
+              "/sign-in/email",
+              "/request-password-reset",
+              "/send-verification-email",
+            ],
           }),
         ]
       : []),

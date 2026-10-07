@@ -4,6 +4,43 @@ import { localeHref, type Locale } from "./i18n";
 
 import { SITE_URL as BASE_URL } from "@/lib/site";
 
+/*
+ * Confirmation et désinscription par jeton : volontairement hors du fichier
+ * "use server" (actions/newsletter.ts). Toute fonction exportée d'un tel
+ * fichier devient une Server Action publique dont les arguments arrivent
+ * désérialisés depuis la requête — un objet { not: "" } passé comme jeton
+ * deviendrait un filtre Prisma et viderait toute la liste.
+ */
+
+/** Jeton d'abonné reçu de l'extérieur : une chaîne non vide, jamais un objet. */
+function isToken(token: unknown): token is string {
+  return typeof token === "string" && token.length > 0 && token.length <= 128;
+}
+
+/** Confirme une inscription via le jeton reçu par e-mail. */
+export async function confirmNewsletter(token: unknown): Promise<boolean> {
+  if (!isToken(token)) return false;
+  const subscriber = await db.newsletterSubscriber.findUnique({
+    where: { token },
+    select: { id: true, confirmed: true },
+  });
+  if (!subscriber) return false;
+  if (!subscriber.confirmed) {
+    await db.newsletterSubscriber.update({
+      where: { id: subscriber.id },
+      data: { confirmed: true, confirmedAt: new Date() },
+    });
+  }
+  return true;
+}
+
+/** Désinscription via le jeton présent dans chaque e-mail. */
+export async function unsubscribeNewsletter(token: unknown): Promise<boolean> {
+  if (!isToken(token)) return false;
+  const { count } = await db.newsletterSubscriber.deleteMany({ where: { token } });
+  return count > 0;
+}
+
 /**
  * Envoie l'e-mail « nouvel article » à tous les abonnés confirmés, chacun
  * dans sa langue (celle du site au moment de son inscription). Les abonnés

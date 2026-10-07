@@ -1,5 +1,6 @@
 "use server";
 
+import { rateLimit } from "@/lib/rate-limit";
 import { getStaffSession } from "@/lib/session";
 
 /**
@@ -15,6 +16,10 @@ const MODEL = "claude-sonnet-5";
 // Marge large : la traduction fait environ la taille de l'original.
 const MAX_OUTPUT_TOKENS = 32_000;
 const MAX_CONTENT_CHARS = 60_000;
+// Chaque appel est facturé (jusqu'à 32 000 jetons de sortie) : quota par
+// membre du staff, pour qu'un compte auteur ne puisse pas faire exploser la
+// facture de l'API
+const MAX_CALLS_PER_HOUR = 10;
 
 const SYSTEM_PROMPT = `You are an expert French-to-English translator specialized in cybersecurity editorial content.
 Translate the article faithfully and idiomatically, as a native English tech editor would write it — never word-for-word.
@@ -71,6 +76,12 @@ export async function pretranslateArticle(input: {
     return {
       ok: false,
       error: `Article trop long pour la pré-traduction (${MAX_CONTENT_CHARS.toLocaleString("fr-FR")} caractères max).`,
+    };
+  }
+  if (!rateLimit(`pretraduction:${session.user.id}`, MAX_CALLS_PER_HOUR, 60 * 60_000)) {
+    return {
+      ok: false,
+      error: `Quota de pré-traduction atteint (${MAX_CALLS_PER_HOUR} par heure). Réessayez plus tard.`,
     };
   }
 

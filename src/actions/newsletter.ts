@@ -8,6 +8,7 @@ import { verifyTurnstile } from "@/lib/captcha";
 import { rateLimit } from "@/lib/rate-limit";
 import { sendEmail, newsletterConfirmEmail } from "@/lib/email";
 import { localeHref, toLocale } from "@/lib/i18n";
+import { confirmNewsletter, unsubscribeNewsletter } from "@/lib/newsletter";
 import { SITE_URL as BASE_URL } from "@/lib/site";
 import { newsletterSchema } from "@/lib/validations";
 import type { ActionResult } from "./comments";
@@ -97,35 +98,12 @@ export async function subscribeNewsletter(input: {
   return { ok: true };
 }
 
-/** Confirme une inscription via le jeton reçu par e-mail. */
-export async function confirmNewsletter(token: string): Promise<boolean> {
-  if (!token) return false;
-  const subscriber = await db.newsletterSubscriber.findUnique({
-    where: { token },
-    select: { id: true, confirmed: true },
-  });
-  if (!subscriber) return false;
-  if (!subscriber.confirmed) {
-    await db.newsletterSubscriber.update({
-      where: { id: subscriber.id },
-      data: { confirmed: true, confirmedAt: new Date() },
-    });
-  }
-  return true;
-}
-
-/** Désinscription via le jeton présent dans chaque e-mail. */
-export async function unsubscribeNewsletter(token: string): Promise<boolean> {
-  if (!token) return false;
-  const { count } = await db.newsletterSubscriber.deleteMany({ where: { token } });
-  return count > 0;
-}
-
 /*
- * Variantes « formulaire » : la confirmation et la désinscription ne se font
- * jamais sur un simple GET. Les scanners de liens des messageries (Safe
- * Links, antivirus…) ouvrent les URL des e-mails : un GET qui agit
- * désinscrirait un abonné — ou confirmerait une adresse — à son insu.
+ * Confirmation et désinscription, en formulaire uniquement : jamais sur un
+ * simple GET. Les scanners de liens des messageries (Safe Links,
+ * antivirus…) ouvrent les URL des e-mails : un GET qui agit désinscrirait un
+ * abonné — ou confirmerait une adresse — à son insu. La logique par jeton vit
+ * dans lib/newsletter.ts, hors de ce fichier "use server" (cf. son commentaire).
  */
 
 export async function confirmNewsletterForm(formData: FormData): Promise<void> {

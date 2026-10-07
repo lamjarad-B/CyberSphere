@@ -1,7 +1,7 @@
 import { expect, newClient, test, BASE_URL, createUser, db, enableTwoFactor, login, uid } from "./helpers";
 
 test.describe("Administration", () => {
-  test("2FA exigée partout pour le staff : pages, navigation directe, API admin", async ({ page }) => {
+  test("2FA exigée partout pour le staff ; API HTTP du plugin admin fermée", async ({ page }) => {
     const admin = await createUser(page.request, "admin");
     await login(page, admin);
 
@@ -13,15 +13,22 @@ test.describe("Administration", () => {
     await expect(page.getByRole("heading", { name: "Double authentification requise" })).toBeVisible();
     await expect(page.getByText(admin.email)).toBeHidden();
 
-    // Les endpoints du plugin admin de better-auth exigent aussi la 2FA
+    // L'API HTTP du plugin admin de better-auth est fermée…
     const listUsers = await page.request.get("/api/auth/admin/list-users");
     expect(listUsers.status()).toBe(403);
 
-    // 2FA activée : accès complet
+    // 2FA activée : accès complet à l'interface…
     await enableTwoFactor(page, admin);
     await page.goto("/admin/membres");
     await expect(page.getByRole("heading", { name: /Membres/ })).toBeVisible();
-    expect((await page.request.get("/api/auth/admin/list-users")).status()).toBe(200);
+    // …mais l'API admin reste fermée, même pour un admin avec 2FA : rôles et
+    // bans passent par les Server Actions (règles métier + journal d'audit)
+    expect((await page.request.get("/api/auth/admin/list-users")).status()).toBe(403);
+    const setRole = await page.request.post("/api/auth/admin/set-role", {
+      data: { userId: admin.id, role: "admin" },
+      headers: { Origin: BASE_URL },
+    });
+    expect(setRole.status()).toBe(403);
   });
 
   test("auteur : soumission d'un article, brouillons cloisonnés", async ({ browser, request }) => {
@@ -65,6 +72,36 @@ test.describe("Administration", () => {
     expect(
       await db.auditLog.count({ where: { action: "article.soumission", targetId: saved.id } }),
     ).toBe(1);
+
+    // Un article programmé (validé par un admin) échappe à son auteur :
+    // ni modification ni suppression
+    const scheduled = await db.article.create({
+      data: {
+        title: `Article programmé de l'auteur ${uid()}`,
+        slug: `programme-auteur-${uid()}`,
+        excerpt: "Article validé puis programmé par un admin.",
+        content: "Contenu programmé.",
+        categoryId: category.id,
+        authorId: author.id,
+        status: "SCHEDULED",
+        publishedAt: new Date(Date.now() + 3_600_000),
+      },
+    });
+    const dialogs: string[] = [];
+    page.on("dialog", (dialog) => {
+      dialogs.push(dialog.message());
+      void dialog.accept();
+    });
+    await page.goto("/admin/articles");
+    await page
+      .locator("tr", { hasText: scheduled.title })
+      .getByRole("button", { name: "Supprimer" })
+      .click();
+    // Confirmation, puis refus de l'action
+    await expect.poll(() => dialogs.length).toBe(2);
+    expect(dialogs[1]).toContain("non programmés");
+    expect(await db.article.count({ where: { id: scheduled.id } })).toBe(1);
+    await db.article.delete({ where: { id: scheduled.id } });
     await context.close();
   });
 

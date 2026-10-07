@@ -14,14 +14,18 @@ export type AuditEntry = {
 
 /**
  * IP du client pour la requête courante (derrière un reverse proxy).
+ * Seul le dernier maillon de X-Forwarded-For est fiable : c'est celui que
+ * pose le proxy (Caddy remplace même tout l'en-tête par l'IP qu'il voit) ;
+ * les maillons de tête peuvent venir du client, donc être forgés — ce qui
+ * fausserait le journal d'audit et contournerait les limiteurs par IP.
  * Null hors requête HTTP (seed, scripts) : l'audit reste possible sans IP.
  */
 export async function requestIp(): Promise<string | null> {
   try {
     const h = await headers();
-    const forwarded = h.get("x-forwarded-for");
-    if (forwarded) return forwarded.split(",")[0].trim().slice(0, 45);
-    return h.get("x-real-ip")?.slice(0, 45) ?? null;
+    const forwarded = h.get("x-forwarded-for")?.split(",").pop()?.trim();
+    if (forwarded) return forwarded.slice(0, 45);
+    return h.get("x-real-ip")?.trim().slice(0, 45) || null;
   } catch {
     return null;
   }

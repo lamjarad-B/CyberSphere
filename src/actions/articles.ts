@@ -318,11 +318,17 @@ export async function deleteArticle(id: string): Promise<ActionResult> {
   });
   if (!article) return { ok: false, error: "Article introuvable." };
 
+  // Même règle que saveArticle : un article publié ou programmé (validé par
+  // un admin) échappe à son auteur — il ne peut ni le modifier ni le retirer.
   if (!isAdmin) {
-    if (article.authorId !== session.user.id || article.status === "PUBLISHED") {
+    if (
+      article.authorId !== session.user.id ||
+      article.status === "PUBLISHED" ||
+      article.status === "SCHEDULED"
+    ) {
       return {
         ok: false,
-        error: "Vous ne pouvez supprimer que vos articles non publiés.",
+        error: "Vous ne pouvez supprimer que vos articles non publiés et non programmés.",
       };
     }
   }

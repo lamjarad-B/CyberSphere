@@ -210,6 +210,8 @@ const fr = {
         "Connectez-vous sans mot de passe avec l'empreinte, le visage ou le code de votre appareil. Résistant au phishing : une passkey ne fonctionne que sur ce site.",
       addError:
         "Enregistrement impossible. Votre navigateur ou appareil ne supporte peut-être pas les passkeys.",
+      reauthRequired:
+        "Par sécurité, l'ajout d'une passkey exige une connexion de moins de 15 minutes : déconnectez-vous puis reconnectez-vous, et recommencez.",
       deleteError: "Suppression impossible. Réessayez.",
       unnamed: "Passkey sans nom",
       synced: "Synchronisée (multi-appareils)",
@@ -453,6 +455,8 @@ const en: Dictionary = {
         "Sign in without a password using your device's fingerprint, face, or PIN. Phishing-resistant: a passkey only works on this site.",
       addError:
         "Registration failed. Your browser or device may not support passkeys.",
+      reauthRequired:
+        "For security, adding a passkey requires a sign-in less than 15 minutes old: sign out, sign back in, and try again.",
       deleteError: "Couldn't delete it. Please try again.",
       unnamed: "Unnamed passkey",
       synced: "Synced (multi-device)",

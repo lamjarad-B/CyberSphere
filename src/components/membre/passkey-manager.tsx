@@ -38,7 +38,9 @@ export function PasskeyManager({ passkeys }: { passkeys: PasskeyItem[] }) {
     setLoading(false);
 
     if (result?.error) {
-      setError(labels.addError);
+      // Session de plus de 15 min (freshAge, lib/auth.ts) : reconnexion exigée
+      const code = "code" in result.error ? result.error.code : undefined;
+      setError(code === "SESSION_NOT_FRESH" ? labels.reauthRequired : labels.addError);
       return;
     }
     (event.target as HTMLFormElement).reset?.();

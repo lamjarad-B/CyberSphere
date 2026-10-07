@@ -1,11 +1,19 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, hkdfSync, timingSafeEqual } from "node:crypto";
 
-// Réutilise le secret d'auth : un seul secret maître pour l'instance.
+// Un seul secret maître pour l'instance (celui de l'auth)…
 const SECRET = process.env.BETTER_AUTH_SECRET ?? "";
 
 const DEFAULT_TTL_SECONDS = 72 * 3600; // 3 jours
 
-function sign(payload: string): string {
+let previewKey: Buffer | null = null;
+
+/**
+ * …mais une clé HMAC dédiée, dérivée par HKDF-SHA256 (séparation des
+ * usages) : better-auth signe ses cookies et jetons avec le secret brut, si
+ * bien qu'une signature produite ici ne vaut nulle part ailleurs — et
+ * inversement.
+ */
+function key(): Buffer {
   // Sans secret, les jetons seraient forgeables : on refuse de signer plutôt
   // que d'émettre/valider un jeton avec une clé vide (défaut de configuration).
   if (!SECRET) {
@@ -13,7 +21,14 @@ function sign(payload: string): string {
       "BETTER_AUTH_SECRET est requis pour signer les jetons de prévisualisation.",
     );
   }
-  return createHmac("sha256", SECRET).update(payload).digest("base64url");
+  if (!previewKey) {
+    previewKey = Buffer.from(hkdfSync("sha256", SECRET, "", "cybersphere/apercu-brouillon", 32));
+  }
+  return previewKey;
+}
+
+function sign(payload: string): string {
+  return createHmac("sha256", key()).update(payload).digest("base64url");
 }
 
 /**
@@ -30,7 +45,9 @@ export function createPreviewToken(
 }
 
 /** Vérifie un jeton de prévisualisation (signature + expiration). */
-export function verifyPreviewToken(articleId: string, token: string): boolean {
+export function verifyPreviewToken(articleId: string, token: unknown): boolean {
+  // ?jeton= répété arrive en tableau : refus net plutôt qu'une erreur 500
+  if (typeof token !== "string") return false;
   const [expRaw, mac] = token.split(".");
   if (!expRaw || !mac) return false;
 

@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { db } from "@/lib/db";
-import { getSession } from "@/lib/session";
+import { requestIp } from "@/lib/audit";
+import { getSession, getStaffSession } from "@/lib/session";
 import { extractToc, readingTimeMinutes, renderMarkdown } from "@/lib/markdown";
 import { externalReferrerHost, recordArticleView } from "@/lib/stats";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -148,17 +149,24 @@ export default async function ArticlePage({ params }: Props) {
 
   if (!article) notFound();
   // Non publié : visible des admins, et de son auteur (rôle auteur) —
-  // jamais des brouillons d'un autre auteur.
-  const canSeeUnpublished =
-    session?.user.role === "admin" ||
-    (session?.user.role === "author" && session.user.id === article.authorId);
-  if (article.status !== "PUBLISHED" && !canSeeUnpublished) notFound();
+  // jamais des brouillons d'un autre auteur. Comme pour toute
+  // l'administration, 2FA et compte non banni exigés (getStaffSession).
+  if (article.status !== "PUBLISHED") {
+    const staff = await getStaffSession();
+    const canSeeUnpublished =
+      staff?.user.role === "admin" ||
+      (staff?.user.role === "author" && staff.user.id === article.authorId);
+    if (!canSeeUnpublished) notFound();
+  }
 
   if (article.status === "PUBLISHED") {
-    // Le référent se lit pendant le rendu ; l'écriture part dans after()
-    const referrerHost = await externalReferrerHost().catch(() => null);
+    // Référent et IP se lisent pendant le rendu ; l'écriture part dans after()
+    const [referrerHost, visitor] = await Promise.all([
+      externalReferrerHost().catch(() => null),
+      requestIp(),
+    ]);
     after(async () => {
-      await recordArticleView(article.id, referrerHost).catch((error) => {
+      await recordArticleView(article.id, referrerHost, visitor).catch((error) => {
         console.error("[stats] vue non comptabilisée :", error);
       });
     });
