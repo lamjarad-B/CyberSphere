@@ -1,4 +1,4 @@
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+import { SITE_URL as BASE_URL } from "@/lib/site";
 const CONTACT = process.env.SECURITY_CONTACT ?? "lamjarad@gmail.com";
 
 /** security.txt (RFC 9116) : point de contact pour la divulgation responsable. */

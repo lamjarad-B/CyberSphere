@@ -2,13 +2,23 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { admin, captcha, haveIBeenPwned, twoFactor } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
+import {
+  APIError,
+  createAuthMiddleware,
+  getSessionFromCtx,
+  isAPIError,
+} from "better-auth/api";
 import { passkey } from "@better-auth/passkey";
 import { db } from "./db";
-import { logAudit } from "./audit";
+import { logAudit, requestIp } from "./audit";
+import { isNewLoginDevice, sendSecurityAlert } from "./notifications";
+import { deleteUpload } from "./uploads";
 import { sendEmail, verificationEmail, resetPasswordEmail } from "./email";
 import { LOCALE_COOKIE, type Locale } from "./i18n";
+import { SITE_URL } from "./site";
+import { registerSchema } from "./validations";
 
-const baseURL = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
+const baseURL = process.env.BETTER_AUTH_URL ?? SITE_URL;
 
 /**
  * Langue de l'utilisateur au moment de l'appel auth : cookie de préférence,
@@ -82,6 +92,91 @@ export const auth = betterAuth({
     window: 60,
     max: 30,
   },
+  hooks: {
+    // Contrôles serveur sur les endpoints better-auth exposés tels quels
+    // (/api/auth/*) : l'UI ne les appelle qu'avec des données validées,
+    // mais un client peut les appeler directement.
+    before: createAuthMiddleware(async (ctx) => {
+      const body = (ctx.body ?? {}) as Record<string, unknown>;
+
+      if (ctx.path === "/sign-up/email" || ctx.path === "/update-user") {
+        // L'avatar ne se change que par l'upload ré-encodé (actions/profile) :
+        // jamais une URL arbitraire (pixel de pistage, schéma exotique…)
+        if ("image" in body) {
+          throw new APIError("BAD_REQUEST", { message: "Champ image non autorisé." });
+        }
+        // Même règle que le formulaire (2–50 caractères), appliquée côté serveur
+        if (
+          (ctx.path === "/sign-up/email" || "name" in body) &&
+          !registerSchema.shape.name.safeParse(body.name).success
+        ) {
+          throw new APIError("BAD_REQUEST", {
+            message: "Le nom doit contenir entre 2 et 50 caractères.",
+          });
+        }
+      }
+
+      // Suppression de compte : mot de passe toujours exigé (better-auth
+      // l'accepterait sinon pour toute session de moins de 24 h)
+      if (ctx.path === "/delete-user") {
+        if (typeof body.password !== "string" || body.password.length === 0 || "token" in body) {
+          throw new APIError("BAD_REQUEST", {
+            message: "Mot de passe requis pour supprimer le compte.",
+          });
+        }
+      }
+
+      // Endpoints du plugin admin (rôles, bans, usurpation…) : même exigence
+      // de 2FA que l'interface /admin et les Server Actions.
+      if (ctx.path.startsWith("/admin/")) {
+        const session = await getSessionFromCtx(ctx);
+        const user = session?.user as { twoFactorEnabled?: boolean | null } | undefined;
+        if (!user?.twoFactorEnabled) {
+          throw new APIError("FORBIDDEN", {
+            message: "Double authentification requise pour l'administration.",
+          });
+        }
+      }
+    }),
+    // Journal d'audit des échecs d'authentification (§ 1.6 du cahier) :
+    // les succès sont tracés par les hooks base de données ci-dessous.
+    after: createAuthMiddleware(async (ctx) => {
+      if (!isAPIError(ctx.context.returned)) {
+        // Succès d'opérations sensibles : audit + alerte au titulaire
+        const userId = ctx.context.session?.user.id;
+        if (!userId) return;
+        const alert = {
+          "/two-factor/disable": ["auth.2fa_desactivee", "two_factor_disabled"],
+          "/passkey/verify-registration": ["auth.passkey_ajoutee", "passkey_added"],
+        } as const;
+        const event = alert[ctx.path as keyof typeof alert];
+        if (!event) return;
+        await logAudit({ action: event[0], actorId: userId });
+        await sendSecurityAlert({
+          userId,
+          kind: event[1],
+          locale: requestLocale(ctx.request),
+          ipAddress: await requestIp(),
+          userAgent: ctx.headers?.get("user-agent") ?? null,
+        });
+        return;
+      }
+      if (ctx.path === "/sign-in/email") {
+        const body = (ctx.body ?? {}) as { email?: unknown };
+        await logAudit({
+          action: "auth.connexion_echouee",
+          actorEmail: typeof body.email === "string" ? body.email.slice(0, 254) : null,
+          detail: ctx.context.returned.message,
+        });
+      } else if (ctx.path.startsWith("/two-factor/verify-")) {
+        await logAudit({
+          action: "auth.2fa_echouee",
+          actorId: ctx.context.session?.user.id ?? null,
+          detail: ctx.path,
+        });
+      }
+    }),
+  },
   // Journal d'audit des événements d'authentification sensibles
   databaseHooks: {
     user: {
@@ -97,12 +192,28 @@ export const auth = betterAuth({
     },
     session: {
       create: {
-        after: async (session) => {
+        after: async (session, ctx) => {
           await logAudit({
             action: "auth.connexion",
             actorId: session.userId,
             ipAddress: session.ipAddress ?? null,
           });
+          // Session d'usurpation (plugin admin) : pas une connexion du titulaire
+          if ((session as { impersonatedBy?: string | null }).impersonatedBy) return;
+          // Alerte si l'appareil n'a jamais servi à se connecter à ce compte
+          try {
+            if (await isNewLoginDevice(session.userId, session.userAgent)) {
+              await sendSecurityAlert({
+                userId: session.userId,
+                kind: "new_device",
+                locale: requestLocale(ctx?.request),
+                ipAddress: session.ipAddress,
+                userAgent: session.userAgent ?? null,
+              });
+            }
+          } catch (error) {
+            console.error("[alerte] suivi des appareils impossible :", error);
+          }
         },
       },
     },
@@ -115,8 +226,39 @@ export const auth = betterAuth({
               action: "auth.mot_de_passe_modifie",
               actorId: account.userId,
             });
+            await sendSecurityAlert({
+              userId: account.userId,
+              kind: "password_changed",
+              locale: requestLocale(ctx?.request),
+              ipAddress: await requestIp(),
+              userAgent: ctx?.headers?.get("user-agent") ?? null,
+            });
           }
         },
+      },
+    },
+  },
+  user: {
+    // Droit à l'effacement (RGPD) : un membre supprime lui-même son compte
+    // depuis /membre (mot de passe exigé, cf. hook before). Commentaires,
+    // réactions, signets, sessions et appareils partent en cascade.
+    deleteUser: {
+      enabled: true,
+      beforeDelete: async (user) => {
+        // Le staff signe des articles (clé étrangère) et détient des droits :
+        // sa suppression passe par un administrateur, après rétrogradation.
+        const role = (user as { role?: string | null }).role;
+        if (role === "admin" || role === "author") {
+          throw new APIError("FORBIDDEN", {
+            message:
+              "Les comptes administrateur et auteur ne peuvent pas être supprimés depuis le profil.",
+          });
+        }
+      },
+      afterDelete: async (user) => {
+        await db.newsletterSubscriber.deleteMany({ where: { email: user.email.toLowerCase() } });
+        await deleteUpload(user.image);
+        await logAudit({ action: "compte.suppression", actorEmail: user.email });
       },
     },
   },

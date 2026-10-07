@@ -5,11 +5,13 @@ import { after } from "next/server";
 import { db } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { getStaffSession } from "@/lib/session";
-import { saveImage } from "@/lib/uploads";
+import { deleteUpload, saveImage } from "@/lib/uploads";
 import { renderMarkdown } from "@/lib/markdown";
 import { slugify, uniqueSlug } from "@/lib/slug";
 import { createPreviewToken } from "@/lib/draft-preview";
+import { SITE_URL } from "@/lib/site";
 import { dispatchArticleToSubscribers } from "@/lib/newsletter";
+import { notifyAdmins } from "@/lib/notifications";
 import { articleSchema, firstError } from "@/lib/validations";
 import type { ActionResult } from "./comments";
 
@@ -44,6 +46,9 @@ export async function saveArticle(
     titleEn: formData.get("titleEn") ?? "",
     excerptEn: formData.get("excerptEn") ?? "",
     contentEn: formData.get("contentEn") ?? "",
+    scheduledAt: formData.get("scheduledAt") ?? "",
+    coverAlt: formData.get("coverAlt") ?? "",
+    coverAltEn: formData.get("coverAltEn") ?? "",
   });
   if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
   const data = parsed.data;
@@ -62,11 +67,27 @@ export async function saveArticle(
 
   // Un auteur ne publie pas : il enregistre un brouillon ou le soumet
   // à validation. La publication est réservée aux administrateurs.
-  if (!isAdmin && data.status === "PUBLISHED") {
+  if (!isAdmin && (data.status === "PUBLISHED" || data.status === "SCHEDULED")) {
     return {
       ok: false,
       error: "Seul un administrateur peut publier. Soumettez l'article à validation.",
     };
+  }
+
+  // Publication programmée : date future (et raisonnable) obligatoire
+  let scheduledAt: Date | null = null;
+  if (data.status === "SCHEDULED") {
+    scheduledAt = new Date(data.scheduledAt);
+    const now = Date.now();
+    if (Number.isNaN(scheduledAt.getTime()) || scheduledAt.getTime() <= now + 60_000) {
+      return {
+        ok: false,
+        error: "Programmation : choisissez une date de publication future (au moins dans une minute).",
+      };
+    }
+    if (scheduledAt.getTime() > now + 366 * 24 * 3600 * 1000) {
+      return { ok: false, error: "Programmation : un an maximum." };
+    }
   }
 
   const category = await db.category.findUnique({
@@ -84,6 +105,35 @@ export async function saveArticle(
     if (!series) return { ok: false, error: "Série introuvable." };
   }
 
+  // Droits vérifiés avant tout upload : un refus ne laisse aucun fichier orphelin
+  const existing = id
+    ? await db.article.findUnique({
+        where: { id },
+        select: { publishedAt: true, status: true, authorId: true, coverImage: true },
+      })
+    : null;
+  if (id) {
+    if (!existing) return { ok: false, error: "Article introuvable." };
+    // Un auteur ne touche qu'à ses propres articles non publiés
+    if (!isAdmin) {
+      if (existing.authorId !== session.user.id) {
+        return { ok: false, error: "Vous ne pouvez modifier que vos articles." };
+      }
+      if (existing.status === "PUBLISHED" || existing.status === "SCHEDULED") {
+        return {
+          ok: false,
+          error: "Article publié ou programmé : demandez à un administrateur pour le modifier.",
+        };
+      }
+    }
+    if (existing.status === "PUBLISHED" && data.status === "SCHEDULED") {
+      return {
+        ok: false,
+        error: "Article déjà publié : repassez-le en brouillon avant de le programmer.",
+      };
+    }
+  }
+
   let coverImage: string | undefined;
   const cover = formData.get("cover");
   if (cover instanceof File && cover.size > 0) {
@@ -97,39 +147,34 @@ export async function saveArticle(
     }
   }
 
-  const tagNames = parseTags(data.tags);
+  // Rapprochement par slug (unique) et non par nom : « Web » et « web », ou
+  // « C++ » et « C », ont le même slug — une recherche par nom tentait de
+  // créer un doublon de slug et faisait échouer tout l'enregistrement.
+  const tagsBySlug = new Map(parseTags(data.tags).map((name) => [slugify(name), name]));
   const tagOps = {
-    connectOrCreate: tagNames.map((name) => ({
-      where: { name },
-      create: { name, slug: slugify(name) },
+    connectOrCreate: [...tagsBySlug].map(([slug, name]) => ({
+      where: { slug },
+      create: { name, slug },
     })),
   };
 
   let justPublished = false;
   let articleId = id;
+  let replacedCover: string | null = null;
 
   try {
-    if (id) {
-      const existing = await db.article.findUnique({
-        where: { id },
-        select: { id: true, publishedAt: true, status: true, authorId: true },
-      });
-      if (!existing) return { ok: false, error: "Article introuvable." };
-
-      // Un auteur ne touche qu'à ses propres articles non publiés
-      if (!isAdmin) {
-        if (existing.authorId !== session.user.id) {
-          return { ok: false, error: "Vous ne pouvez modifier que vos articles." };
-        }
-        if (existing.status === "PUBLISHED") {
-          return {
-            ok: false,
-            error: "Article publié : demandez à un administrateur pour le modifier.",
-          };
-        }
-      }
-
-      justPublished = data.status === "PUBLISHED" && !existing.publishedAt;
+    if (id && existing) {
+      replacedCover = coverImage ? existing.coverImage : null;
+      // Première mise en ligne : jamais publié, ou publication programmée
+      // avancée à la main (publishedAt portait alors la date prévue)
+      justPublished =
+        data.status === "PUBLISHED" &&
+        (!existing.publishedAt || existing.status === "SCHEDULED");
+      // Programmation annulée (retour en brouillon/soumis) : date effacée
+      const cancelledSchedule =
+        existing.status === "SCHEDULED" &&
+        data.status !== "SCHEDULED" &&
+        data.status !== "PUBLISHED";
 
       await db.article.update({
         where: { id },
@@ -142,8 +187,11 @@ export async function saveArticle(
           seriesId,
           seriesPosition: seriesId ? (data.seriesPosition ?? null) : null,
           ...(coverImage && { coverImage }),
+          coverAlt: data.coverAlt || null,
           // premier passage en "publié" : on fige la date de publication
           ...(justPublished && { publishedAt: new Date() }),
+          ...(scheduledAt && { publishedAt: scheduledAt }),
+          ...(cancelledSchedule && { publishedAt: null }),
           tags: { set: [], ...tagOps },
         },
       });
@@ -169,7 +217,8 @@ export async function saveArticle(
           seriesId,
           seriesPosition: seriesId ? (data.seriesPosition ?? null) : null,
           coverImage: coverImage ?? null,
-          publishedAt: justPublished ? new Date() : null,
+          coverAlt: data.coverAlt || null,
+          publishedAt: justPublished ? new Date() : scheduledAt,
           authorId: session.user.id,
           tags: tagOps,
         },
@@ -189,11 +238,13 @@ export async function saveArticle(
             title: data.titleEn,
             excerpt: data.excerptEn,
             content: data.contentEn,
+            coverAlt: data.coverAltEn || null,
           },
           update: {
             title: data.titleEn,
             excerpt: data.excerptEn,
             content: data.contentEn,
+            coverAlt: data.coverAltEn || null,
           },
         });
       } else {
@@ -203,22 +254,47 @@ export async function saveArticle(
       }
     }
   } catch {
+    // La nouvelle couverture n'est référencée nulle part : on la retire
+    await deleteUpload(coverImage);
     return { ok: false, error: "Enregistrement impossible. Réessayez." };
   }
+
+  await deleteUpload(replacedCover);
+
+  const justSubmitted = data.status === "SUBMITTED" && existing?.status !== "SUBMITTED";
 
   await logAudit({
     action: justPublished
       ? "article.publication"
-      : data.status === "SUBMITTED"
-        ? "article.soumission"
-        : id
-          ? "article.modification"
-          : "article.creation",
+      : scheduledAt
+        ? "article.programmation"
+        : data.status === "SUBMITTED"
+          ? "article.soumission"
+          : id
+            ? "article.modification"
+            : "article.creation",
     actorId: session.user.id,
     targetType: "article",
     targetId: articleId ?? undefined,
-    detail: data.title,
+    detail: scheduledAt ? `${data.title} (${scheduledAt.toISOString()})` : data.title,
   });
+
+  // Soumission d'un auteur : les administrateurs sont prévenus par e-mail
+  if (justSubmitted && !isAdmin && articleId) {
+    const submittedId = articleId;
+    after(() =>
+      notifyAdmins({
+        subject: "Article à valider",
+        title: "Un article attend votre validation",
+        intro: `${session.user.name} a soumis un article à la publication.`,
+        path: `/admin/articles/${submittedId}`,
+        details: [
+          ["Titre", data.title],
+          ["Auteur", `${session.user.name} (${session.user.email})`],
+        ],
+      }),
+    );
+  }
 
   // Newsletter : uniquement à la première publication, hors du chemin
   // de réponse pour ne pas ralentir l'enregistrement
@@ -238,7 +314,7 @@ export async function deleteArticle(id: string): Promise<ActionResult> {
 
   const article = await db.article.findUnique({
     where: { id },
-    select: { authorId: true, status: true, title: true },
+    select: { authorId: true, status: true, title: true, coverImage: true },
   });
   if (!article) return { ok: false, error: "Article introuvable." };
 
@@ -256,6 +332,7 @@ export async function deleteArticle(id: string): Promise<ActionResult> {
   } catch {
     return { ok: false, error: "Suppression impossible." };
   }
+  await deleteUpload(article.coverImage);
 
   await logAudit({
     action: "article.suppression",
@@ -296,7 +373,7 @@ export async function getPreviewLink(
     return { error: "Vous ne pouvez partager que vos articles." };
   }
 
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3001";
+  const base = SITE_URL;
   return {
     url: `${base}/articles/apercu/${article.id}?jeton=${createPreviewToken(article.id)}`,
   };

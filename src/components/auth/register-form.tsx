@@ -45,6 +45,8 @@ export function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // Jeton Turnstile à usage unique : le widget est régénéré après chaque envoi
+  const [captchaKey, setCaptchaKey] = useState(0);
   const onCaptcha = useCallback((token: string | null) => setCaptchaToken(token), []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -70,6 +72,8 @@ export function RegisterForm() {
     const { error } = await authClient.signUp.email(parsed.data, {
       headers: captchaHeaders(captchaToken),
     });
+    setCaptchaToken(null);
+    setCaptchaKey((key) => key + 1);
     setLoading(false);
 
     if (error) {
@@ -153,7 +157,7 @@ export function RegisterForm() {
           className={inputClass}
         />
       </div>
-      <TurnstileWidget onToken={onCaptcha} />
+      <TurnstileWidget key={captchaKey} onToken={onCaptcha} />
 
       <button
         type="submit"

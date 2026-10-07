@@ -16,13 +16,17 @@ const copy = {
   },
 };
 
-type Props = { params: Promise<{ locale: string }> };
+type Props = {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ redirection?: string }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: copy[toLocale((await params).locale)].title };
 }
 
-export default async function DeuxFacteursPage({ params }: Props) {
+export default async function DeuxFacteursPage({ params, searchParams }: Props) {
+  const { redirection } = await searchParams;
   const t = copy[toLocale((await params).locale)];
 
   return (
@@ -30,7 +34,7 @@ export default async function DeuxFacteursPage({ params }: Props) {
       <div className={`${cardClass} p-8`}>
         <h1 className="mb-1 text-2xl font-bold">{t.title}</h1>
         <p className="mb-6 text-sm text-muted">{t.intro}</p>
-        <TwoFactorForm />
+        <TwoFactorForm redirection={redirection} />
       </div>
     </div>
   );

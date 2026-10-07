@@ -63,7 +63,12 @@ export default async function HomePage({
           <article
             className={`${cardClass} grid overflow-hidden transition-colors hover:border-accent/60 md:grid-cols-2`}
           >
-            <Link href={localeHref(locale, `/articles/${featured.slug}`)} className="block">
+            <Link
+              href={localeHref(locale, `/articles/${featured.slug}`)}
+              className="block"
+              tabIndex={-1}
+              aria-hidden
+            >
               {featured.coverImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img

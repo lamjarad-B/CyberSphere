@@ -4,7 +4,9 @@ import { toggleAuthorRole, toggleBan } from "@/actions/members";
 import { formatDate } from "@/lib/format";
 import { requireAdmin } from "@/lib/session";
 import { ActionButton } from "@/components/admin/action-button";
-import { buttonDangerClass, buttonGhostClass, cardClass } from "@/components/ui";
+import { pageNumber } from "@/lib/articles";
+import { Pagination } from "@/components/pagination";
+import { buttonDangerClass, buttonGhostClass, cardClass, inputClass } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Membres" };
 
@@ -14,19 +16,58 @@ const roleBadge: Record<string, { label: string; className: string }> = {
   user: { label: "Membre", className: "bg-border/60 text-muted" },
 };
 
-export default async function AdminMembresPage() {
-  await requireAdmin();
+const PAGE_SIZE = 50;
 
-  const members = await db.user.findMany({
-    orderBy: { createdAt: "desc" },
-    include: { _count: { select: { comments: true, articles: true } } },
-  });
+export default async function AdminMembresPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; q?: string }>;
+}) {
+  await requireAdmin();
+  const { page: pageParam, q: rawQuery } = await searchParams;
+  const page = pageNumber(pageParam);
+  const query = (rawQuery ?? "").trim().slice(0, 100);
+
+  const where = query
+    ? {
+        OR: [
+          { name: { contains: query, mode: "insensitive" as const } },
+          { email: { contains: query, mode: "insensitive" as const } },
+        ],
+      }
+    : undefined;
+  const [members, total] = await Promise.all([
+    db.user.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      include: { _count: { select: { comments: true, articles: true } } },
+    }),
+    db.user.count({ where }),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">
-        Membres <span className="font-mono text-accent">({members.length})</span>
-      </h1>
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold">
+          Membres <span className="font-mono text-accent">({total})</span>
+        </h1>
+        <form method="get" className="flex gap-2" role="search">
+          <input
+            type="search"
+            name="q"
+            defaultValue={query}
+            placeholder="Nom ou e-mail…"
+            aria-label="Rechercher un membre"
+            className={inputClass}
+          />
+          <button type="submit" className={buttonGhostClass}>
+            Rechercher
+          </button>
+        </form>
+      </header>
 
       <div className={`${cardClass} overflow-x-auto`}>
         <table className="w-full min-w-[46rem] text-sm">
@@ -125,6 +166,14 @@ export default async function AdminMembresPage() {
           </tbody>
         </table>
       </div>
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        makeHref={(p) =>
+          `/admin/membres?page=${p}${query ? `&q=${encodeURIComponent(query)}` : ""}`
+        }
+      />
     </div>
   );
 }

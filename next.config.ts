@@ -12,6 +12,14 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Sortie autonome pour une image Docker minimale (.next/standalone)
   output: "standalone",
+  experimental: {
+    serverActions: {
+      // Les Server Actions plafonnent le corps à 1 Mo par défaut : une
+      // couverture ou un avatar de plus de 1 Mo échouait alors que l'upload
+      // en accepte 5 (lib/uploads). 5 Mo + marge multipart + champs texte.
+      bodySizeLimit: "6mb",
+    },
+  },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },

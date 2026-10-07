@@ -5,15 +5,10 @@ import { deleteArticle } from "@/actions/articles";
 import { formatDateTime } from "@/lib/format";
 import { requireStaff } from "@/lib/session";
 import { ActionButton } from "@/components/admin/action-button";
+import { StatusBadge } from "@/components/admin/status-badge";
 import { buttonClass, buttonDangerClass, cardClass } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Articles" };
-
-const statusBadge: Record<string, { label: string; className: string }> = {
-  PUBLISHED: { label: "Publié", className: "bg-emerald-500/15 text-emerald-500" },
-  SUBMITTED: { label: "À valider", className: "bg-sky-500/15 text-sky-500" },
-  DRAFT: { label: "Brouillon", className: "bg-amber-500/15 text-amber-500" },
-};
 
 export default async function AdminArticlesPage() {
   const session = await requireStaff();
@@ -69,11 +64,12 @@ export default async function AdminArticlesPage() {
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2 py-0.5 font-mono text-[11px] font-semibold ${statusBadge[article.status].className}`}
-                    >
-                      {statusBadge[article.status].label}
-                    </span>
+                    <StatusBadge status={article.status} />
+                    {article.status === "SCHEDULED" && (
+                      <span className="mt-1 block whitespace-nowrap font-mono text-[11px] text-muted">
+                        {formatDateTime(article.publishedAt)}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-muted">
                     {article.category.name}

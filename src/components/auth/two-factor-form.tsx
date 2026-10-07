@@ -4,10 +4,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { localeHref } from "@/lib/i18n";
+import { safeRedirect } from "@/lib/redirect";
 import { useI18n } from "@/components/i18n-provider";
 import { buttonClass, errorClass, inputClass, labelClass } from "@/components/ui";
 
-export function TwoFactorForm() {
+export function TwoFactorForm({ redirection }: { redirection?: string }) {
   const router = useRouter();
   const { locale, t } = useI18n();
   const labels = t.auth.twoFactor;
@@ -36,7 +37,7 @@ export function TwoFactorForm() {
       return;
     }
 
-    router.push(localeHref(locale, "/"));
+    router.push(safeRedirect(redirection, localeHref(locale, "/")));
     router.refresh();
   }
 

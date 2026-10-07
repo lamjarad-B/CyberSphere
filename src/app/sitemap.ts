@@ -1,12 +1,11 @@
 import type { MetadataRoute } from "next";
 import { db } from "@/lib/db";
+import { SITE_URL as BASE_URL } from "@/lib/site";
 
 // Rendu à la requête : le contenu vient de la base, indisponible à la build
 // (la CI compile sans PostgreSQL). Sans ceci, `next build` tente de prérendre
 // le sitemap et échoue sur la connexion Prisma.
 export const dynamic = "force-dynamic";
-
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 /** Entrée bilingue : URL française canonique + alternates hreflang fr/en. */
 function bilingual(
@@ -26,7 +25,7 @@ function bilingual(
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [articles, categories, tags] = await Promise.all([
+  const [articles, categories, tags, series] = await Promise.all([
     db.article.findMany({
       where: { status: "PUBLISHED" },
       select: { slug: true, updatedAt: true },
@@ -34,16 +33,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }),
     db.category.findMany({ select: { slug: true } }),
     db.tag.findMany({ select: { slug: true } }),
+    // Seules les séries ayant au moins un épisode publié sont accessibles
+    db.series.findMany({
+      where: { articles: { some: { status: "PUBLISHED" } } },
+      select: { slug: true },
+    }),
   ]);
 
   return [
     bilingual("/", { changeFrequency: "daily", priority: 1 }),
     bilingual("/articles", { changeFrequency: "daily", priority: 0.9 }),
+    bilingual("/series", { changeFrequency: "weekly", priority: 0.7 }),
     ...articles.map((article) =>
       bilingual(`/articles/${article.slug}`, {
         lastModified: article.updatedAt,
         changeFrequency: "weekly" as const,
         priority: 0.8,
+      }),
+    ),
+    ...series.map((item) =>
+      bilingual(`/series/${item.slug}`, {
+        changeFrequency: "weekly" as const,
+        priority: 0.7,
       }),
     ),
     ...categories.map((category) =>

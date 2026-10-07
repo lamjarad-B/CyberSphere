@@ -2,14 +2,29 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { actionLocale } from "@/lib/action-locale";
 import { getSession } from "@/lib/session";
 import type { ActionResult } from "./comments";
 
+const messages = {
+  fr: {
+    loginToReact: "Connectez-vous pour réagir.",
+    loginToBookmark: "Connectez-vous pour enregistrer un signet.",
+    articleNotFound: "Article introuvable.",
+  },
+  en: {
+    loginToReact: "Sign in to react.",
+    loginToBookmark: "Sign in to bookmark this article.",
+    articleNotFound: "Article not found.",
+  },
+};
+
 /** Ajoute ou retire la mention « utile » du membre sur un article publié. */
 export async function toggleReaction(articleId: string): Promise<ActionResult> {
+  const t = messages[await actionLocale()];
   const session = await getSession();
   if (!session || session.user.banned) {
-    return { ok: false, error: "Connectez-vous pour réagir." };
+    return { ok: false, error: t.loginToReact };
   }
 
   const article = await db.article.findUnique({
@@ -17,7 +32,7 @@ export async function toggleReaction(articleId: string): Promise<ActionResult> {
     select: { id: true, slug: true, status: true },
   });
   if (!article || article.status !== "PUBLISHED") {
-    return { ok: false, error: "Article introuvable." };
+    return { ok: false, error: t.articleNotFound };
   }
 
   const key = { articleId: article.id, userId: session.user.id };
@@ -37,9 +52,10 @@ export async function toggleReaction(articleId: string): Promise<ActionResult> {
 
 /** Ajoute ou retire l'article des signets du membre. */
 export async function toggleBookmark(articleId: string): Promise<ActionResult> {
+  const t = messages[await actionLocale()];
   const session = await getSession();
   if (!session || session.user.banned) {
-    return { ok: false, error: "Connectez-vous pour enregistrer un signet." };
+    return { ok: false, error: t.loginToBookmark };
   }
 
   const article = await db.article.findUnique({
@@ -47,7 +63,7 @@ export async function toggleBookmark(articleId: string): Promise<ActionResult> {
     select: { id: true, slug: true, status: true },
   });
   if (!article || article.status !== "PUBLISHED") {
-    return { ok: false, error: "Article introuvable." };
+    return { ok: false, error: t.articleNotFound };
   }
 
   const key = { articleId: article.id, userId: session.user.id };

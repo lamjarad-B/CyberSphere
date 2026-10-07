@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { db } from "./db";
+import { SITE_URL } from "./site";
 
 /** Jour courant en UTC (borne des agrégats quotidiens). */
 function today(): Date {
@@ -54,9 +55,7 @@ export async function externalReferrerHost(): Promise<string | null> {
   if (!referer) return null;
   try {
     const host = new URL(referer).host.toLowerCase().slice(0, 100);
-    const ownHost = new URL(
-      process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-    ).host.toLowerCase();
+    const ownHost = new URL(SITE_URL).host.toLowerCase();
     return host && host !== ownHost ? host : null;
   } catch {
     return null;

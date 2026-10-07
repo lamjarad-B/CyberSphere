@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 
@@ -52,4 +52,28 @@ export async function saveImage(file: File): Promise<string> {
   await mkdir(UPLOAD_DIR, { recursive: true });
   await writeFile(path.join(UPLOAD_DIR, name), encoded);
   return `/uploads/${name}`;
+}
+
+/**
+ * Nom du fichier désigné par une URL /uploads/…, ou null si l'URL ne
+ * désigne pas un fichier téléversé. Nom simple uniquement : ni « / » ni
+ * « .. » — aucune traversée de répertoire possible.
+ */
+export function uploadFileName(url: string | null | undefined): string | null {
+  return url?.match(/^\/uploads\/([\w-]+\.(?:webp|png|jpe?g|gif))$/i)?.[1] ?? null;
+}
+
+/**
+ * Supprime un fichier téléversé devenu orphelin (avatar ou couverture
+ * remplacés, article supprimé). Ignore toute URL hors de /uploads/ (images
+ * du dépôt, valeurs inattendues) et ne lève jamais.
+ */
+export async function deleteUpload(url: string | null | undefined): Promise<void> {
+  const fileName = uploadFileName(url);
+  if (!fileName) return;
+  try {
+    await unlink(path.join(UPLOAD_DIR, fileName));
+  } catch {
+    // déjà absent : rien à faire
+  }
 }

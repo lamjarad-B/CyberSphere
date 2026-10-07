@@ -94,16 +94,21 @@ export function extractToc(markdown: string): TocEntry[] {
   const slugger = new GithubSlugger();
   const entries: TocEntry[] = [];
 
-  for (const node of tree.children ?? []) {
-    if (node.type !== "heading") continue;
-    const depth = node.depth ?? 0;
-    const text = textOf(node).trim();
-    if (!text) continue;
-    // rehype-slug attribue un id à tous les titres : maintenir le slugger
-    // synchronisé sur h1-h6 pour que les suffixes -1, -2… coïncident
-    const id = slugger.slug(text);
-    if (depth === 2 || depth === 3) entries.push({ id, text, depth });
-  }
+  // Parcours de tout l'arbre dans l'ordre du document : rehype-slug attribue
+  // un id à tous les titres h1-h6, y compris dans une citation ou une liste.
+  // Le slugger doit les voir tous pour que les suffixes -1, -2… coïncident.
+  const visit = (node: MdNode) => {
+    if (node.type === "heading") {
+      const depth = node.depth ?? 0;
+      const text = textOf(node).trim();
+      if (!text) return;
+      const id = slugger.slug(text);
+      if (depth === 2 || depth === 3) entries.push({ id, text, depth });
+      return;
+    }
+    node.children?.forEach(visit);
+  };
+  visit(tree);
   return entries;
 }
 

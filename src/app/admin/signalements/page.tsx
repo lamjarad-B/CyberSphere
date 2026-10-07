@@ -16,6 +16,8 @@ export default async function AdminSignalementsPage() {
   const reports = await db.commentReport.findMany({
     where: { resolvedAt: null },
     orderBy: { createdAt: "asc" },
+    // Une entrée par commentaire (le nombre de signalements est affiché)
+    distinct: ["commentId"],
     include: {
       reporter: { select: { name: true } },
       comment: {

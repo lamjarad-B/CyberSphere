@@ -2,7 +2,7 @@ import { db } from "./db";
 import { sendEmail, newArticleEmail } from "./email";
 import { localeHref, type Locale } from "./i18n";
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+import { SITE_URL as BASE_URL } from "@/lib/site";
 
 /**
  * Envoie l'e-mail « nouvel article » à tous les abonnés confirmés, chacun
@@ -58,6 +58,12 @@ export async function dispatchArticleToSubscribers(articleId: string): Promise<v
             : `Nouvel article : ${title} — CyberSphere`,
         html,
         text,
+        // Désabonnement en un clic (RFC 8058), exigé par Gmail/Yahoo pour
+        // les envois groupés : le client mail affiche un bouton natif.
+        headers: {
+          "List-Unsubscribe": `<${BASE_URL}/api/newsletter/desinscription?jeton=${subscriber.token}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
       });
     } catch (error) {
       console.error(`[newsletter] envoi impossible à ${subscriber.email} :`, error);

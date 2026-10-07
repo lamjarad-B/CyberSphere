@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
 import { getAdminSession } from "@/lib/session";
+import { StatusBadge } from "@/components/admin/status-badge";
 import { buttonClass, cardClass } from "@/components/ui";
 
 export default async function AdminDashboardPage() {
@@ -131,21 +132,7 @@ export default async function AdminDashboardPage() {
                   >
                     {article.title}
                   </Link>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 font-mono text-[11px] font-semibold ${
-                      article.status === "PUBLISHED"
-                        ? "bg-emerald-500/15 text-emerald-500"
-                        : article.status === "SUBMITTED"
-                          ? "bg-sky-500/15 text-sky-500"
-                          : "bg-amber-500/15 text-amber-500"
-                    }`}
-                  >
-                    {article.status === "PUBLISHED"
-                      ? "Publié"
-                      : article.status === "SUBMITTED"
-                        ? "À valider"
-                        : "Brouillon"}
-                  </span>
+                  <StatusBadge status={article.status} />
                 </li>
               ))}
             </ul>

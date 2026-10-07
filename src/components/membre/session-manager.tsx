@@ -2,41 +2,20 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { revokeMySession } from "@/actions/sessions";
 import { authClient } from "@/lib/auth-client";
 import { formatDateTime } from "@/lib/format";
+import { describeUserAgent } from "@/lib/user-agent";
 import { useI18n } from "@/components/i18n-provider";
-import type { Dictionary } from "@/i18n/dictionaries";
 import { buttonDangerClass, buttonGhostClass, errorClass } from "@/components/ui";
 
 export type SessionItem = {
-  token: string;
+  id: string;
   ipAddress: string | null;
   userAgent: string | null;
   createdAt: Date;
   current: boolean;
 };
-
-/** Résume un user-agent en libellé lisible (« Firefox · Windows »). */
-function describeUserAgent(
-  userAgent: string | null,
-  labels: Dictionary["member"]["sessions"],
-): string {
-  if (!userAgent) return labels.unknownDevice;
-  const browser =
-    /firefox\//i.test(userAgent) ? "Firefox"
-    : /edg\//i.test(userAgent) ? "Edge"
-    : /chrome\//i.test(userAgent) ? "Chrome"
-    : /safari\//i.test(userAgent) ? "Safari"
-    : labels.unknownBrowser;
-  const os =
-    /windows/i.test(userAgent) ? "Windows"
-    : /android/i.test(userAgent) ? "Android"
-    : /iphone|ipad|ios/i.test(userAgent) ? "iOS"
-    : /mac os/i.test(userAgent) ? "macOS"
-    : /linux/i.test(userAgent) ? "Linux"
-    : labels.unknownOs;
-  return `${browser} · ${os}`;
-}
 
 export function SessionManager({ sessions }: { sessions: SessionItem[] }) {
   const router = useRouter();
@@ -44,10 +23,10 @@ export function SessionManager({ sessions }: { sessions: SessionItem[] }) {
   const labels = t.member.sessions;
   const [error, setError] = useState<string | null>(null);
 
-  async function revoke(token: string) {
+  async function revoke(id: string) {
     setError(null);
-    const { error } = await authClient.revokeSession({ token });
-    if (error) {
+    const { ok } = await revokeMySession(id);
+    if (!ok) {
       setError(labels.revokeError);
       return;
     }
@@ -70,7 +49,7 @@ export function SessionManager({ sessions }: { sessions: SessionItem[] }) {
 
       <ul className="divide-y divide-border rounded-md border border-border">
         {sessions.map((session) => (
-          <li key={session.token} className="flex items-center justify-between gap-3 p-3">
+          <li key={session.id} className="flex items-center justify-between gap-3 p-3">
             <div className="min-w-0">
               <p className="text-sm font-medium">
                 {describeUserAgent(session.userAgent, labels)}
@@ -88,7 +67,7 @@ export function SessionManager({ sessions }: { sessions: SessionItem[] }) {
             {!session.current && (
               <button
                 type="button"
-                onClick={() => revoke(session.token)}
+                onClick={() => revoke(session.id)}
                 className={buttonDangerClass}
               >
                 {labels.revoke}

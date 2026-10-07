@@ -7,13 +7,23 @@ import { cardClass } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Statistiques" };
 
-const WINDOW_DAYS = 30;
+const PERIODS = [7, 30, 90, 365] as const;
+const DEFAULT_PERIOD = 30;
 
-export default async function AdminStatistiquesPage() {
+export default async function AdminStatistiquesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ periode?: string }>;
+}) {
   await requireAdmin();
+  const requested = Number((await searchParams).periode);
+  const windowDays = PERIODS.find((days) => days === requested) ?? DEFAULT_PERIOD;
 
-  const since = new Date();
-  since.setDate(since.getDate() - WINDOW_DAYS);
+  // Borne en UTC, comme les agrégats quotidiens (lib/stats)
+  const now = new Date();
+  const since = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - windowDays + 1),
+  );
 
   const [dailyTotals, topArticles, referrers, subscriberCount, reactionCount] =
     await Promise.all([
@@ -57,14 +67,30 @@ export default async function AdminStatistiquesPage() {
       <header>
         <h1 className="text-2xl font-bold">Statistiques</h1>
         <p className="mt-2 text-sm text-muted">
-          {WINDOW_DAYS} derniers jours — compteurs anonymes, sans cookie ni
+          {windowDays} derniers jours — compteurs anonymes, sans cookie ni
           tracker : aucune donnée personnelle n&apos;est collectée.
         </p>
+        <nav className="mt-4 flex flex-wrap gap-2" aria-label="Période">
+          {PERIODS.map((days) => (
+            <Link
+              key={days}
+              href={`/admin/statistiques?periode=${days}`}
+              aria-current={days === windowDays ? "page" : undefined}
+              className={`rounded-md border px-3 py-1 font-mono text-xs transition-colors ${
+                days === windowDays
+                  ? "border-accent bg-accent/15 text-accent"
+                  : "border-border text-muted hover:border-accent hover:text-accent"
+              }`}
+            >
+              {days} j
+            </Link>
+          ))}
+        </nav>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-3">
         {[
-          { label: `Vues (${WINDOW_DAYS} j)`, value: totalViews },
+          { label: `Vues (${windowDays} j)`, value: totalViews },
           { label: "Abonnés newsletter", value: subscriberCount },
           { label: "Réactions « utile »", value: reactionCount },
         ].map((item) => (
@@ -80,7 +106,7 @@ export default async function AdminStatistiquesPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <section className={`${cardClass} overflow-x-auto`}>
           <h2 className="border-b border-border px-4 py-3 text-sm font-bold">
-            Articles les plus lus ({WINDOW_DAYS} j)
+            Articles les plus lus ({windowDays} j)
           </h2>
           <table className="w-full text-sm">
             <tbody className="divide-y divide-border">
@@ -116,7 +142,7 @@ export default async function AdminStatistiquesPage() {
 
         <section className={`${cardClass} overflow-x-auto`}>
           <h2 className="border-b border-border px-4 py-3 text-sm font-bold">
-            Sites référents ({WINDOW_DAYS} j)
+            Sites référents ({windowDays} j)
           </h2>
           <table className="w-full text-sm">
             <tbody className="divide-y divide-border">

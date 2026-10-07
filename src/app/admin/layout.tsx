@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/session";
+import { requireStaffAccount } from "@/lib/session";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { buttonClass, cardClass } from "@/components/ui";
 
@@ -14,15 +13,13 @@ export const metadata: Metadata = {
 export default async function AdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const session = await requireStaff();
+  const session = await requireStaffAccount();
 
   // 2FA obligatoire pour accéder à l'administration : un compte à
   // privilèges compromis par simple mot de passe est le pire scénario.
-  const user = await db.user.findUnique({
-    where: { id: session.user.id },
-    select: { twoFactorEnabled: true },
-  });
-  if (!user?.twoFactorEnabled) {
+  // Revérifiée aussi par chaque page et Server Action (lib/session) : un
+  // layout n'est pas réexécuté lors des navigations client.
+  if (!session.user.twoFactorEnabled) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16">
         <div className={`${cardClass} space-y-4 p-8`}>

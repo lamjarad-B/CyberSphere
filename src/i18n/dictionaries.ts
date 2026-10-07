@@ -232,6 +232,23 @@ const fr = {
       revoke: "Révoquer",
       revokeOthers: "Révoquer toutes les autres sessions",
     },
+    data: {
+      title: "Mes données",
+      intro:
+        "Conformément au RGPD, vous pouvez télécharger toutes les données associées à votre compte ou le supprimer définitivement.",
+      export: "Télécharger mes données (JSON)",
+      deleteTitle: "Supprimer mon compte",
+      deleteWarning:
+        "Action irréversible : votre profil, vos commentaires, réactions, signets, sessions et passkeys seront supprimés, ainsi que votre inscription à la newsletter.",
+      passwordLabel: "Mot de passe pour confirmer",
+      confirmLabel: "Tapez SUPPRIMER pour confirmer",
+      confirmWord: "SUPPRIMER",
+      submit: "Supprimer définitivement mon compte",
+      submitting: "Suppression…",
+      wrongPassword: "Mot de passe incorrect.",
+      staffForbidden:
+        "Les comptes administrateur et auteur ne peuvent pas être supprimés ici : contactez un administrateur.",
+    },
   },
 };
 
@@ -457,6 +474,23 @@ const en: Dictionary = {
       openedOn: "opened on",
       revoke: "Revoke",
       revokeOthers: "Revoke all other sessions",
+    },
+    data: {
+      title: "My data",
+      intro:
+        "Under the GDPR, you can download all the data associated with your account or delete it permanently.",
+      export: "Download my data (JSON)",
+      deleteTitle: "Delete my account",
+      deleteWarning:
+        "This can't be undone: your profile, comments, reactions, bookmarks, sessions and passkeys will be deleted, along with your newsletter subscription.",
+      passwordLabel: "Password to confirm",
+      confirmLabel: "Type DELETE to confirm",
+      confirmWord: "DELETE",
+      submit: "Permanently delete my account",
+      submitting: "Deleting…",
+      wrongPassword: "Incorrect password.",
+      staffForbidden:
+        "Administrator and author accounts can't be deleted here: please contact an administrator.",
     },
   },
 };

@@ -14,7 +14,14 @@ export const authClient = createAuthClient({
         const onEnglishPage =
           window.location.pathname === "/en" ||
           window.location.pathname.startsWith("/en/");
-        window.location.href = onEnglishPage ? "/en/deux-facteurs" : "/deux-facteurs";
+        // La page demandée avant connexion (?redirection=) suit l'étape 2FA ;
+        // elle est revalidée (chemin interne) par le formulaire 2FA.
+        const redirection = new URLSearchParams(window.location.search).get("redirection");
+        const query = redirection ? `?redirection=${encodeURIComponent(redirection)}` : "";
+        // Callback du client better-auth, hors de l'arbre React (pas de
+        // routeur) : navigation complète voulue vers l'étape 2FA.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        window.location.href = `${onEnglishPage ? "/en/deux-facteurs" : "/deux-facteurs"}${query}`;
       },
     }),
     passkeyClient(),

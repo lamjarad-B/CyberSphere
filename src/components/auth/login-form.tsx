@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { localeHref } from "@/lib/i18n";
+import { safeRedirect } from "@/lib/redirect";
 import { useI18n } from "@/components/i18n-provider";
 import {
   buttonClass,
@@ -30,14 +31,12 @@ export function LoginForm({ redirection }: { redirection?: string }) {
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const [resent, setResent] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // Jeton Turnstile à usage unique : le widget est régénéré après chaque envoi
+  const [captchaKey, setCaptchaKey] = useState(0);
   const onCaptcha = useCallback((token: string | null) => setCaptchaToken(token), []);
 
-  // Chemin interne uniquement : commence par « / » mais pas par « // » ni
-  // « /\ » (que certains navigateurs normalisent en « // » → autre origine).
-  const target =
-    redirection && /^\/(?![/\\])/.test(redirection)
-      ? redirection
-      : localeHref(locale, "/");
+  // Chemin interne uniquement (anti open-redirect, cf. lib/redirect)
+  const target = safeRedirect(redirection, localeHref(locale, "/"));
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -55,6 +54,8 @@ export function LoginForm({ redirection }: { redirection?: string }) {
       },
       { headers: captchaHeaders(captchaToken) },
     );
+    setCaptchaToken(null);
+    setCaptchaKey((key) => key + 1);
 
     if (error) {
       setLoading(false);
@@ -158,7 +159,7 @@ export function LoginForm({ redirection }: { redirection?: string }) {
         />
       </div>
 
-      <TurnstileWidget onToken={onCaptcha} />
+      <TurnstileWidget key={captchaKey} onToken={onCaptcha} />
 
       <button
         type="submit"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { getPreviewLink, previewMarkdown, saveArticle } from "@/actions/articles";
 import { pretranslateArticle } from "@/actions/translate";
 import {
@@ -23,7 +23,11 @@ export type ArticleFormData = {
   content: string;
   coverImage: string | null;
   categoryId: string;
-  status: "DRAFT" | "SUBMITTED" | "PUBLISHED";
+  status: "DRAFT" | "SUBMITTED" | "SCHEDULED" | "PUBLISHED";
+  /** Date de publication (prévue si SCHEDULED), ISO */
+  publishedAt: string | null;
+  coverAlt: string;
+  coverAltEn: string;
   tags: string;
   seriesId: string;
   seriesPosition: number | null;
@@ -45,11 +49,24 @@ const toolbar: { label: string; title: string; before: string; after: string }[]
   { label: "I", title: "Italique", before: "*", after: "*" },
   { label: "H2", title: "Titre", before: "\n## ", after: "\n" },
   { label: "</>", title: "Code en ligne", before: "`", after: "`" },
-  { label: "```", title: "Bloc de code", before: "\n```bash\n", after: "\n```\n" },
+  {
+    label: "```",
+    title: "Bloc de code — showLineNumbers : numéros de ligne ; {2,4-5} : lignes surlignées",
+    before: "\n```bash showLineNumbers\n",
+    after: "\n```\n",
+  },
   { label: "🔗", title: "Lien", before: "[", after: "](https://)" },
   { label: "• —", title: "Liste", before: "\n- ", after: "" },
   { label: "❝", title: "Citation", before: "\n> ", after: "" },
 ];
+
+/** ISO → valeur d'un <input type="datetime-local"> dans le fuseau du navigateur. */
+function toLocalInput(iso: string | null | undefined): string | undefined {
+  if (!iso) return undefined;
+  const date = new Date(iso);
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
 
 export function ArticleForm({ categories, series, article, canPublish }: ArticleFormProps) {
   const router = useRouter();
@@ -58,6 +75,13 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
   const [tab, setTab] = useState<"write" | "preview">("write");
   const [previewHtml, setPreviewHtml] = useState("");
   const [seriesId, setSeriesId] = useState(article?.seriesId ?? "");
+  const [status, setStatus] = useState(article?.status ?? "DRAFT");
+  // Le champ date dépend du fuseau du navigateur : rendu côté client uniquement
+  const isClient = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const [error, setError] = useState<string | null>(null);
   const [shareLabel, setShareLabel] = useState("Copier le lien d'aperçu");
   const [saving, startSaving] = useTransition();
@@ -151,6 +175,13 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     formData.set("content", content);
+    // datetime-local n'a pas de fuseau : conversion en ISO (UTC) côté
+    // navigateur, pour que le serveur (souvent en UTC) programme la bonne heure
+    const localSchedule = String(formData.get("scheduledAtLocal") ?? "");
+    formData.delete("scheduledAtLocal");
+    if (status === "SCHEDULED" && localSchedule) {
+      formData.set("scheduledAt", new Date(localSchedule).toISOString());
+    }
     setError(null);
     startSaving(async () => {
       const result = await saveArticle(article?.id ?? null, formData);
@@ -352,15 +383,38 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
               <select
                 id="status"
                 name="status"
-                defaultValue={article?.status ?? "DRAFT"}
+                value={status}
+                onChange={(e) => setStatus(e.target.value as ArticleFormData["status"])}
                 className={inputClass}
               >
                 <option value="DRAFT">Brouillon</option>
                 <option value="SUBMITTED">
                   {canPublish ? "Soumis (en attente)" : "Soumettre à validation"}
                 </option>
+                {canPublish && <option value="SCHEDULED">Programmé</option>}
                 {canPublish && <option value="PUBLISHED">Publié</option>}
               </select>
+              {status === "SCHEDULED" && isClient && (
+                <div className="mt-2">
+                  <label htmlFor="scheduledAtLocal" className={labelClass}>
+                    Date de publication
+                  </label>
+                  <input
+                    id="scheduledAtLocal"
+                    name="scheduledAtLocal"
+                    type="datetime-local"
+                    required
+                    defaultValue={toLocalInput(
+                      article?.status === "SCHEDULED" ? article.publishedAt : null,
+                    )}
+                    className={inputClass}
+                  />
+                  <p className="mt-1 text-xs text-muted">
+                    Heure locale de votre navigateur. Mise en ligne et newsletter
+                    automatiques (vérification chaque minute).
+                  </p>
+                </div>
+              )}
             </div>
 
             <div>
@@ -456,6 +510,32 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
               />
               <p className="mt-1 text-xs text-muted">
                 Ré-encodée en WebP côté serveur (métadonnées EXIF supprimées).
+              </p>
+              <label htmlFor="coverAlt" className={`${labelClass} mt-3`}>
+                Texte alternatif{" "}
+                <span className="font-normal text-muted">(décrit l&apos;image, lecteurs d&apos;écran)</span>
+              </label>
+              <input
+                id="coverAlt"
+                name="coverAlt"
+                type="text"
+                maxLength={200}
+                defaultValue={article?.coverAlt}
+                className={inputClass}
+              />
+              <label htmlFor="coverAltEn" className={`${labelClass} mt-3`}>
+                Texte alternatif (EN) <span className="font-normal text-muted">(facultatif)</span>
+              </label>
+              <input
+                id="coverAltEn"
+                name="coverAltEn"
+                type="text"
+                maxLength={200}
+                defaultValue={article?.coverAltEn}
+                className={inputClass}
+              />
+              <p className="mt-1 text-xs text-muted">
+                Laissez vide si l&apos;image est purement décorative.
               </p>
             </div>
           </div>

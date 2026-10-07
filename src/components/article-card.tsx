@@ -25,7 +25,13 @@ export function ArticleCard({
     <article
       className={`${cardClass} group flex flex-col overflow-hidden transition-colors hover:border-accent/60`}
     >
-      <Link href={localeHref(locale, `/articles/${article.slug}`)} className="block">
+      {/* Doublon du lien du titre : masqué au clavier et aux lecteurs d’écran */}
+      <Link
+        href={localeHref(locale, `/articles/${article.slug}`)}
+        className="block"
+        tabIndex={-1}
+        aria-hidden
+      >
         {article.coverImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

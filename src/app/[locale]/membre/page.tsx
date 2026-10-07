@@ -10,6 +10,7 @@ import { PasswordForm } from "@/components/membre/password-form";
 import { TwoFactorSetup } from "@/components/membre/two-factor-setup";
 import { PasskeyManager } from "@/components/membre/passkey-manager";
 import { SessionManager } from "@/components/membre/session-manager";
+import { AccountData } from "@/components/membre/account-data";
 import { ArticleCard } from "@/components/article-card";
 import { cardClass } from "@/components/ui";
 
@@ -25,6 +26,7 @@ const copy = {
     bookmarksEmpty:
       "Aucun article en signet. Utilisez le bouton « Ajouter aux signets » sur un article pour le retrouver ici.",
     comments: "Mes derniers commentaires",
+    data: "Mes données (RGPD)",
     commentsEmpty: "Vous n'avez pas encore commenté d'article.",
     on: "Sur",
   },
@@ -39,6 +41,7 @@ const copy = {
     bookmarksEmpty:
       "No bookmarked articles. Use the “Add to bookmarks” button on an article to find it here.",
     comments: "My latest comments",
+    data: "My data (GDPR)",
     commentsEmpty: "You haven't commented on any article yet.",
     on: "On",
   },
@@ -68,7 +71,7 @@ export default async function MembrePage({ params }: Props) {
     db.session.findMany({
       where: { userId: session.user.id, expiresAt: { gt: new Date() } },
       orderBy: { createdAt: "desc" },
-      select: { token: true, ipAddress: true, userAgent: true, createdAt: true },
+      select: { id: true, ipAddress: true, userAgent: true, createdAt: true },
     }),
     db.bookmark.findMany({
       where: { userId: session.user.id },
@@ -124,7 +127,7 @@ export default async function MembrePage({ params }: Props) {
         <SessionManager
           sessions={sessions.map((item) => ({
             ...item,
-            current: item.token === session.session.token,
+            current: item.id === session.session.id,
           }))}
         />
       </section>
@@ -175,6 +178,13 @@ export default async function MembrePage({ params }: Props) {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className={`${cardClass} p-6`}>
+        <h2 className="mb-4 text-lg font-bold">{t.data}</h2>
+        <AccountData
+          isStaff={session.user.role === "admin" || session.user.role === "author"}
+        />
       </section>
     </div>
   );

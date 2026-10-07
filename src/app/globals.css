@@ -80,3 +80,48 @@ body {
   border-radius: 0 0 0.6rem 0.6rem;
   margin-top: 0;
 }
+
+/* Numéros de ligne (opt-in : ```bash showLineNumbers) — compteur CSS, donc
+   jamais inclus dans le texte copié par le bouton « Copier ». */
+.prose code[data-line-numbers] {
+  counter-reset: line;
+}
+
+.prose code[data-line-numbers] > [data-line]::before {
+  counter-increment: line;
+  content: counter(line);
+  display: inline-block;
+  width: 1.5rem;
+  margin-right: 1rem;
+  text-align: right;
+  color: #6e7681;
+  user-select: none;
+}
+
+.prose code[data-line-numbers-max-digits="2"] > [data-line]::before {
+  width: 2rem;
+}
+
+.prose code[data-line-numbers-max-digits="3"] > [data-line]::before {
+  width: 2.5rem;
+}
+
+/* Lignes et mots surlignés (```bash {2,4-5} ou /motif/) */
+.prose pre [data-line] {
+  display: inline-block;
+  min-width: 100%;
+  padding: 0 1rem;
+  margin: 0 -1rem;
+  border-left: 2px solid transparent;
+}
+
+.prose pre [data-highlighted-line] {
+  background: rgb(34 211 238 / 0.1);
+  border-left-color: #22d3ee;
+}
+
+.prose pre [data-highlighted-chars] {
+  background: rgb(34 211 238 / 0.2);
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.2rem;
+}

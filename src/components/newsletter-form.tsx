@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { subscribeNewsletter } from "@/actions/newsletter";
 import { useI18n } from "@/components/i18n-provider";
+import { TurnstileWidget, captchaEnabled } from "@/components/auth/turnstile-widget";
 import { buttonClass, inputClass } from "@/components/ui";
 
 export function NewsletterForm() {
@@ -12,12 +13,18 @@ export function NewsletterForm() {
   const [website, setWebsite] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // Jeton Turnstile à usage unique : le widget est régénéré après chaque envoi
+  const [captchaKey, setCaptchaKey] = useState(0);
+  const onCaptcha = useCallback((token: string | null) => setCaptchaToken(token), []);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
     startTransition(async () => {
-      const result = await subscribeNewsletter({ email, website, locale });
+      const result = await subscribeNewsletter({ email, website, locale, captchaToken });
+      setCaptchaToken(null);
+      setCaptchaKey((key) => key + 1);
       if (!result.ok) {
         setMessage(result.error ?? t.newsletter.genericError);
         return;
@@ -40,10 +47,17 @@ export function NewsletterForm() {
           required
           className={inputClass}
         />
-        <button type="submit" disabled={pending} className={buttonClass}>
+        <button
+          type="submit"
+          disabled={pending || (captchaEnabled && !captchaToken)}
+          className={buttonClass}
+        >
           {pending ? "…" : t.newsletter.subscribe}
         </button>
       </div>
+      {/* CAPTCHA chargé seulement quand le visiteur commence à saisir : pas
+          de script tiers sur chaque page pour qui ne s'inscrit pas */}
+      {email && <TurnstileWidget key={captchaKey} onToken={onCaptcha} />}
       <input
         type="text"
         name="website"

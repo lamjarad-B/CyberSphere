@@ -24,10 +24,21 @@ export const articleSchema = z.object({
     .trim()
     .min(10, "L'extrait doit contenir au moins 10 caractères")
     .max(500, "L'extrait est limité à 500 caractères"),
-  content: z.string().min(10, "Le contenu doit contenir au moins 10 caractères"),
+  content: z
+    .string()
+    .min(10, "Le contenu doit contenir au moins 10 caractères")
+    .max(200_000, "Le contenu est limité à 200 000 caractères"),
   categoryId: z.string().min(1, "Choisissez une catégorie"),
   tags: z.string().trim().max(300, "Liste de tags trop longue").default(""),
-  status: z.enum(["DRAFT", "SUBMITTED", "PUBLISHED"]),
+  status: z.enum(["DRAFT", "SUBMITTED", "SCHEDULED", "PUBLISHED"]),
+  // Date de mise en ligne (ISO 8601) si status = SCHEDULED
+  scheduledAt: z.string().trim().max(40).default(""),
+  coverAlt: z.string().trim().max(200, "Le texte alternatif est limité à 200 caractères").default(""),
+  coverAltEn: z
+    .string()
+    .trim()
+    .max(200, "Le texte alternatif anglais est limité à 200 caractères")
+    .default(""),
   seriesId: z.string().trim().default(""),
   seriesPosition: z.coerce
     .number()
@@ -39,7 +50,11 @@ export const articleSchema = z.object({
   // (un article à moitié traduit mélangerait les deux langues)
   titleEn: z.string().trim().max(200, "Le titre anglais est limité à 200 caractères").default(""),
   excerptEn: z.string().trim().max(500, "L'extrait anglais est limité à 500 caractères").default(""),
-  contentEn: z.string().trim().default(""),
+  contentEn: z
+    .string()
+    .trim()
+    .max(200_000, "Le contenu anglais est limité à 200 000 caractères")
+    .default(""),
 });
 
 export const seriesSchema = z.object({

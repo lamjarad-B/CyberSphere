@@ -19,6 +19,8 @@ export function ForgotPasswordForm() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // Jeton Turnstile à usage unique : le widget est régénéré après chaque envoi
+  const [captchaKey, setCaptchaKey] = useState(0);
   const onCaptcha = useCallback((token: string | null) => setCaptchaToken(token), []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -34,6 +36,8 @@ export function ForgotPasswordForm() {
       },
       { headers: captchaHeaders(captchaToken) },
     );
+    setCaptchaToken(null);
+    setCaptchaKey((key) => key + 1);
     setLoading(false);
 
     if (error) {
@@ -77,7 +81,7 @@ export function ForgotPasswordForm() {
         />
       </div>
 
-      <TurnstileWidget onToken={onCaptcha} />
+      <TurnstileWidget key={captchaKey} onToken={onCaptcha} />
 
       <button
         type="submit"

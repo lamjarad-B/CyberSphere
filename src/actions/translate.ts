@@ -123,6 +123,15 @@ export async function pretranslateArticle(input: {
     content?: { type: string; text?: string }[];
     stop_reason?: string;
   };
+  // Les classifieurs de sécurité peuvent décliner un contenu offensif (payloads,
+  // exploitation…) : HTTP 200, stop_reason « refusal », contenu inexploitable.
+  if (payload.stop_reason === "refusal") {
+    return {
+      ok: false,
+      error:
+        "L'API Claude a décliné la traduction de cet article (contenu jugé sensible). Traduisez-le manuellement.",
+    };
+  }
   if (payload.stop_reason === "max_tokens") {
     return { ok: false, error: "Article trop long : la traduction a été tronquée." };
   }

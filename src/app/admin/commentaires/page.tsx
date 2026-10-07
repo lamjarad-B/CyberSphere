@@ -5,26 +5,39 @@ import { deleteComment } from "@/actions/comments";
 import { formatDateTime } from "@/lib/format";
 import { requireAdmin } from "@/lib/session";
 import { ActionButton } from "@/components/admin/action-button";
+import { pageNumber } from "@/lib/articles";
+import { Pagination } from "@/components/pagination";
 import { buttonDangerClass, cardClass } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Commentaires" };
 
-export default async function AdminCommentairesPage() {
+const PAGE_SIZE = 50;
+
+export default async function AdminCommentairesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   await requireAdmin();
-  const comments = await db.comment.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    include: {
-      author: { select: { name: true, email: true } },
-      article: { select: { title: true, slug: true } },
-    },
-  });
+  const page = pageNumber((await searchParams).page);
+  const [comments, total] = await Promise.all([
+    db.comment.findMany({
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      include: {
+        author: { select: { name: true, email: true } },
+        article: { select: { title: true, slug: true } },
+      },
+    }),
+    db.comment.count(),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">
-        Commentaires{" "}
-        <span className="font-mono text-accent">({comments.length} derniers)</span>
+        Commentaires <span className="font-mono text-accent">({total})</span>
       </h1>
 
       {comments.length === 0 ? (
@@ -63,6 +76,12 @@ export default async function AdminCommentairesPage() {
           </ul>
         </div>
       )}
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        makeHref={(p) => `/admin/commentaires?page=${p}`}
+      />
     </div>
   );
 }

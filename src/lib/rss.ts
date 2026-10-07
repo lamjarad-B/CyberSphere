@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "./db";
 import { localeHref, type Locale } from "./i18n";
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+import { SITE_URL as BASE_URL } from "@/lib/site";
 
 function escapeXml(value: string): string {
   return value

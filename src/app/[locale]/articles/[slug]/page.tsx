@@ -25,11 +25,16 @@ const copy = {
     submittedBanner:
       "En attente de validation — cet article n'est pas visible du public.",
     draftBanner: "Brouillon — cet article n'est visible que par l'équipe.",
+    scheduledBanner: (date: string) =>
+      `Programmé pour le ${date} — cet article n'est pas encore visible du public.`,
     untranslatedBanner: "",
     readingTime: (min: number) => `${min} min de lecture`,
     views: (n: number) => `${n} vue${n > 1 ? "s" : ""}`,
     seriesLabel: "Série :",
     seriesAria: "Série d'articles",
+    seriesNavAria: "Épisodes de la série",
+    previousEpisode: "← Épisode précédent",
+    nextEpisode: "Épisode suivant →",
     toc: "Sommaire",
     readNext: "À lire ensuite",
     similarAria: "Articles similaires",
@@ -38,12 +43,17 @@ const copy = {
     home: "Home",
     submittedBanner: "Awaiting review — this article is not visible to the public.",
     draftBanner: "Draft — this article is only visible to the team.",
+    scheduledBanner: (date: string) =>
+      `Scheduled for ${date} — this article is not visible to the public yet.`,
     untranslatedBanner:
       "This article hasn't been translated into English yet — you're reading the original French version.",
     readingTime: (min: number) => `${min} min read`,
     views: (n: number) => `${n} view${n === 1 ? "" : "s"}`,
     seriesLabel: "Series:",
     seriesAria: "Article series",
+    seriesNavAria: "Series episodes",
+    previousEpisode: "← Previous episode",
+    nextEpisode: "Next episode →",
     toc: "Contents",
     readNext: "Read next",
     similarAria: "Related articles",
@@ -108,7 +118,7 @@ export default async function ArticlePage({ params }: Props) {
         tags: { orderBy: { name: "asc" } },
         translations: {
           where: { locale: "en" },
-          select: { title: true, excerpt: true, content: true },
+          select: { title: true, excerpt: true, content: true, coverAlt: true },
         },
         series: {
           select: {
@@ -137,9 +147,12 @@ export default async function ArticlePage({ params }: Props) {
   ]);
 
   if (!article) notFound();
-  const isStaff =
-    session?.user.role === "admin" || session?.user.role === "author";
-  if (article.status !== "PUBLISHED" && !isStaff) notFound();
+  // Non publié : visible des admins, et de son auteur (rôle auteur) —
+  // jamais des brouillons d'un autre auteur.
+  const canSeeUnpublished =
+    session?.user.role === "admin" ||
+    (session?.user.role === "author" && session.user.id === article.authorId);
+  if (article.status !== "PUBLISHED" && !canSeeUnpublished) notFound();
 
   if (article.status === "PUBLISHED") {
     // Le référent se lit pendant le rendu ; l'écriture part dans after()
@@ -158,6 +171,7 @@ export default async function ArticlePage({ params }: Props) {
   const title = translation?.title ?? article.title;
   const excerpt = translation?.excerpt ?? article.excerpt;
   const content = translation?.content ?? article.content;
+  const coverAlt = (translation ? translation.coverAlt : article.coverAlt) ?? "";
 
   const [html, rawComments, viewerReaction, viewerBookmark, similar] =
     await Promise.all([
@@ -234,11 +248,42 @@ export default async function ArticlePage({ params }: Props) {
       ? article.series.titleEn
       : article.series?.title;
 
+  // Navigation précédent / suivant entre les épisodes publiés de la série
+  const episodes = (article.series?.articles ?? []).map((episode) => ({
+    slug: episode.slug,
+    title:
+      locale === "en"
+        ? (episode.translations[0]?.title ?? episode.title)
+        : episode.title,
+  }));
+  const episodeIndex = episodes.findIndex((episode) => episode.slug === article.slug);
+  const previousEpisode = episodeIndex > 0 ? episodes[episodeIndex - 1] : null;
+  const nextEpisode =
+    episodeIndex >= 0 && episodeIndex < episodes.length - 1
+      ? episodes[episodeIndex + 1]
+      : null;
+
+  const tocList = (
+    <ul className="space-y-1 text-sm">
+      {toc.map((entry) => (
+        <li key={entry.id} className={entry.depth === 3 ? "pl-4" : ""}>
+          <a href={`#${entry.id}`} className="text-muted hover:text-accent">
+            {entry.text}
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+
   return (
     <article className="mx-auto max-w-3xl space-y-8">
       {article.status !== "PUBLISHED" && (
         <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-500">
-          {article.status === "SUBMITTED" ? t.submittedBanner : t.draftBanner}
+          {article.status === "SUBMITTED"
+            ? t.submittedBanner
+            : article.status === "SCHEDULED"
+              ? t.scheduledBanner(formatDateTime(article.publishedAt, locale))
+              : t.draftBanner}
         </p>
       )}
 
@@ -328,26 +373,20 @@ export default async function ArticlePage({ params }: Props) {
             </Link>
           </p>
           <ol className="list-decimal space-y-1 pl-5 text-sm">
-            {article.series.articles.map((episode) => {
-              const episodeTitle =
-                locale === "en"
-                  ? episode.translations[0]?.title ?? episode.title
-                  : episode.title;
-              return (
-                <li key={episode.slug}>
-                  {episode.slug === article.slug ? (
-                    <span className="font-medium text-accent">{episodeTitle}</span>
-                  ) : (
-                    <Link
-                      href={localeHref(locale, `/articles/${episode.slug}`)}
-                      className="text-muted hover:text-accent hover:underline"
-                    >
-                      {episodeTitle}
-                    </Link>
-                  )}
-                </li>
-              );
-            })}
+            {episodes.map((episode) => (
+              <li key={episode.slug}>
+                {episode.slug === article.slug ? (
+                  <span className="font-medium text-accent">{episode.title}</span>
+                ) : (
+                  <Link
+                    href={localeHref(locale, `/articles/${episode.slug}`)}
+                    className="text-muted hover:text-accent hover:underline"
+                  >
+                    {episode.title}
+                  </Link>
+                )}
+              </li>
+            ))}
           </ol>
         </aside>
       )}
@@ -356,26 +395,31 @@ export default async function ArticlePage({ params }: Props) {
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={article.coverImage}
-          alt=""
+          alt={coverAlt}
           className="w-full rounded-xl border border-border object-cover"
         />
       )}
 
       {toc.length >= 3 && (
-        <nav className={`${cardClass} p-5`} aria-label={t.toc}>
-          <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wider text-muted">
-            {t.toc}
-          </p>
-          <ul className="space-y-1 text-sm">
-            {toc.map((entry) => (
-              <li key={entry.id} className={entry.depth === 3 ? "pl-4" : ""}>
-                <a href={`#${entry.id}`} className="text-muted hover:text-accent">
-                  {entry.text}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
+        <>
+          {/* Petits écrans : sommaire en tête d'article */}
+          <nav className={`${cardClass} p-5 xl:hidden`} aria-label={t.toc}>
+            <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wider text-muted">
+              {t.toc}
+            </p>
+            {tocList}
+          </nav>
+          {/* Desktop : sommaire flottant dans la marge droite, toujours visible */}
+          <nav
+            className="fixed left-[calc(50%+25.5rem)] top-24 hidden max-h-[calc(100vh-8rem)] w-52 overflow-y-auto border-l border-border pl-4 xl:block"
+            aria-label={t.toc}
+          >
+            <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wider text-muted">
+              {t.toc}
+            </p>
+            {tocList}
+          </nav>
+        </>
       )}
 
       <CodeCopy>
@@ -397,6 +441,31 @@ export default async function ArticlePage({ params }: Props) {
           bookmarked={Boolean(viewerBookmark)}
           isLoggedIn={Boolean(session)}
         />
+      )}
+
+      {(previousEpisode || nextEpisode) && (
+        <nav className="grid gap-4 sm:grid-cols-2" aria-label={t.seriesNavAria}>
+          {previousEpisode ? (
+            <Link
+              href={localeHref(locale, `/articles/${previousEpisode.slug}`)}
+              className={`${cardClass} block p-4 transition-colors hover:border-accent`}
+            >
+              <span className="font-mono text-xs text-muted">{t.previousEpisode}</span>
+              <span className="mt-1 block font-medium">{previousEpisode.title}</span>
+            </Link>
+          ) : (
+            <span aria-hidden />
+          )}
+          {nextEpisode && (
+            <Link
+              href={localeHref(locale, `/articles/${nextEpisode.slug}`)}
+              className={`${cardClass} block p-4 text-right transition-colors hover:border-accent`}
+            >
+              <span className="font-mono text-xs text-muted">{t.nextEpisode}</span>
+              <span className="mt-1 block font-medium">{nextEpisode.title}</span>
+            </Link>
+          )}
+        </nav>
       )}
 
       <hr className="border-border" />

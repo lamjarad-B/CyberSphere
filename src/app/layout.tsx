@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 // La CSP à nonce exige un rendu dynamique : le nonce est généré par requête
@@ -21,7 +22,7 @@ const geistMono = Geist_Mono({
 export async function generateMetadata(): Promise<Metadata> {
   const english = (await headers()).get("x-locale") === "en";
   return {
-    metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+    metadataBase: new URL(SITE_URL),
     title: {
       default: english
         ? "CyberSphere — Cybersecurity blog"
