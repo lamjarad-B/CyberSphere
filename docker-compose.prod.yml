@@ -3,6 +3,9 @@
 # Usage :
 #   cp .env.production.example .env.production   (puis renseigner les secrets)
 #   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+#
+# Les variables indispensables sont exigées (${VAR:?…}) : compose refuse de
+# démarrer si l'une manque, au lieu de lancer un service avec une valeur vide.
 
 services:
   # Reverse proxy : TLS automatique (Let's Encrypt) + HSTS.
@@ -14,7 +17,7 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      SITE_DOMAIN: ${SITE_DOMAIN}
+      SITE_DOMAIN: "${SITE_DOMAIN:?définissez SITE_DOMAIN}"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
@@ -27,7 +30,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?définissez POSTGRES_PASSWORD}"
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - db-data:/var/lib/postgresql/data
@@ -42,7 +45,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+        NEXT_PUBLIC_APP_URL: "${NEXT_PUBLIC_APP_URL:?définissez NEXT_PUBLIC_APP_URL}"
         NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
     restart: unless-stopped
     depends_on:
@@ -50,7 +53,8 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      # Valeur d'exemple ou < 32 caractères : l'application refuse de démarrer
+      BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET:?définissez BETTER_AUTH_SECRET (openssl rand -hex 32)}"
       BETTER_AUTH_URL: ${NEXT_PUBLIC_APP_URL}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
       NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
@@ -70,12 +74,22 @@ services:
     volumes:
       - uploads:/app/uploads
 
-  # Sauvegarde quotidienne : pg_dump compressé puis chiffré (AES-256),
-  # rotation sur BACKUP_KEEP_DAYS jours. Restauration :
-  #   openssl enc -d -aes-256-cbc -pbkdf2 -pass env:BACKUP_PASSPHRASE \
+  # Sauvegarde quotidienne : pg_dump compressé puis chiffré (AES-256, clé
+  # dérivée par PBKDF2 à 600 000 itérations — le défaut d'OpenSSL, 10 000,
+  # rendait la passphrase attaquable hors ligne), rotation sur
+  # BACKUP_KEEP_DAYS jours. Restauration :
+  #   openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:BACKUP_PASSPHRASE \
   #     -in fichier.sql.gz.enc | gunzip | psql …
+  # (sauvegardes antérieures à ce réglage : sans « -iter 600000 »)
   backup:
-    image: postgres:17-alpine
+    # postgres:17-alpine n'embarque pas l'outil openssl (seulement la
+    # bibliothèque) : sans cette image dérivée, le chiffrement échouait et
+    # aucune sauvegarde n'était jamais écrite.
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM postgres:17-alpine
+        RUN apk add --no-cache openssl
     restart: unless-stopped
     depends_on:
       db:
@@ -85,17 +99,28 @@ services:
       PGUSER: ${POSTGRES_USER}
       PGPASSWORD: ${POSTGRES_PASSWORD}
       PGDATABASE: ${POSTGRES_DB}
-      BACKUP_PASSPHRASE: ${BACKUP_PASSPHRASE}
+      BACKUP_PASSPHRASE: "${BACKUP_PASSPHRASE:?définissez BACKUP_PASSPHRASE}"
       BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
     volumes:
       - db-backups:/backups
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
+        # Passphrase d'exemple ou trop courte : aucune sauvegarde plutôt
+        # qu'une sauvegarde déchiffrable par quiconque a lu le dépôt
+        case "$$BACKUP_PASSPHRASE" in
+          *CHANGEZ_MOI*) echo "✗ BACKUP_PASSPHRASE vaut encore l'exemple" >&2; exit 1 ;;
+        esac
+        if [ "$${#BACKUP_PASSPHRASE}" -lt 16 ]; then
+          echo "✗ BACKUP_PASSPHRASE : 16 caractères minimum" >&2
+          exit 1
+        fi
+        # Un pg_dump en échec ne doit pas produire une sauvegarde vide « réussie »
+        set -o pipefail
         while true; do
           stamp=$$(date +%Y-%m-%d_%H%M)
           echo "→ Sauvegarde $$stamp"
-          if pg_dump | gzip | openssl enc -aes-256-cbc -pbkdf2 \
+          if pg_dump | gzip | openssl enc -aes-256-cbc -pbkdf2 -iter 600000 \
               -pass env:BACKUP_PASSPHRASE \
               -out "/backups/cybersphere_$$stamp.sql.gz.enc"; then
             echo "✓ /backups/cybersphere_$$stamp.sql.gz.enc"

@@ -8,8 +8,10 @@ services:
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?définissez POSTGRES_PASSWORD dans .env}"
       POSTGRES_DB: cybersphere
     ports:
-      # Port hôte configurable (POSTGRES_PORT) si 5433 est déjà pris
-      - "${POSTGRES_PORT:-5433}:5432"
+      # Port hôte configurable (POSTGRES_PORT) si 5433 est déjà pris.
+      # Lié à 127.0.0.1 : sans cela, Docker publie la base sur toutes les
+      # interfaces (Wi-Fi public, réseau local) en contournant le pare-feu.
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
