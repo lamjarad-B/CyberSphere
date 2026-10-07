@@ -1,6 +1,6 @@
 # CyberSphere — Cahier des spécifications techniques et fonctionnelles
 
-**Version du document :** 2.4 · **Date :** 7 octobre 2026 · **État du projet :** **v2.4 livrée** (v1 : commit `402fb40`)
+**Version du document :** 2.5 · **Date :** 7 octobre 2026 · **État du projet :** **v2.5 livrée** (v1 : commit `402fb40`)
 
 > **Note v2** — La montée de version proposée au §7 a été **entièrement
 > implémentée** le 10 juillet 2026 : les trois paliers (durcissement sécurité,
@@ -26,6 +26,12 @@
 > programmée, texte alternatif des couvertures, CAPTCHA newsletter, tests
 > automatisés (unitaires + bout en bout) et mise à jour de sécurité des
 > dépendances. Détails au §12.
+>
+> **Note v2.5** — Revue de sécurité de l'ensemble du code : open-redirect par
+> caractère de contrôle, sessions conservées après réinitialisation du mot de
+> passe, API admin de better-auth fermée, secrets d'exemple refusés au
+> démarrage, bombe de décompression, plafonds anti-abus, et sauvegardes
+> réparées (l'outil `openssl` manquait dans l'image). Détails au §13.
 
 ---
 
@@ -210,15 +216,15 @@ src/
 ## 4. Infrastructure et déploiement
 
 ### 4.1 Développement
-- `docker-compose.yml` : PostgreSQL 17-alpine sur le port **5433** (5432 occupé par un autre projet sur la machine), volume `db-data`, healthcheck `pg_isready`.
+- `docker-compose.yml` : PostgreSQL 17-alpine sur le port **5433** (5432 occupé par un autre projet sur la machine), publié sur `127.0.0.1` uniquement (§13), volume `db-data`, healthcheck `pg_isready`.
 - `.env` : `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_NAME` (seed), variables `SMTP_*` optionnelles. Modèles fournis : `.env.example`, `.env.production.example`.
-- Seed (`prisma/seed.ts`) : crée l'admin depuis les variables d'environnement **via l'API better-auth** (hachage correct), marque son e-mail vérifié ; catégories/sous-catégories, tags, articles et commentaires de démonstration. Idempotent (upserts). Les **comptes de démonstration** (membre `membre@cybersphere.test`, auteur `auteur@cybersphere.test` — mots de passe en clair dans le dépôt) ne sont créés **qu'hors production** (`NODE_ENV !== "production"`) ; forçage possible sur base jetable via `SEED_DEMO=1` (cf. §10).
+- Seed (`prisma/seed.ts`) : crée l'admin depuis les variables d'environnement **via l'API better-auth** (hachage correct), marque son e-mail vérifié — et refuse de promouvoir un compte existant non vérifié (§13) ; catégories/sous-catégories, tags, articles et commentaires de démonstration. Idempotent (upserts). Les **comptes de démonstration** (membre `membre@cybersphere.test`, auteur `auteur@cybersphere.test` — mots de passe en clair dans le dépôt) ne sont créés **que pour une instance locale** (`NEXT_PUBLIC_APP_URL` en `http://localhost…`/`127.0.0.1`, hors `NODE_ENV=production`) ; forçage possible sur base jetable via `SEED_DEMO=1` (cf. §10, §13).
 
 ### 4.2 Production (Docker)
 - **Dockerfile multi-étapes** (deps → build → runner) sur `node:22-bookworm-slim` : sortie autonome Next.js (`output: "standalone"`), image finale minimale.
 - Exécution sous **utilisateur non-root** (`nextjs`, uid 1001).
 - `docker-entrypoint.sh` : applique `prisma migrate deploy` au démarrage puis lance le serveur.
-- `docker-compose.prod.yml` : app + PostgreSQL, volumes persistants `db-data` et `uploads`.
+- `docker-compose.prod.yml` : app + PostgreSQL + Caddy + sauvegardes chiffrées (image dérivée de `postgres:17-alpine` avec l'outil `openssl`), volumes persistants `db-data` et `uploads` ; variables indispensables exigées (`${VAR:?…}`).
 - `NEXT_PUBLIC_APP_URL` injectée en build-arg ; télémétrie Next désactivée.
 
 ---
@@ -229,7 +235,7 @@ src/
 
 ### 5.1 Authentification et sessions
 - Mots de passe hachés **scrypt** (better-auth), longueur 8–128.
-- **Sessions stockées en base** (jamais de JWT stateless) : révocation immédiate possible — utilisée par le bannissement et le changement de mot de passe.
+- **Sessions stockées en base** (jamais de JWT stateless) : révocation immédiate possible — utilisée par le bannissement, le changement et la réinitialisation du mot de passe (§13).
 - Vérification d'e-mail **obligatoire** avant toute session ; jetons de vérification expirant en 1 h.
 - **Rate limiting** sur tous les endpoints d'authentification (30 req/60 s).
 - Cookies de session gérés par better-auth (`httpOnly`, `sameSite`, `secure` en production).
@@ -245,18 +251,18 @@ src/
 - Slugs **générés côté serveur** (translittération, caractères sûrs `[a-z0-9-]`, unicité par suffixe) — jamais fournis par le client.
 - Markdown : HTML brut **non interprété** (§3.4) → pas de XSS stockée via les articles ; schémas d'URL exécutables **supprimés** (`rehypeSafeUrls`) ; commentaires en texte brut échappé par React.
 - Sortie RSS : échappement XML systématique. Modèles d'e-mail : titres/extraits d'article **échappés HTML** avant interpolation (§10).
-- Redirections après connexion : uniquement les chemins internes (rejet de `//` **et** `/\`, que certains navigateurs normalisent vers une autre origine) — pas d'open-redirect.
+- Redirections après connexion : uniquement les chemins internes — rejet de `//`, de `/\` et de tout caractère de contrôle (le navigateur supprime tabulations et retours à la ligne : `/\t/evil.com` deviendrait `//evil.com`), puis résolution de la cible qui doit rester sur la même origine (§13) — pas d'open-redirect.
 - Recherche : requête bornée (100 car.), paramétrée par Prisma (pas d'injection SQL).
 
 ### 5.4 Téléversements
-- Liste blanche de types MIME, taille plafonnée, noms aléatoires, stockage hors racine web, service contrôlé avec anti-traversée et `nosniff` (§3.5).
+- Liste blanche de types MIME, taille plafonnée, 40 mégapixels décodés au maximum (animation comprise, vérifiés dès l'en-tête — §13), noms aléatoires, stockage hors racine web, service contrôlé avec anti-traversée et `nosniff` (§3.5).
 
 ### 5.5 En-têtes HTTP (toutes les réponses)
 - **CSP** : `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'` (+ `unsafe-inline` script/style requis par Next — durcissement prévu en v2, cf. §7).
-- `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (caméra/micro/géoloc désactivés).
+- `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (caméra/micro/géoloc désactivés) ; pas d'en-tête `X-Powered-By` (§13).
 
 ### 5.6 Secrets et exploitation
-- Aucun secret en dur : tout provient de `.env` (exclu de git ; modèles `.example` fournis).
+- Aucun secret en dur : tout provient de `.env` (exclu de git ; modèles `.example` fournis). En production, les valeurs d'exemple et les secrets trop courts sont **refusés au démarrage** (§13).
 - Conteneur applicatif non-root ; base de données non exposée publiquement en production (réseau compose interne).
 
 ---
@@ -328,17 +334,17 @@ Objectif : faire du blog une **vitrine de bonnes pratiques de sécurité** (cré
 
 - **2FA TOTP (1.1)** : plugin `twoFactor` better-auth — enrôlement dans `/membre` (QR code généré localement via `qrcode`, codes de secours à usage unique), vérification à la connexion sur `/deux-facteurs`. **Obligatoire pour accéder à `/admin`** (admins *et* auteurs) : le layout admin bloque tant que la 2FA n'est pas activée.
 - **Passkeys (1.2)** : paquet `@better-auth/passkey` — enregistrement/suppression dans `/membre`, bouton « Se connecter avec une passkey » sur `/connexion`. Tables `TwoFactor` et `Passkey` ajoutées au schéma.
-- **Mot de passe oublié (1.3)** : `/mot-de-passe-oublie` → e-mail (lien 1 h) → `/reinitialisation?token=…`. Réponse identique que l'adresse existe ou non (pas d'énumération de comptes). Toutes les sessions sont révoquées après réinitialisation.
+- **Mot de passe oublié (1.3)** : `/mot-de-passe-oublie` → e-mail (lien 1 h) → `/reinitialisation?token=…`. Réponse identique que l'adresse existe ou non (pas d'énumération de comptes). Toutes les sessions sont révoquées après réinitialisation — effectif depuis la v2.5 seulement (`revokeSessionsOnPasswordReset`, §13) : better-auth les conservait par défaut.
 - **HIBP (1.4)** : plugin `haveIBeenPwned` — tout mot de passe présent dans une fuite connue est refusé à l'inscription, au changement et à la réinitialisation (API k-anonymity : seul un préfixe de hash sort du serveur).
 - **CSP à nonces (1.5)** : générée par requête dans `src/proxy.ts` (pattern officiel Next) : `script-src 'self' 'nonce-…' 'strict-dynamic'`, plus aucun `unsafe-inline` script. Rendu dynamique global (`force-dynamic` dans le layout racine), nonce transmis à `next-themes`. `style-src` conserve `unsafe-inline` (attributs de style Shiki, sans risque d'exécution).
 - **Journal d'audit (1.6)** : table `AuditLog` + `src/lib/audit.ts` (jamais bloquant pour l'action métier). Alimenté par les hooks base de données better-auth (inscriptions, connexions avec IP, changements de mot de passe) et par toutes les Server Actions sensibles (publication, suppression, modération, bans, rôles). Consultation paginée : `/admin/journal`.
 - **Sessions actives (1.7)** : section « Mes sessions » dans `/membre` — appareil (user-agent résumé), IP, date, révocation individuelle ou globale.
-- **CAPTCHA (1.8)** : plugin `captcha` better-auth (Cloudflare Turnstile) sur inscription/connexion/mot de passe oublié — activé seulement si `TURNSTILE_SECRET_KEY` est défini ; widget chargé sous `strict-dynamic`, iframe autorisée via `frame-src`.
+- **CAPTCHA (1.8)** : plugin `captcha` better-auth (Cloudflare Turnstile) sur inscription/connexion/mot de passe oublié et, depuis la v2.5, renvoi du lien de vérification (§13) — activé seulement si `TURNSTILE_SECRET_KEY` est défini ; widget chargé sous `strict-dynamic`, iframe autorisée via `frame-src`.
 - **Images (1.9)** : `sharp` ré-encode tout upload en WebP (max 2560 px, EXIF/GPS supprimés, fichiers polyglottes détruits, fichiers non-image rejetés).
 - **Anti-spam (1.10)** : honeypot + plafond de 3 commentaires/minute par membre ; honeypot + anti-renvoi de 10 min sur la newsletter.
 - **TLS/HSTS (1.11)** : service Caddy dans `docker-compose.prod.yml` (certificats Let's Encrypt automatiques, HSTS 2 ans, seul service exposé — l'app n'a plus de port publié).
 - **CI (1.12)** : `.github/workflows/ci.yml` (ESLint, build, `npm audit --audit-level=high`, gitleaks) + Dependabot (npm, actions, Docker).
-- **Sauvegardes (1.13)** : service compose dédié — `pg_dump` quotidien, gzip + AES-256 (`openssl enc -pbkdf2`), rotation `BACKUP_KEEP_DAYS` (14 j par défaut), volume `db-backups`.
+- **Sauvegardes (1.13)** : service compose dédié — `pg_dump` quotidien, gzip + AES-256 (`openssl enc -pbkdf2 -iter 600000` depuis la v2.5), rotation `BACKUP_KEEP_DAYS` (14 j par défaut), volume `db-backups`. Jusqu'à la v2.5, l'image `postgres:17-alpine` utilisée n'embarquait pas l'outil `openssl` : aucune sauvegarde n'était écrite (§13).
 
 ### Lecture (palier 2)
 
@@ -348,7 +354,7 @@ Objectif : faire du blog une **vitrine de bonnes pratiques de sécurité** (cré
 - **Séries (2.4)** : modèle `Series` + `seriesPosition` — CRUD admin, sélection dans le formulaire article, encart « Série » sur l'article, pages `/series` et `/series/[slug]`.
 - **Copie de code (2.5)** : bouton « Copier » injecté sur chaque bloc Shiki (composant client `CodeCopy`).
 - **RSS déclinés (2.6)** : générateur partagé `src/lib/rss.ts` → `/rss.xml`, `/categories/[slug]/rss.xml` (sous-catégories incluses), `/tags/[slug]/rss.xml`.
-- **Prévisualisation partageable (2.7)** : lien signé HMAC-SHA256 (secret serveur, expiration 72 h, comparaison à temps constant) → `/articles/apercu/[id]?jeton=…`, généré d'un clic depuis le formulaire article. `noindex`.
+- **Prévisualisation partageable (2.7)** : lien signé HMAC-SHA256 (clé dédiée dérivée du secret serveur par HKDF depuis la v2.5, expiration 72 h, comparaison à temps constant) → `/articles/apercu/[id]?jeton=…`, généré d'un clic depuis le formulaire article. `noindex`.
 
 ### Communauté (palier 3)
 
@@ -565,7 +571,7 @@ Revue de l'ensemble du code (7 octobre 2026), au-delà du dernier commit.
 | # | Correctif | Fichiers | Problème corrigé |
 |---|---|---|---|
 | 11.1.1 | **2FA vérifiée dans la couche d'accès** | `src/lib/session.ts`, `src/app/admin/layout.tsx`, `src/actions/comments.ts` | La 2FA obligatoire n'était contrôlée que dans le layout `/admin`. Or un layout n'est pas réexécuté lors des navigations client, et les Server Actions n'y passent jamais : un admin authentifié par simple mot de passe pouvait publier, bannir ou modérer. `getAdminSession`/`getStaffSession` exigent désormais `twoFactorEnabled` ; le layout garde l'invite d'activation (`requireStaffAccount`). |
-| 11.1.2 | **2FA sur les endpoints du plugin admin** | `src/lib/auth.ts` | `/api/auth/admin/*` (rôles, bans, usurpation) restait appelable sans 2FA : hook `before` better-auth. |
+| 11.1.2 | **2FA sur les endpoints du plugin admin** | `src/lib/auth.ts` | `/api/auth/admin/*` (rôles, bans, usurpation) restait appelable sans 2FA : hook `before` better-auth. *Remplacé en v2.5 par la fermeture complète de cette API (§13).* |
 | 11.1.3 | **Validation serveur de l'inscription et du profil** | `src/lib/auth.ts` | Le nom (2–50 car.) n'était validé que côté client ; `/update-user` acceptait une URL `image` arbitraire (pixel de pistage). |
 | 11.1.4 | **Brouillons cloisonnés entre auteurs** | `src/app/[locale]/articles/[slug]/page.tsx` | Un auteur pouvait lire les brouillons des autres auteurs via l'URL publique. |
 | 11.1.5 | **Jetons de session non exposés** | `src/actions/sessions.ts`, page `/membre` | « Mes sessions » envoyait au navigateur les jetons de toutes les sessions ; la révocation se fait désormais par identifiant. |
@@ -646,3 +652,41 @@ Mise en œuvre des recommandations de la revue v2.3 (7 octobre 2026).
 | Bout en bout (`npm run test:e2e`, 22 parcours) | Playwright | CSP à nonce et en-têtes, langues et redirections, gardes d'accès, validation serveur de l'inscription, absence de session avant vérification, audit des échecs, appareil inconnu, 2FA (codes TOTP calculés) avec retour à la page demandée, alertes mot de passe/2FA, commentaires/signets/signalements, jetons de session non exposés, export et suppression RGPD, double opt-in résistant aux scanners, désabonnement RFC 8058, 2FA exigée sur pages admin profondes et API admin, cloisonnement des brouillons, soumission auteur, publication programmée par la tâche de fond |
 
 Exécutés en CI (job `e2e` avec service PostgreSQL). Chaque parcours crée ses comptes et simule un client distinct (`X-Forwarded-For`) pour ne pas buter sur le limiteur de débit de l'authentification.
+
+---
+
+## 13. Revue de sécurité globale — CyberSphere v2.5
+
+Revue de sécurité de l'ensemble du code (7 octobre 2026), au-delà du dernier commit : aucune faille critique ni élevée ; deux problèmes de sévérité moyenne et une série de durcissements, tous corrigés. Aucune nouvelle dépendance, aucune migration de schéma.
+
+### 13.1 Correctifs
+
+| # | Sévérité | Correctif | Fichiers | Problème corrigé |
+|---|---|---|---|---|
+| 13.1.1 | Moyenne | **Open-redirect par caractère de contrôle** | `src/lib/redirect.ts` | `?redirection=/%09/evil.com` passait la validation : le navigateur supprime la tabulation, obtient `//evil.com`, et `router.push` quittait le site après la connexion (ou l'étape 2FA) — hameçonnage idéal. Caractères de contrôle et `\` refusés partout, cible résolue puis comparée à l'origine. |
+| 13.1.2 | Moyenne | **Sessions révoquées à la réinitialisation** | `src/lib/auth.ts` | better-auth conserve par défaut les sessions après « mot de passe oublié » : le geste conseillé par les alertes de sécurité ne délogeait pas un attaquant, alors que le §8 et l'interface annonçaient le contraire. `revokeSessionsOnPasswordReset: true`. |
+| 13.1.3 | Faible | **Ajout de passkey : session de moins de 15 min** | `src/lib/auth.ts`, `src/components/membre/passkey-manager.tsx` | Une session volée de moins de 24 h suffisait pour enregistrer une passkey (connexion sans mot de passe ni 2FA, qui survit à une réinitialisation). `session.freshAge` : 15 min, message de reconnexion dédié. |
+| 13.1.4 | Faible | **API HTTP du plugin admin fermée** | `src/lib/auth.ts`, `src/lib/auth-client.ts` | Les 15 endpoints `/api/auth/admin/*` (`set-role`, `set-user-password`, `impersonate-user`, `create-user`…), inutilisés par l'interface, contournaient les règles de `actions/members.ts` et le journal d'audit : une session admin compromise pouvait créer un autre admin sans trace. Hook `before` → 403 (remplace le §11.1.2). |
+| 13.1.5 | Faible | **Secrets d'exemple refusés** | `src/lib/config-check.ts`, `src/instrumentation.ts`, `docker-compose.prod.yml`, `.env*.example` | better-auth ne fait qu'avertir pour un secret faible ; or un secret connu rend forgeables les liens de vérification d'e-mail et d'aperçu. Le serveur de production s'arrête si `BETTER_AUTH_SECRET` fait moins de 32 caractères ou vaut l'exemple, ou si `DATABASE_URL` contient le mot de passe d'exemple ; compose exige `BETTER_AUTH_SECRET`, `POSTGRES_PASSWORD`, `NEXT_PUBLIC_APP_URL`, `SITE_DOMAIN` et `BACKUP_PASSPHRASE`. |
+| 13.1.6 | Faible | **Jetons newsletter hors Server Actions** | `src/lib/newsletter.ts`, `src/actions/newsletter.ts` | Exportées d'un fichier `"use server"`, `confirmNewsletter` et `unsubscribeNewsletter` étaient des actions publiques : un objet `{ not: "" }` en guise de jeton aurait vidé la liste (`deleteMany`). Déplacées dans `lib/`, jeton exigé de type chaîne. Non exploitable en l'état (identifiant d'action jamais exposé au client), fermé par principe. |
+| 13.1.7 | Faible | **Bombe de décompression** | `src/lib/uploads.ts`, `src/actions/profile.ts` | Un PNG de 65 octets peut annoncer 16 000 × 16 000 px (~1 Go à décoder), sous la limite par défaut de sharp (268 Mpx). `limitInputPixels` à 40 Mpx, animation comprise, vérifié dès l'en-tête ; 10 avatars par heure et par membre. |
+| 13.1.8 | Faible | **Article programmé protégé de son auteur** | `src/actions/articles.ts` | `deleteArticle` ne bloquait que `PUBLISHED` pour un auteur, alors que `saveArticle` réserve aussi `SCHEDULED` aux admins. |
+| 13.1.9 | Faible | **Plafond d'e-mails d'authentification** | `src/lib/auth.ts`, `src/components/auth/login-form.tsx` | Le renvoi du lien de vérification (`/send-verification-email`, public) échappait au CAPTCHA, et le rate limiting de better-auth est par IP : une adresse pouvait être bombardée. CAPTCHA étendu à cet endpoint ; 5 e-mails de vérification et 5 de réinitialisation par heure et par destinataire. |
+| 13.1.10 | Faible | **Référents plafonnés** | `src/lib/stats.ts`, page article | Chaque `Referer` inédit (donnée client) créait une ligne, sans limite. Désormais : 500 nouveaux hôtes par jour, 5 par visiteur (IP utilisée en mémoire seulement, jamais stockée), format d'hôte validé. |
+| 13.1.11 | Faible | **Base de développement en local seulement** | `docker-compose.yml`, `.env.example` | Port publié sur toutes les interfaces (Docker contourne le pare-feu) → `127.0.0.1`. |
+
+### 13.2 Durcissements complémentaires
+
+- **Sauvegardes** : image dérivée installant `openssl` — absent de `postgres:17-alpine`, il faisait échouer chaque sauvegarde : aucune n'avait jamais été écrite ; PBKDF2 à 600 000 itérations (10 000 par défaut) ; `pipefail`, pour qu'un `pg_dump` en échec ne passe plus pour une réussite ; passphrase d'exemple ou de moins de 16 caractères refusée. Restauration : ajouter `-iter 600000`.
+- **Aperçus** : clé HMAC dérivée par HKDF (séparation des usages avec better-auth) ; `?jeton=` répété refusé sans erreur 500. Les liens émis avant la v2.5 deviennent invalides.
+- **Brouillons sur l'URL publique** : 2FA et compte non banni exigés (`getStaffSession`), comme pour toute l'administration.
+- **IP client** : dernier maillon de `X-Forwarded-For` (celui posé par le proxy), cohérent avec better-auth.
+- **Pré-traduction IA** : 10 appels par heure et par membre du staff (coût de l'API).
+- **Seed** : refus de promouvoir administrateur un compte existant non vérifié ; comptes de démonstration réservés aux instances locales (`NODE_ENV` seul ne protégeait pas d'un seed lancé à la main contre la base de production).
+- **En-têtes** : `poweredByHeader: false`.
+- **Dépendances** : `npm audit --omit=dev` : 0 vulnérabilité. Les 7 alertes restantes concernent des outils de développement (chaîne `eslint-config-next`, `@tailwindcss/typography`) sans correctif non régressif.
+- **Non traité** : révocation individuelle d'un lien d'aperçu avant ses 72 h (nécessiterait un jeton stocké par article, donc une migration).
+
+### 13.3 Vérifications effectuées (v2.5)
+
+`tsc --noEmit`, ESLint et build de production sans erreur ; **80 tests unitaires** (48 en v2.4 : open-redirect par caractère de contrôle, PNG de 65 octets annonçant 16 000 × 16 000 px rejeté dès l'en-tête, contrôle de configuration, en-tête Referer, jetons newsletter non textuels, clé d'aperçu dédiée) ; **22 parcours de bout en bout** au vert, dont l'API admin refusée même avec 2FA et la suppression refusée d'un article programmé par son auteur. Serveur de production : arrêt immédiat avec un secret d'exemple, démarrage normal avec un secret aléatoire, sans `X-Powered-By`. Manifeste du build : `confirmNewsletter` et `unsubscribeNewsletter` ne sont plus des Server Actions. Compose : refus en l'absence de `BETTER_AUTH_SECRET` ; garde-fou de passphrase et `pipefail` testés sous BusyBox ; image de sauvegarde construite, aller-retour chiffrement/déchiffrement à 600 000 itérations validé (échec attendu sans `-iter`).

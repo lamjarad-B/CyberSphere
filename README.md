@@ -34,8 +34,9 @@ npm run dev
 
 > Port 5433 déjà pris par un autre projet ? Lancez la base sur un autre port
 > (`POSTGRES_PORT=5436 docker compose up -d`) et reportez-le dans
-> `DATABASE_URL`. Sous Windows, préférez `127.0.0.1` à `localhost` dans
-> `DATABASE_URL` : le relais IPv6 de Docker Desktop est parfois instable.
+> `DATABASE_URL`. La base n'écoute que sur `127.0.0.1` (jamais sur le réseau
+> local) : utilisez `127.0.0.1` et non `localhost` dans `DATABASE_URL`, qui
+> peut se résoudre en IPv6 (`::1`).
 
 Le site est disponible sur **http://localhost:3001** (port fixé dans le script
 `dev`). Cette URL doit correspondre à `BETTER_AUTH_URL` et `NEXT_PUBLIC_APP_URL`
@@ -53,6 +54,11 @@ connexion (origine non approuvée).
 - **Membre** : `membre@cybersphere.test` / `cybersphere-demo-2026`
 - **Auteur** : `auteur@cybersphere.test` / `cybersphere-auteur-2026` — rédige des
   brouillons et les soumet à validation ; seul un admin publie.
+
+> Leurs mots de passe étant publics, ces deux comptes ne sont créés que pour une
+> instance locale (`NEXT_PUBLIC_APP_URL` en `http://localhost…` ou
+> `http://127.0.0.1…`, hors `NODE_ENV=production`) — jamais par un seed lancé
+> contre la base de production. `SEED_DEMO=1` force leur création (base jetable).
 
 > Base créée avant la v2 ? L'ancien membre démo garde son mot de passe
 > d'origine (`membre1234`).
@@ -82,18 +88,31 @@ connexion (origine non approuvée).
 - **Authentification** : scrypt + vérification e-mail obligatoire, réinitialisation
   de mot de passe par e-mail, refus des mots de passe compromis (HIBP,
   k-anonymity), 2FA TOTP + codes de secours (**imposée aux admins/auteurs**),
-  passkeys WebAuthn, CAPTCHA Cloudflare Turnstile (si configuré), rate limiting.
+  passkeys WebAuthn (ajout réservé à une connexion de moins de 15 min),
+  CAPTCHA Cloudflare Turnstile (si configuré), rate limiting par IP et plafond
+  d'e-mails d'authentification par destinataire (5/h), redirection après
+  connexion limitée aux chemins internes (caractères de contrôle refusés).
 - **Sessions** en base révocables : page « Mes sessions » (révocation individuelle),
-  révocation totale au changement de mot de passe et au bannissement.
+  révocation totale au changement **et à la réinitialisation** du mot de passe,
+  ainsi qu'au bannissement.
 - **CSP stricte à nonces** (`proxy.ts`) : pas d'`unsafe-inline` sur les scripts,
   `strict-dynamic`, rendu dynamique global.
 - **Défense en profondeur** : proxy → layouts → chaque page et Server Action
   revérifie session, rôle **et 2FA du staff** (`lib/session.ts`) ; validation
-  Zod partout ; Markdown sans HTML brut.
+  Zod partout ; Markdown sans HTML brut. L'API HTTP du plugin admin de
+  better-auth (`/api/auth/admin/*`) est **fermée** : rôles et bannissements
+  passent par les Server Actions, qui appliquent les règles métier et
+  alimentent le journal d'audit.
+- **Configuration** : en production, le serveur **refuse de démarrer** avec un
+  `BETTER_AUTH_SECRET` d'exemple ou de moins de 32 caractères (ou le mot de
+  passe de base d'exemple) ; `docker-compose.prod.yml` exige les variables
+  indispensables.
 - **Alertes de sécurité par e-mail** : connexion depuis un appareil inconnu,
   mot de passe modifié, 2FA désactivée, passkey ajoutée.
 - **Uploads** : ré-encodage sharp en WebP (EXIF supprimés, fichiers polyglottes
-  neutralisés), noms aléatoires, service anti-traversée + `nosniff`.
+  neutralisés), 40 mégapixels maximum vérifiés dès l'en-tête (anti « bombe de
+  décompression »), 10 avatars/h par membre, noms aléatoires, service
+  anti-traversée + `nosniff`.
 - **Journal d'audit** (`/admin/journal`) : connexions (réussies et échouées),
   2FA, changements de mot de passe, publications, bans, promotions, exports et
   suppressions de comptes… avec IP.
@@ -135,15 +154,17 @@ serveur. En production, renseignez les variables `SMTP_*`.
 ## CAPTCHA Turnstile (optionnel)
 
 Renseignez `NEXT_PUBLIC_TURNSTILE_SITE_KEY` et `TURNSTILE_SECRET_KEY` (créés sur
-le dashboard Cloudflare) pour protéger inscription, connexion et « mot de passe
-oublié ». Vide = désactivé.
+le dashboard Cloudflare) pour protéger inscription, connexion, « mot de passe
+oublié » et renvoi du lien de vérification. Vide = désactivé.
 
 ## Déploiement Docker (production)
 
 `docker-compose.prod.yml` orchestre **Caddy** (TLS automatique Let's Encrypt +
 HSTS, seul service exposé), l'application (image standalone non-root, migrations
 auto au démarrage), PostgreSQL et un service de **sauvegardes quotidiennes
-chiffrées** (pg_dump + AES-256, rotation `BACKUP_KEEP_DAYS`).
+chiffrées** (pg_dump + AES-256, clé dérivée par PBKDF2 à 600 000 itérations,
+rotation `BACKUP_KEEP_DAYS`). Le service de sauvegarde refuse une
+`BACKUP_PASSPHRASE` d'exemple ou de moins de 16 caractères.
 
 ```bash
 cp .env.production.example .env.production   # puis renseigner les secrets
@@ -153,9 +174,14 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d --bui
 Restaurer une sauvegarde :
 
 ```bash
-openssl enc -d -aes-256-cbc -pbkdf2 -pass env:BACKUP_PASSPHRASE \
+openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:BACKUP_PASSPHRASE \
   -in cybersphere_YYYY-MM-DD.sql.gz.enc | gunzip | psql "$DATABASE_URL"
 ```
+
+> Sauvegardes antérieures à la v2.5 : omettre `-iter 600000`. En pratique,
+> aucune n'avait pu être écrite — l'image `postgres:17-alpine` ne contient pas
+> l'outil `openssl` ; le service utilise désormais une image dérivée qui
+> l'installe.
 
 Volumes persistants : `db-data`, `db-backups`, `uploads`, `caddy-data`.
 
@@ -169,9 +195,11 @@ build, tests de bout en bout Playwright (avec un service PostgreSQL),
 ## Tests
 
 - **Unitaires** (`npm test`, Vitest — `tests/unit/`) : assainissement des URL
-  Markdown, liens d'aperçu signés, anti open-redirect, limiteur de débit,
-  anti-traversée des uploads, échappement des e-mails, sommaire, slugs, langues.
-  Aucune base nécessaire.
+  Markdown, liens d'aperçu signés (clé dédiée), anti open-redirect (caractères
+  de contrôle compris), limiteur de débit, anti-traversée des uploads, bombe de
+  décompression, contrôle de configuration de production, en-tête Referer,
+  jetons newsletter non textuels, échappement des e-mails, sommaire, slugs,
+  langues. Aucune base nécessaire.
 - **De bout en bout** (`npm run test:e2e`, Playwright — `tests/e2e/`) :
   en-têtes de sécurité, gardes d'accès, inscription, 2FA (codes TOTP calculés),
   alertes, commentaires/signalements, export et suppression RGPD, newsletter
