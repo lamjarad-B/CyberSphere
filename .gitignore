@@ -48,3 +48,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# tests de bout en bout (Playwright)
+/test-results/
+/playwright-report/
+/blob-report/

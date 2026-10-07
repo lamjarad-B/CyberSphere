@@ -29,6 +29,9 @@ jobs:
       - name: ESLint
         run: npm run lint
 
+      - name: Tests unitaires
+        run: npm test
+
       - name: Build de production
         run: npm run build
         env:
@@ -37,6 +40,58 @@ jobs:
           BETTER_AUTH_SECRET: ci-secret-inutilisable-en-production
           BETTER_AUTH_URL: http://localhost:3000
           NEXT_PUBLIC_APP_URL: http://localhost:3000
+
+  e2e:
+    name: Tests de bout en bout (Playwright)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: cybersphere
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d cybersphere"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/cybersphere
+      BETTER_AUTH_SECRET: ci-secret-e2e-inutilisable-en-production
+      BETTER_AUTH_URL: http://localhost:3001
+      NEXT_PUBLIC_APP_URL: http://localhost:3001
+      ADMIN_EMAIL: admin@cybersphere.test
+      # Pas de DISABLE_SCHEDULER : un parcours vérifie la publication programmée
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Base de test (migrations + seed)
+        run: |
+          npx prisma migrate deploy
+          # Mot de passe admin aléatoire : jamais présent dans Have I Been Pwned
+          ADMIN_PASSWORD="$(openssl rand -base64 24)" npm run db:seed
+
+      - name: Installer Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Parcours de bout en bout
+        run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
 
   audit:
     name: Audit des dépendances
