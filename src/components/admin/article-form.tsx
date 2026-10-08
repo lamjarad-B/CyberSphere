@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { getPreviewLink, previewMarkdown, saveArticle } from "@/actions/articles";
 import { pretranslateArticle } from "@/actions/translate";
+import { ARTICLE_KINDS, kindLabel, type ArticleKindValue } from "@/lib/articles";
 import {
   buttonClass,
   buttonGhostClass,
@@ -23,6 +24,9 @@ export type ArticleFormData = {
   content: string;
   coverImage: string | null;
   categoryId: string;
+  kind: ArticleKindValue;
+  keyPoints: string;
+  keyPointsEn: string;
   status: "DRAFT" | "SUBMITTED" | "SCHEDULED" | "PUBLISHED";
   /** Date de publication (prévue si SCHEDULED), ISO */
   publishedAt: string | null;
@@ -56,6 +60,12 @@ const toolbar: { label: string; title: string; before: string; after: string }[]
     after: "\n```\n",
   },
   { label: "🔗", title: "Lien", before: "[", after: "](https://)" },
+  {
+    label: "[^1]",
+    title: "Source — appel de note ; la référence se rédige en fin d'article : [^1]: Auteur, « Titre », date, https://…",
+    before: "[^1]",
+    after: "",
+  },
   { label: "• —", title: "Liste", before: "\n- ", after: "" },
   { label: "❝", title: "Citation", before: "\n> ", after: "" },
 ];
@@ -90,6 +100,7 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
   const [titleEn, setTitleEn] = useState(article?.titleEn ?? "");
   const [excerptEn, setExcerptEn] = useState(article?.excerptEn ?? "");
   const [contentEn, setContentEn] = useState(article?.contentEn ?? "");
+  const [keyPointsEn, setKeyPointsEn] = useState(article?.keyPointsEn ?? "");
   const [translateMsg, setTranslateMsg] = useState<{
     text: string;
     isError: boolean;
@@ -141,6 +152,7 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
     const fields = new FormData(form);
     const title = String(fields.get("title") ?? "").trim();
     const excerpt = String(fields.get("excerpt") ?? "").trim();
+    const keyPoints = String(fields.get("keyPoints") ?? "").trim();
     if (!title || !excerpt || !content.trim()) {
       setTranslateMsg({
         text: "Remplissez d'abord le titre, l'extrait et le contenu français.",
@@ -156,13 +168,14 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
     }
     setTranslateMsg(null);
     startTranslating(async () => {
-      const result = await pretranslateArticle({ title, excerpt, content });
+      const result = await pretranslateArticle({ title, excerpt, keyPoints, content });
       if (!result.ok) {
         setTranslateMsg({ text: result.error, isError: true });
         return;
       }
       setTitleEn(result.titleEn);
       setExcerptEn(result.excerptEn);
+      setKeyPointsEn(result.keyPointsEn);
       setContentEn(result.contentEn);
       setTranslateMsg({
         text: "Brouillon généré — relisez et corrigez avant d'enregistrer.",
@@ -230,6 +243,23 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
           </div>
 
           <div>
+            <label htmlFor="keyPoints" className={labelClass}>
+              Points clés{" "}
+              <span className="font-normal text-muted">
+                (facultatif — un point par ligne, encadré en tête d&apos;article)
+              </span>
+            </label>
+            <textarea
+              id="keyPoints"
+              name="keyPoints"
+              maxLength={2000}
+              defaultValue={article?.keyPoints}
+              placeholder={"Le ransomware s'est industrialisé autour d'un modèle d'affiliation.\nLes rançons payées reculent, mais les attaques augmentent."}
+              className={`${inputClass} min-h-24 resize-y`}
+            />
+          </div>
+
+          <div>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <span className={`${labelClass} mb-0`}>Contenu (Markdown)</span>
               <div className="flex rounded-md border border-border p-0.5">
@@ -275,8 +305,13 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                 onChange={(e) => setContent(e.target.value)}
                 spellCheck={false}
                 className={`${inputClass} min-h-[28rem] resize-y rounded-t-none font-mono text-[13px] leading-relaxed`}
-                placeholder={"## Introduction\n\nVotre article en **Markdown**…\n\n```bash\nnmap -sV cible.local\n```"}
+                placeholder={"## Introduction\n\nVotre article en **Markdown**…\n\nUne affirmation sourcée[^1].\n\n[^1]: ANSSI, « Panorama de la cybermenace », 2025, https://cyber.gouv.fr"}
               />
+              <p className="mt-1 text-xs text-muted">
+                Sources : appel de note <code>[^1]</code> dans le texte, puis{" "}
+                <code>[^1]: Auteur, « Titre », date, URL</code> en fin d&apos;article — elles
+                apparaissent dans la section « Sources et notes ».
+              </p>
             </div>
 
             {tab === "preview" && (
@@ -357,6 +392,20 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                 />
               </div>
               <div>
+                <label htmlFor="keyPointsEn" className={labelClass}>
+                  Points clés (EN){" "}
+                  <span className="font-normal text-muted">(facultatif, un point par ligne)</span>
+                </label>
+                <textarea
+                  id="keyPointsEn"
+                  name="keyPointsEn"
+                  maxLength={2000}
+                  value={keyPointsEn}
+                  onChange={(e) => setKeyPointsEn(e.target.value)}
+                  className={`${inputClass} min-h-24 resize-y`}
+                />
+              </div>
+              <div>
                 <label htmlFor="contentEn" className={labelClass}>
                   Contenu (EN, Markdown)
                 </label>
@@ -415,6 +464,24 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                   </p>
                 </div>
               )}
+            </div>
+
+            <div>
+              <label htmlFor="kind" className={labelClass}>
+                Type d&apos;article
+              </label>
+              <select
+                id="kind"
+                name="kind"
+                defaultValue={article?.kind ?? "ANALYSIS"}
+                className={inputClass}
+              >
+                {ARTICLE_KINDS.map((kind) => (
+                  <option key={kind} value={kind}>
+                    {kindLabel(kind, "fr")}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -484,7 +551,7 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                 name="tags"
                 type="text"
                 defaultValue={article?.tags}
-                placeholder="pentest, linux, owasp"
+                placeholder="ransomware, nis2, géopolitique"
                 className={inputClass}
               />
             </div>

@@ -62,7 +62,7 @@ export function SeriesForm({ series }: SeriesFormProps) {
           type="text"
           required
           defaultValue={series?.title}
-          placeholder="Ex. : Pentest web de A à Z"
+          placeholder="Ex. : Comprendre NIS2"
           className={inputClass}
         />
       </div>
@@ -93,7 +93,7 @@ export function SeriesForm({ series }: SeriesFormProps) {
           type="text"
           maxLength={120}
           defaultValue={series?.titleEn}
-          placeholder="E.g.: Web pentesting from A to Z"
+          placeholder="E.g.: Understanding NIS2"
           className={inputClass}
         />
       </div>

@@ -10,8 +10,8 @@ export async function GET(
     title: "CyberSphere",
     description:
       locale === "en"
-        ? "Cybersecurity articles, analyses and tutorials."
-        : "Articles, analyses et tutoriels de cybersécurité.",
+        ? "Cybersecurity analysis and explainers."
+        : "Analyses et décryptages de la cybersécurité.",
     path: localeHref(locale, "/rss.xml"),
     locale,
   });

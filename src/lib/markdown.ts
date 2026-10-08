@@ -6,6 +6,7 @@ import rehypeSlug from "rehype-slug";
 import rehypePrettyCode from "rehype-pretty-code";
 import rehypeStringify from "rehype-stringify";
 import GithubSlugger from "github-slugger";
+import type { Locale } from "./i18n";
 
 type HastNode = {
   type: string;
@@ -48,23 +49,40 @@ function rehypeSafeUrls() {
   return (tree: HastNode) => sanitizeUrls(tree);
 }
 
+// Les notes de bas de page GFM (`[^1]`) servent à citer les sources : la
+// section générée en fin d'article porte un libellé propre à chaque langue.
+const footnoteLabels: Record<Locale, { label: string; backLabel: string }> = {
+  fr: { label: "Sources et notes", backLabel: "Retour au texte" },
+  en: { label: "Sources & notes", backLabel: "Back to content" },
+};
+
 // remark-rehype sans `allowDangerousHtml` : le HTML brut écrit dans le
 // Markdown est ignoré, ce qui neutralise toute injection de script.
-const processor = unified()
-  .use(remarkParse)
-  .use(remarkGfm)
-  .use(remarkRehype)
-  .use(rehypeSlug)
-  .use(rehypePrettyCode, {
-    theme: "github-dark-default",
-    keepBackground: true,
-    defaultLang: "text",
-  })
-  .use(rehypeSafeUrls)
-  .use(rehypeStringify);
+function createProcessor(locale: Locale) {
+  const { label, backLabel } = footnoteLabels[locale];
+  return unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkRehype, {
+      footnoteLabel: label,
+      footnoteBackLabel: backLabel,
+      // Titre visible (remark-rehype le masque par défaut avec `sr-only`)
+      footnoteLabelProperties: { className: ["footnotes-title"] },
+    })
+    .use(rehypeSlug)
+    .use(rehypePrettyCode, {
+      theme: "github-dark-default",
+      keepBackground: true,
+      defaultLang: "text",
+    })
+    .use(rehypeSafeUrls)
+    .use(rehypeStringify);
+}
 
-export async function renderMarkdown(markdown: string): Promise<string> {
-  const file = await processor.process(markdown);
+const processors = { fr: createProcessor("fr"), en: createProcessor("en") };
+
+export async function renderMarkdown(markdown: string, locale: Locale = "fr"): Promise<string> {
+  const file = await processors[locale].process(markdown);
   return String(file);
 }
 

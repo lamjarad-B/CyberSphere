@@ -122,6 +122,16 @@ enum ArticleStatus {
   PUBLISHED
 }
 
+// Nature éditoriale d'un article. Le blog est d'abord un blog d'analyse :
+// ANALYSIS par défaut, TUTORIAL pour les articles techniques occasionnels.
+enum ArticleKind {
+  ANALYSIS
+  EXPLAINER
+  OPINION
+  BRIEF
+  TUTORIAL
+}
+
 model Category {
   id          String     @id @default(cuid())
   name        String
@@ -143,6 +153,9 @@ model Article {
   slug           String                @unique
   excerpt        String
   content        String
+  kind           ArticleKind           @default(ANALYSIS)
+  // Encadré « Points clés » : un point par ligne, texte brut
+  keyPoints      String?
   coverImage     String?
   // Texte alternatif de la couverture (accessibilité)
   coverAlt       String?
@@ -168,6 +181,7 @@ model Article {
   updatedAt      DateTime              @updatedAt
 
   @@index([status, publishedAt])
+  @@index([kind])
   @@index([categoryId])
   @@index([seriesId])
   @@index([search], type: Gin)
@@ -197,6 +211,7 @@ model ArticleTranslation {
   title     String
   excerpt   String
   content   String
+  keyPoints String?
   coverAlt  String?
   // Vecteur de recherche anglais, entretenu par trigger (migration SQL)
   search    Unsupported("tsvector")?

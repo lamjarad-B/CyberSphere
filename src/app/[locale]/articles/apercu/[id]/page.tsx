@@ -5,7 +5,9 @@ import { verifyPreviewToken } from "@/lib/draft-preview";
 import { renderMarkdown } from "@/lib/markdown";
 import { formatDate } from "@/lib/format";
 import { toLocale } from "@/lib/i18n";
+import { kindLabel } from "@/lib/articles";
 import { CodeCopy } from "@/components/code-copy";
+import { KeyPoints } from "@/components/key-points";
 
 const copy = {
   fr: {
@@ -51,7 +53,7 @@ export default async function ApercuPage({ params, searchParams }: Props) {
       tags: { orderBy: { name: "asc" } },
       translations: {
         where: { locale: "en" },
-        select: { title: true, excerpt: true, content: true },
+        select: { title: true, excerpt: true, content: true, keyPoints: true },
       },
     },
   });
@@ -59,7 +61,10 @@ export default async function ApercuPage({ params, searchParams }: Props) {
 
   // En /en, la prévisualisation montre la traduction si elle existe
   const translation = locale === "en" ? article.translations[0] : undefined;
-  const html = await renderMarkdown(translation?.content ?? article.content);
+  const html = await renderMarkdown(
+    translation?.content ?? article.content,
+    translation ? "en" : "fr",
+  );
 
   return (
     <article className="mx-auto max-w-3xl space-y-8">
@@ -69,6 +74,9 @@ export default async function ApercuPage({ params, searchParams }: Props) {
 
       <header className="space-y-4">
         <p className="font-mono text-sm text-muted">
+          <span className="mr-3 rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-accent-contrast">
+            {kindLabel(article.kind, locale)}
+          </span>
           {locale === "en" && article.category.nameEn
             ? article.category.nameEn
             : article.category.name}
@@ -82,6 +90,8 @@ export default async function ApercuPage({ params, searchParams }: Props) {
           {article.publishedAt ? ` · ${formatDate(article.publishedAt, locale)}` : null}
         </p>
       </header>
+
+      <KeyPoints raw={translation ? translation.keyPoints : article.keyPoints} locale={locale} />
 
       {article.coverImage && (
         // eslint-disable-next-line @next/next/no-img-element

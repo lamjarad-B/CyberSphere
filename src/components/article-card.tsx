@@ -8,6 +8,8 @@ export type ArticleCardData = {
   slug: string;
   title: string;
   excerpt: string;
+  /** Libellé du type d'article, déjà localisé (« Analyse », « Tutoriel »…) */
+  kind: string;
   coverImage: string | null;
   publishedAt: Date | null;
   category: { name: string; slug: string };
@@ -54,12 +56,17 @@ export function ArticleCard({
         )}
       </Link>
       <div className="flex flex-1 flex-col gap-3 p-5">
-        <Link
-          href={localeHref(locale, `/categories/${article.category.slug}`)}
-          className="w-fit rounded-full border border-accent/40 px-2.5 py-0.5 font-mono text-xs text-accent transition-colors hover:bg-accent/10"
-        >
-          {article.category.name}
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+            {article.kind}
+          </span>
+          <Link
+            href={localeHref(locale, `/categories/${article.category.slug}`)}
+            className="w-fit rounded-full border border-accent/40 px-2.5 py-0.5 font-mono text-xs text-accent transition-colors hover:bg-accent/10"
+          >
+            {article.category.name}
+          </Link>
+        </div>
         <h3 className="text-lg font-semibold leading-snug">
           <Link
             href={localeHref(locale, `/articles/${article.slug}`)}

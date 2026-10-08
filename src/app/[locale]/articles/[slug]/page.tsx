@@ -9,10 +9,11 @@ import { extractToc, readingTimeMinutes, renderMarkdown } from "@/lib/markdown";
 import { externalReferrerHost, recordArticleView } from "@/lib/stats";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { localeHref, toLocale, type Locale } from "@/lib/i18n";
-import { articleCardSelect, categoryLabel, localizeCard } from "@/lib/articles";
+import { articleCardSelect, categoryLabel, kindLabel, localizeCard } from "@/lib/articles";
 import { ArticleCard } from "@/components/article-card";
 import { ArticleActions } from "@/components/article-actions";
 import { CodeCopy } from "@/components/code-copy";
+import { KeyPoints } from "@/components/key-points";
 import { cardClass } from "@/components/ui";
 import {
   CommentSection,
@@ -119,7 +120,7 @@ export default async function ArticlePage({ params }: Props) {
         tags: { orderBy: { name: "asc" } },
         translations: {
           where: { locale: "en" },
-          select: { title: true, excerpt: true, content: true, coverAlt: true },
+          select: { title: true, excerpt: true, content: true, keyPoints: true, coverAlt: true },
         },
         series: {
           select: {
@@ -180,10 +181,12 @@ export default async function ArticlePage({ params }: Props) {
   const excerpt = translation?.excerpt ?? article.excerpt;
   const content = translation?.content ?? article.content;
   const coverAlt = (translation ? translation.coverAlt : article.coverAlt) ?? "";
+  const keyPoints = translation ? translation.keyPoints : article.keyPoints;
 
   const [html, rawComments, viewerReaction, viewerBookmark, similar] =
     await Promise.all([
-      renderMarkdown(content),
+      // Libellé des sources dans la langue du texte affiché (repli : français)
+      renderMarkdown(content, translation ? "en" : "fr"),
       db.comment.findMany({
         where: { articleId: article.id, parentId: null },
         orderBy: { createdAt: "desc" },
@@ -306,6 +309,12 @@ export default async function ArticlePage({ params }: Props) {
 
       <header className="space-y-4">
         <p className="font-mono text-sm text-muted">
+          <Link
+            href={localeHref(locale, `/articles?type=${article.kind.toLowerCase()}`)}
+            className="mr-3 rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-accent-contrast"
+          >
+            {kindLabel(article.kind, locale)}
+          </Link>
           <Link href={localeHref(locale, "/")} className="hover:text-accent">
             {t.home}
           </Link>
@@ -368,6 +377,8 @@ export default async function ArticlePage({ params }: Props) {
           </div>
         )}
       </header>
+
+      <KeyPoints raw={keyPoints} locale={locale} />
 
       {article.series && article.series.articles.length > 1 && (
         <aside className={`${cardClass} space-y-2 p-5`} aria-label={t.seriesAria}>

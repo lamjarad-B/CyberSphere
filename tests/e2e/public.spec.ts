@@ -1,4 +1,4 @@
-import { expect, test, publishedArticle } from "./helpers";
+import { db, expect, test, publishedArticle, uid } from "./helpers";
 
 test.describe("Site public", () => {
   test("pages principales en 200, avec CSP stricte à nonce", async ({ request }) => {
@@ -32,6 +32,46 @@ test.describe("Site public", () => {
     await page.goto(`/en/articles/${article.slug}`);
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.locator("h1")).toBeVisible();
+  });
+
+  test("format analytique : type, points clés, sources et filtre", async ({ page }) => {
+    const source = await db.article.findFirstOrThrow({
+      where: { status: "PUBLISHED" },
+      select: { authorId: true, categoryId: true },
+    });
+    const slug = `analyse-e2e-${uid()}`;
+    const title = `Analyse e2e ${slug}`;
+    await db.article.create({
+      data: {
+        title,
+        slug,
+        excerpt: "Article créé par le test du format analytique.",
+        content: "## Contexte\n\nUne affirmation sourcée[^1].\n\n[^1]: ANSSI, « Panorama », https://cyber.gouv.fr",
+        kind: "ANALYSIS",
+        keyPoints: "Premier point clé\nSecond point clé",
+        status: "PUBLISHED",
+        publishedAt: new Date(),
+        authorId: source.authorId,
+        categoryId: source.categoryId,
+      },
+    });
+    try {
+      await page.goto(`/articles/${slug}`);
+      await expect(page.getByRole("link", { name: "Analyse", exact: true })).toBeVisible();
+      const keyPoints = page.getByRole("complementary", { name: "Points clés" });
+      await expect(keyPoints.getByRole("listitem")).toHaveText([
+        "Premier point clé",
+        "Second point clé",
+      ]);
+      await expect(page.getByRole("heading", { name: "Sources et notes" })).toBeVisible();
+
+      await page.goto("/articles?type=analysis");
+      await expect(page.getByRole("link", { name: title })).toBeVisible();
+      await page.goto("/articles?type=tutorial");
+      await expect(page.getByRole("link", { name: title })).toHaveCount(0);
+    } finally {
+      await db.article.delete({ where: { slug } });
+    }
   });
 
   test("espaces protégés redirigés vers la connexion", async ({ request }) => {

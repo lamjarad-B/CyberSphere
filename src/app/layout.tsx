@@ -30,8 +30,8 @@ export async function generateMetadata(): Promise<Metadata> {
       template: "%s — CyberSphere",
     },
     description: english
-      ? "CyberSphere: cybersecurity articles, analyses and tutorials — pentesting, defense, cryptography and infosec news."
-      : "CyberSphere : articles, analyses et tutoriels de cybersécurité — pentest, défense, cryptographie et actualité de la sécurité informatique.",
+      ? "CyberSphere: cybersecurity analysis and explainers — threats, geopolitics, regulation and strategy, with technical deep dives now and then."
+      : "CyberSphere : analyses et décryptages de la cybersécurité — menaces, géopolitique, régulation et stratégie, avec à l'occasion des articles techniques.",
     icons: {
       icon: [
         { url: "/images/Logo/cybersphere-favicon-64.png", type: "image/png", sizes: "64x64" },

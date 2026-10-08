@@ -4,8 +4,8 @@ import { rateLimit } from "@/lib/rate-limit";
 import { getStaffSession } from "@/lib/session";
 
 /**
- * Pré-traduction IA (API Claude) : produit un brouillon anglais des trois
- * champs d'un article, injecté dans le formulaire admin pour relecture et
+ * Pré-traduction IA (API Claude) : produit un brouillon anglais des champs
+ * d'un article (titre, extrait, points clés éventuels, contenu), injecté dans le formulaire admin pour relecture et
  * correction humaine avant enregistrement. Aucune écriture en base ici.
  *
  * Désactivée proprement si ANTHROPIC_API_KEY est vide (comme Turnstile/SMTP).
@@ -28,27 +28,30 @@ Rules:
 - Never translate code blocks, inline code, commands, file paths or URLs: keep them byte-identical.
 - Use the established English form of cybersecurity terms (e.g. « hameçonnage » → "phishing").
 - The excerpt must stay under 500 characters and the title under 200 characters.
-Reply with exactly three sections delimited by the markers ===TITLE===, ===EXCERPT=== and ===CONTENT===, each marker alone on its own line, and nothing else before, between or after the sections.`;
+- The ===KEYPOINTS=== section, when present, lists one key point per line: translate each line and keep one point per line.
+Reply with the same sections as the input, in the same order, delimited by the markers ===TITLE===, ===EXCERPT===, ===KEYPOINTS=== (only if present in the input) and ===CONTENT===, each marker alone on its own line, and nothing else before, between or after the sections.`;
 
 export type PretranslateResult =
-  | { ok: true; titleEn: string; excerptEn: string; contentEn: string }
+  | { ok: true; titleEn: string; excerptEn: string; keyPointsEn: string; contentEn: string }
   | { ok: false; error: string };
 
 function extractSections(
   text: string,
-): { title: string; excerpt: string; content: string } | null {
+): { title: string; excerpt: string; keyPoints: string; content: string } | null {
+  // Section ===KEYPOINTS=== facultative : absente si l'article n'en a pas
   const match = text.match(
-    /===TITLE===\s*([\s\S]*?)\s*===EXCERPT===\s*([\s\S]*?)\s*===CONTENT===\s*([\s\S]*?)\s*$/,
+    /===TITLE===\s*([\s\S]*?)\s*===EXCERPT===\s*([\s\S]*?)\s*(?:===KEYPOINTS===\s*([\s\S]*?)\s*)?===CONTENT===\s*([\s\S]*?)\s*$/,
   );
   if (!match) return null;
-  const [, title, excerpt, content] = match;
+  const [, title, excerpt, keyPoints = "", content] = match;
   if (!title || !excerpt || !content) return null;
-  return { title, excerpt, content };
+  return { title, excerpt, keyPoints, content };
 }
 
 export async function pretranslateArticle(input: {
   title: string;
   excerpt: string;
+  keyPoints?: string;
   content: string;
 }): Promise<PretranslateResult> {
   const session = await getStaffSession();
@@ -66,6 +69,7 @@ export async function pretranslateArticle(input: {
   const title = input.title.trim();
   const excerpt = input.excerpt.trim();
   const content = input.content.trim();
+  const keyPoints = (input.keyPoints ?? "").trim().slice(0, 2_000);
   if (!title || !excerpt || !content) {
     return {
       ok: false,
@@ -101,7 +105,10 @@ export async function pretranslateArticle(input: {
         messages: [
           {
             role: "user",
-            content: `===TITLE===\n${title}\n===EXCERPT===\n${excerpt}\n===CONTENT===\n${content}`,
+            content:
+              `===TITLE===\n${title}\n===EXCERPT===\n${excerpt}\n` +
+              (keyPoints ? `===KEYPOINTS===\n${keyPoints}\n` : "") +
+              `===CONTENT===\n${content}`,
           },
         ],
       }),
@@ -162,6 +169,7 @@ export async function pretranslateArticle(input: {
     // Bornes des champs (articleSchema) appliquées par sécurité
     titleEn: sections.title.slice(0, 200),
     excerptEn: sections.excerpt.slice(0, 500),
+    keyPointsEn: sections.keyPoints.slice(0, 2_000),
     contentEn: sections.content,
   };
 }

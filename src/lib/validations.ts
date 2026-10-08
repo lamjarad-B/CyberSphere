@@ -31,6 +31,14 @@ export const articleSchema = z.object({
   categoryId: z.string().min(1, "Choisissez une catégorie"),
   tags: z.string().trim().max(300, "Liste de tags trop longue").default(""),
   status: z.enum(["DRAFT", "SUBMITTED", "SCHEDULED", "PUBLISHED"]),
+  kind: z.enum(["ANALYSIS", "EXPLAINER", "OPINION", "BRIEF", "TUTORIAL"]).default("ANALYSIS"),
+  // Encadré « Points clés » : un point par ligne (facultatif)
+  keyPoints: z.string().trim().max(2_000, "Les points clés sont limités à 2 000 caractères").default(""),
+  keyPointsEn: z
+    .string()
+    .trim()
+    .max(2_000, "Les points clés anglais sont limités à 2 000 caractères")
+    .default(""),
   // Date de mise en ligne (ISO 8601) si status = SCHEDULED
   scheduledAt: z.string().trim().max(40).default(""),
   coverAlt: z.string().trim().max(200, "Le texte alternatif est limité à 200 caractères").default(""),

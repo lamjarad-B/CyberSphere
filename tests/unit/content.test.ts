@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { extractToc, readingTimeMinutes, renderMarkdown } from "@/lib/markdown";
 import { slugify, uniqueSlug } from "@/lib/slug";
+import { kindLabel, parseKeyPoints, parseKindParam } from "@/lib/articles";
 import { localeHref, negotiateLocale, toLocale } from "@/lib/i18n";
 import { describeUserAgent } from "@/lib/user-agent";
 
@@ -37,6 +38,43 @@ describe("Sommaire : ancres identiques à rehype-slug", () => {
     const html = await renderMarkdown("```bash showLineNumbers {2}\nls\npwd\n```");
     expect(html).toContain("data-line-numbers");
     expect(html).toContain("data-highlighted-line");
+  });
+});
+
+describe("Format analytique", () => {
+  const md = "Une affirmation sourcée[^1].\n\n[^1]: ANSSI, « Panorama », https://cyber.gouv.fr\n";
+
+  it("rend les notes dans une section « Sources » libellée selon la langue", async () => {
+    const fr = await renderMarkdown(md, "fr");
+    expect(fr).toContain("data-footnotes");
+    expect(fr).toContain("Sources et notes");
+    expect(fr).not.toContain("sr-only");
+    expect(await renderMarkdown(md, "en")).toContain("Sources &#x26; notes");
+    // Langue par défaut : français
+    expect(await renderMarkdown(md)).toContain("Sources et notes");
+  });
+
+  it("neutralise les liens javascript: jusque dans les notes", async () => {
+    const html = await renderMarkdown("Texte[^1].\n\n[^1]: [source](javascript:alert(1))\n");
+    expect(html).not.toContain("javascript:");
+  });
+
+  it("découpe les points clés ligne à ligne, puces retirées", () => {
+    expect(parseKeyPoints("- Premier point\r\n\n2. Deuxième\n  • Troisième  \n")).toEqual([
+      "Premier point",
+      "Deuxième",
+      "Troisième",
+    ]);
+    expect(parseKeyPoints(null)).toEqual([]);
+  });
+
+  it("valide le filtre ?type= contre l'enum", () => {
+    expect(parseKindParam("analysis")).toBe("ANALYSIS");
+    expect(parseKindParam("TUTORIAL")).toBe("TUTORIAL");
+    expect(parseKindParam("xyz")).toBeUndefined();
+    expect(parseKindParam(undefined)).toBeUndefined();
+    expect(kindLabel("EXPLAINER", "fr")).toBe("Décryptage");
+    expect(kindLabel("EXPLAINER", "en")).toBe("Explainer");
   });
 });
 

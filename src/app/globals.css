@@ -125,3 +125,47 @@ body {
   border-radius: 0.25rem;
   padding: 0.1rem 0.2rem;
 }
+
+/* Sources et notes (notes de bas de page GFM [^1]) */
+.prose section[data-footnotes] {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.prose section[data-footnotes] .footnotes-title {
+  margin-top: 0;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.prose section[data-footnotes] li {
+  overflow-wrap: anywhere;
+}
+
+.prose section[data-footnotes] li p {
+  margin: 0.25rem 0;
+}
+
+.prose [data-footnote-ref] {
+  text-decoration: none;
+  color: var(--accent);
+}
+
+.prose [data-footnote-ref]::before {
+  content: "[";
+}
+
+.prose [data-footnote-ref]::after {
+  content: "]";
+}
+
+.prose [data-footnote-backref] {
+  text-decoration: none;
+}

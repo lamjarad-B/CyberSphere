@@ -10,7 +10,7 @@ import { buttonClass, buttonGhostClass, cardClass } from "@/components/ui";
 const copy = {
   fr: {
     tagline:
-      "Articles, analyses et tutoriels de cybersécurité : offensive, défense, cryptographie et actualité de la sécurité informatique.",
+      "Analyses et décryptages de la cybersécurité : menaces, géopolitique, régulation et stratégie — et, à l'occasion, de la technique.",
     featured: "À la une",
     featuredAria: "Article à la une",
     readArticle: "Lire l'article",
@@ -20,7 +20,7 @@ const copy = {
   },
   en: {
     tagline:
-      "Cybersecurity articles, analyses and tutorials: offensive security, defense, cryptography and infosec news.",
+      "Cybersecurity analysis and explainers: threats, geopolitics, regulation and strategy — with the occasional technical deep dive.",
     featured: "Featured",
     featuredAria: "Featured article",
     readArticle: "Read the article",
@@ -93,6 +93,9 @@ export default async function HomePage({
               <div className="flex items-center gap-3">
                 <span className="rounded-full bg-accent px-2.5 py-0.5 font-mono text-xs font-semibold text-accent-contrast">
                   {t.featured}
+                </span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+                  {featured.kind}
                 </span>
                 <Link
                   href={localeHref(locale, `/categories/${featured.category.slug}`)}

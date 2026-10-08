@@ -7,14 +7,14 @@ import { cardClass } from "@/components/ui";
 const copy = {
   fr: {
     title: "Séries",
-    description: "Les séries d'articles CyberSphere : des tutoriels en plusieurs épisodes.",
+    description: "Les séries d'articles CyberSphere : un sujet approfondi en plusieurs épisodes.",
     intro: "Des sujets traités en profondeur, épisode par épisode.",
     empty: "Aucune série publiée pour le moment.",
     episodes: (n: number) => `${n} épisode${n > 1 ? "s" : ""}`,
   },
   en: {
     title: "Series",
-    description: "CyberSphere article series: multi-part tutorials.",
+    description: "CyberSphere article series: one topic explored over several episodes.",
     intro: "Topics covered in depth, one episode at a time.",
     empty: "No series published yet.",
     episodes: (n: number) => `${n} episode${n === 1 ? "" : "s"}`,
