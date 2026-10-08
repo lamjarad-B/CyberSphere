@@ -1,6 +1,6 @@
 # CyberSphere — Cahier des spécifications techniques et fonctionnelles
 
-**Version du document :** 2.5 · **Date :** 7 octobre 2026 · **État du projet :** **v2.5 livrée** (v1 : commit `402fb40`)
+**Version du document :** 2.6 · **Date :** 7 octobre 2026 · **État du projet :** **v2.6 livrée** (v1 : commit `402fb40`)
 
 > **Note v2** — La montée de version proposée au §7 a été **entièrement
 > implémentée** le 10 juillet 2026 : les trois paliers (durcissement sécurité,
@@ -32,13 +32,19 @@
 > passe, API admin de better-auth fermée, secrets d'exemple refusés au
 > démarrage, bombe de décompression, plafonds anti-abus, et sauvegardes
 > réparées (l'outil `openssl` manquait dans l'image). Détails au §13.
+>
+> **Note v2.6** — Repositionnement éditorial : CyberSphere devient un blog
+> d'**analyse** (menaces, géopolitique, régulation, stratégie), la technique
+> restant une rubrique parmi d'autres. Types d'article, encadré « Points
+> clés », sources en notes de bas de page, filtre par type. Détails au §14.
 
 ---
 
 ## 1. Présentation du projet
 
-CyberSphere est un blog de cybersécurité personnel permettant la publication d'articles
-techniques (analyses, tutoriels, veille). Le contenu est rédigé en Markdown depuis une
+CyberSphere est un blog de cybersécurité personnel tourné vers l'**analyse** : menaces
+et cyberattaques, géopolitique, régulation, stratégie et tendances — avec, à l'occasion,
+des articles techniques (cf. §14). Le contenu est rédigé en Markdown depuis une
 interface d'administration intégrée, stocké en base de données, et rendu côté serveur
 avec coloration syntaxique du code. Le site propose un espace membre dont l'unique
 privilège éditorial est le dépôt de commentaires — **aucun commentaire n'est possible
@@ -62,13 +68,14 @@ objectif de premier rang : chaque choix d'implémentation est documenté au §5.
 ### 2.1 Espace public
 
 #### Accueil (`/`)
-- Mise en avant des derniers articles publiés (cartes avec image de couverture, catégorie, extrait, auteur, date).
+- Mise en avant des derniers articles publiés (cartes avec image de couverture, type d'article, catégorie, extrait, auteur, date).
 - Navigation principale : catégories de premier niveau avec menu déroulant des sous-catégories.
 - Thème **sombre par défaut** (esthétique orientée sécurité, accent cyan), bascule clair/sombre persistante (`next-themes`).
 
 #### Liste des articles (`/articles`)
 - Liste paginée des articles **publiés uniquement**, triés par date de publication décroissante.
 - Pagination : **9 articles par page** (`PAGE_SIZE`), numéro de page assaini côté serveur.
+- Filtre par type d'article (`?type=analysis`, v2.6) : valeur validée contre l'enum, ignorée si inconnue.
 
 #### Page article (`/articles/[slug]`)
 - Rendu serveur du Markdown : titres ancrés, tableaux GFM, **coloration syntaxique Shiki** (thème `github-dark-default`) — essentielle pour les extraits de code d'un blog cybersec.
@@ -183,7 +190,7 @@ src/
 | Modèle | Champs clés | Relations & règles |
 |---|---|---|
 | `Category` | `name`, `slug` unique, `description?`, `position`, `parentId?` | Auto-relation parent/enfants (2 niveaux max, appliqué en Server Action) ; suppression en cascade des enfants |
-| `Article` | `title`, `slug` unique, `excerpt`, `content` (Markdown), `coverImage?`, `status` (`DRAFT`\|`PUBLISHED`), `publishedAt?`, `views` | → `author` (User), → `category`, ↔ `tags` (m-n implicite) ; index `(status, publishedAt)` et `(categoryId)` |
+| `Article` | `title`, `slug` unique, `excerpt`, `content` (Markdown), `kind` (`ArticleKind`, v2.6), `keyPoints?` (v2.6), `coverImage?`, `status` (`DRAFT`\|`PUBLISHED`), `publishedAt?`, `views` | → `author` (User), → `category`, ↔ `tags` (m-n implicite) ; index `(status, publishedAt)` et `(categoryId)` |
 | `Tag` | `name` unique, `slug` unique | ↔ articles |
 | `Comment` | `content` (texte brut), `parentId?` | → `article` (cascade), → `author` (cascade), auto-relation réponses (1 niveau) ; index `(articleId)` |
 
@@ -191,6 +198,7 @@ src/
 
 - `unified` : `remark-parse` → `remark-gfm` → `remark-rehype` (**sans** `allowDangerousHtml` : tout HTML brut écrit dans le Markdown est **ignoré**, neutralisant l'injection de script à la source) → `rehype-slug` → `rehype-pretty-code` (Shiki, `defaultLang: text`) → **`rehypeSafeUrls`** → `rehype-stringify`.
 - **Assainissement des URL** (`rehypeSafeUrls`, v2.2) : les attributs `href`/`src` portant un schéma exécutable (`javascript:`, `data:`, `vbscript:`…) sont supprimés ; http(s), `mailto:`, `tel:`, ancres (`#`) et chemins relatifs passent. Ferme le seul vecteur restant — un lien Markdown `[x](javascript:…)` — indépendamment de la CSP (protège aussi les rendus hors navigateur : e-mails, flux). Cf. §10.
+- **Sources** (v2.6) : les notes de bas de page GFM (`[^1]`) forment en fin d'article une section « Sources et notes » / « Sources & notes » ; un processeur par langue, choisi d'après la langue du texte affiché (`renderMarkdown(markdown, locale)`), cf. §14.
 - Pipeline **partagé** entre le rendu public et l'aperçu de l'éditeur admin (fidélité garantie) ; aperçu plafonné à 100 000 caractères.
 
 ### 3.5 Téléversement de fichiers
@@ -690,3 +698,53 @@ Revue de sécurité de l'ensemble du code (7 octobre 2026), au-delà du dernier 
 ### 13.3 Vérifications effectuées (v2.5)
 
 `tsc --noEmit`, ESLint et build de production sans erreur ; **80 tests unitaires** (48 en v2.4 : open-redirect par caractère de contrôle, PNG de 65 octets annonçant 16 000 × 16 000 px rejeté dès l'en-tête, contrôle de configuration, en-tête Referer, jetons newsletter non textuels, clé d'aperçu dédiée) ; **22 parcours de bout en bout** au vert, dont l'API admin refusée même avec 2FA et la suppression refusée d'un article programmé par son auteur. Serveur de production : arrêt immédiat avec un secret d'exemple, démarrage normal avec un secret aléatoire, sans `X-Powered-By`. Manifeste du build : `confirmNewsletter` et `unsubscribeNewsletter` ne sont plus des Server Actions. Compose : refus en l'absence de `BETTER_AUTH_SECRET` ; garde-fou de passphrase et `pipefail` testés sous BusyBox ; image de sauvegarde construite, aller-retour chiffrement/déchiffrement à 600 000 itérations validé (échec attendu sans `-iter`).
+
+---
+
+## 14. Repositionnement éditorial — CyberSphere v2.6
+
+Le blog était conçu comme un blog de praticien : catégories métier (Pentest Web, Blue Team, Durcissement), contenus de démonstration en forme de tutoriels, accroche promettant des « tutoriels ». La v2.6 en fait un blog d'**analyse**, sans fermer la porte aux articles techniques : ils deviennent une rubrique parmi d'autres plutôt que l'identité du site. L'identité visuelle (esthétique terminal) est inchangée.
+
+### 14.1 Ligne éditoriale
+
+| Catégorie (position) | Sous-catégories |
+|---|---|
+| Menaces & cyberattaques (1) | Ransomware & cybercrime, Groupes APT, Incidents marquants |
+| Géopolitique & cyberconflits (2) | Cyberconflits, Souveraineté numérique |
+| Régulation & conformité (3) | Réglementation européenne, Données personnelles |
+| Stratégie, économie & tendances (4) | Gouvernance & risque, Marché de la cybersécurité, IA & prospective |
+| Technique (5) | Attaques & vulnérabilités, Défense & durcissement, Cryptographie |
+
+- **Seed** : ces catégories (FR/EN) ; « Bienvenue » réécrit pour présenter la ligne éditoriale ; deux articles d'analyse bilingues avec points clés et sources (économie du ransomware, décryptage de NIS2) ; l'article sur les injections SQL est conservé dans Technique avec le type Tutoriel ; le tutoriel de durcissement Linux est retiré ; la série « Pentest web de A à Z » laisse place à « Comprendre NIS2 ».
+- **Textes** : accroche de l'accueil, description du site (métadonnées), flux RSS et page des séries réécrits dans ce sens.
+- **Bases existantes** : le seed procède par upsert sur le slug ; les anciennes catégories et articles ne sont pas supprimés. En local, repartir d'une base neuve (`npx prisma migrate reset`) ; en production, réorganiser les catégories depuis l'administration.
+
+### 14.2 Types d'article
+
+Enum `ArticleKind` (migration `v2_6_format_analytique`), `Article.kind` avec `ANALYSIS` par défaut :
+
+| Valeur | Libellé FR | Libellé EN | Usage |
+|---|---|---|---|
+| `ANALYSIS` | Analyse | Analysis | Article de fond |
+| `EXPLAINER` | Décryptage | Explainer | Expliquer un sujet complexe (texte, réglementation…) |
+| `OPINION` | Point de vue | Opinion | Prise de position assumée |
+| `BRIEF` | En bref | Brief | Éclairage court sur une actualité |
+| `TUTORIAL` | Tutoriel | Tutorial | Article technique pratique |
+
+Libellés centralisés dans `kindLabel` (`src/lib/articles.ts`). Le type s'affiche sur les cartes, l'article à la une, l'en-tête de l'article (lien vers la liste filtrée) et l'aperçu. Liste filtrable : `/articles?type=<valeur en minuscules>`, avec des puces de filtre ; une valeur inconnue est ignorée (`parseKindParam`), la pagination conserve le filtre. Index `(kind)`.
+
+### 14.3 Encadré « Points clés »
+
+- `Article.keyPoints?` et `ArticleTranslation.keyPoints?` : texte brut, **un point par ligne** (2 000 caractères max) ; les puces saisies (`-`, `*`, `•`, `1.`) sont retirées à l'affichage (`parseKeyPoints`).
+- Rendu en tête d'article, sous l'en-tête, dans un `<aside>` étiqueté « Points clés » / « Key points » ; absent si le champ est vide. Version anglaise servie avec la traduction, sans repli sur le français (comme le texte alternatif de couverture).
+- Admin : champ dédié sous l'extrait, et son équivalent anglais dans la section traduction. La pré-traduction IA traduit aussi les points clés (section `===KEYPOINTS===` facultative dans l'échange avec l'API).
+
+### 14.4 Sources
+
+- Syntaxe Markdown standard des notes de bas de page : appel `[^1]` dans le texte, référence `[^1]: Auteur, « Titre », date, URL` en fin d'article. Bouton `[^1]` et aide-mémoire dans l'éditeur.
+- `remark-rehype` reçoit un libellé par langue (`footnoteLabel`, `footnoteBackLabel`) ; le titre de section, masqué par défaut (`sr-only`), est rendu visible (`footnoteLabelProperties`). Style dédié dans `globals.css` (séparateur, petite taille, appels entre crochets).
+- L'assainissement des URL (`rehypeSafeUrls`) s'applique aussi aux notes.
+
+### 14.5 Vérifications effectuées (v2.6)
+
+`tsc --noEmit` et ESLint sans erreur ; **84 tests unitaires** (80 en v2.5 : section « Sources » libellée selon la langue et visible, `javascript:` neutralisé dans une note, découpage des points clés, validation du filtre `?type=`) ; nouveau parcours de bout en bout (type affiché, encadré « Points clés », section « Sources et notes », filtre `?type=`).

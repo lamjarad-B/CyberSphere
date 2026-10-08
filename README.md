@@ -1,9 +1,23 @@
 # CyberSphere
 
-Blog de cybersécurité **bilingue (français/anglais)** : articles en Markdown,
-catégories & sous-catégories, tags, séries, espace membre, commentaires réservés
-aux membres connectés, newsletter, et administration intégrée — avec une posture
-sécurité exemplaire (2FA, passkeys, CSP à nonces, journal d'audit…).
+Blog d'**analyse** de la cybersécurité, **bilingue (français/anglais)** : menaces,
+géopolitique, régulation et stratégie, avec une rubrique technique pour les
+articles pratiques occasionnels. Articles en Markdown typés (analyse,
+décryptage, point de vue, en bref, tutoriel) avec encadré « Points clés » et
+sources en notes de bas de page ; catégories & sous-catégories, tags, séries,
+espace membre, commentaires réservés aux membres connectés, newsletter, et
+administration intégrée — avec une posture sécurité exemplaire (2FA, passkeys,
+CSP à nonces, journal d'audit…).
+
+## Écrire un article d'analyse
+
+- **Type** : choisi dans le formulaire (Analyse par défaut) ; la liste
+  `/articles` se filtre par type (`?type=analysis`, `?type=tutorial`…).
+- **Points clés** : un point par ligne ; affichés dans un encadré en tête
+  d'article.
+- **Sources** : appel de note `[^1]` dans le texte, puis
+  `[^1]: Auteur, « Titre », date, URL` en fin d'article ; elles forment la
+  section « Sources et notes ».
 
 ## Stack
 
@@ -37,6 +51,13 @@ npm run dev
 > `DATABASE_URL`. La base n'écoute que sur `127.0.0.1` (jamais sur le réseau
 > local) : utilisez `127.0.0.1` et non `localhost` dans `DATABASE_URL`, qui
 > peut se résoudre en IPv6 (`::1`).
+
+> Base créée avant la v2.6 ? Le seed ne supprime rien : les anciennes
+> catégories (Sécurité offensive, Blue Team…) et les anciens articles de
+> démonstration restent en place. Pour une base locale propre :
+> `npx prisma migrate reset` (efface **toutes** les données, puis relance le
+> seed ; la 2FA de l'admin est à réactiver). En production, réorganisez les
+> catégories depuis `/admin/categories`.
 
 Le site est disponible sur **http://localhost:3001** (port fixé dans le script
 `dev`). Cette URL doit correspondre à `BETTER_AUTH_URL` et `NEXT_PUBLIC_APP_URL`
