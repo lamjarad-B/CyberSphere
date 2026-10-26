@@ -25,7 +25,19 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npx prisma generate
 RUN npm run build
 
-# ---------- Étape 3 : exécution ----------
+# ---------- Étape 3 : CLI Prisma isolé (pour les migrations) ----------
+# Arbre de dépendances complet du CLI (effect, c12, jiti…), indépendant du
+# node_modules minimal du standalone Next.
+FROM node:22-bookworm-slim AS prisma-cli
+WORKDIR /prisma-cli
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
+COPY package-lock.json /tmp/package-lock.json
+# Version exacte issue du lockfile, pour rester aligné avec le client généré
+RUN V=$(node -p "require('/tmp/package-lock.json').packages['node_modules/prisma'].version") \
+  && npm init -y >/dev/null \
+  && npm install --no-audit --no-fund prisma@$V
+
+# ---------- Étape 4 : exécution ----------
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
@@ -44,11 +56,13 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
-# Client Prisma + moteurs + CLI, pour appliquer les migrations au démarrage
+# Client Prisma généré (runtime de l'application)
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 COPY --from=builder /app/prisma ./prisma
+
+# CLI Prisma complet, isolé, pour appliquer les migrations au démarrage
+COPY --from=prisma-cli /prisma-cli/node_modules /prisma-cli/node_modules
 
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x docker-entrypoint.sh
