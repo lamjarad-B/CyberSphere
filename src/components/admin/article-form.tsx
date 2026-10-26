@@ -572,7 +572,7 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                 id="cover"
                 name="cover"
                 type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
+                accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
                 className="block w-full text-sm text-muted file:mr-3 file:rounded-md file:border file:border-border file:bg-surface file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground"
               />
               <p className="mt-1 text-xs text-muted">

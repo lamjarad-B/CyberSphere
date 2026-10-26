@@ -165,7 +165,7 @@ const fr = {
     profile: {
       saved: "Profil mis à jour.",
       avatarLabel: "Avatar",
-      avatarHint: "(png, jpg, webp — 5 Mo max)",
+      avatarHint: "(png, jpg, webp, svg — 5 Mo max)",
       avatarAlt: "Avatar actuel",
       nameLabel: "Nom (pseudonyme)",
       save: "Enregistrer",
@@ -410,7 +410,7 @@ const en: Dictionary = {
     profile: {
       saved: "Profile updated.",
       avatarLabel: "Avatar",
-      avatarHint: "(png, jpg, webp — 5 MB max)",
+      avatarHint: "(png, jpg, webp, svg — 5 MB max)",
       avatarAlt: "Current avatar",
       nameLabel: "Name (nickname)",
       save: "Save",

@@ -14,14 +14,14 @@ const messages = {
     loginRequired: "Connectez-vous pour modifier votre profil.",
     invalidName: "Le nom doit contenir entre 2 et 50 caractères.",
     invalidImage:
-      "Image refusée : png, jpg, webp ou gif lisible, 5 Mo et 40 mégapixels maximum.",
+      "Image refusée : png, jpg, webp, gif ou svg lisible, 5 Mo et 40 mégapixels maximum.",
     tooManyAvatars: "Trop de changements d'avatar. Réessayez dans une heure.",
   },
   en: {
     loginRequired: "Sign in to edit your profile.",
     invalidName: "Your name must be between 2 and 50 characters.",
     invalidImage:
-      "Image rejected: use a readable png, jpg, webp or gif of 5 MB and 40 megapixels at most.",
+      "Image rejected: use a readable png, jpg, webp, gif or svg of 5 MB and 40 megapixels at most.",
     tooManyAvatars: "Too many avatar changes. Please try again in an hour.",
   },
 };

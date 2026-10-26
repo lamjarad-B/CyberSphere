@@ -5,7 +5,10 @@ import { renderMarkdown } from "@/lib/markdown";
 import { createPreviewToken, verifyPreviewToken } from "@/lib/draft-preview";
 import { safeRedirect } from "@/lib/redirect";
 import { rateLimit, resetRateLimits } from "@/lib/rate-limit";
-import { saveImage, uploadFileName } from "@/lib/uploads";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import sharp from "sharp";
+import { deleteUpload, saveImage, UPLOAD_DIR, uploadFileName } from "@/lib/uploads";
 import { newArticleEmail, securityAlertEmail } from "@/lib/email";
 import { productionConfigErrors } from "@/lib/config-check";
 import { referrerHostFrom } from "@/lib/stats";
@@ -172,6 +175,29 @@ describe("Uploads : bombe de décompression", () => {
     await expect(
       saveImage(new File([new Uint8Array(bomb)], "bombe.png", { type: "image/png" })),
     ).rejects.toThrow(/trop grande/);
+  });
+});
+
+describe("Uploads : SVG rastérisé", () => {
+  it("convertit un SVG (même piégé) en WebP, sans jamais stocker de SVG", async () => {
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" onload="alert(1)">' +
+      '<script>alert(1)</script><rect width="24" height="24" fill="#0af"/></svg>';
+    const url = await saveImage(new File([svg], "piege.svg", { type: "image/svg+xml" }));
+    expect(url).toMatch(/^\/uploads\/[\w-]+\.webp$/);
+
+    const stored = await readFile(path.join(UPLOAD_DIR, uploadFileName(url)!));
+    expect(stored.subarray(8, 12).toString("ascii")).toBe("WEBP");
+    expect(stored.toString("latin1")).not.toContain("alert");
+    // rendu à pleine résolution, pas en vignette de 24 px
+    expect((await sharp(stored).metadata()).width).toBe(2560);
+    await deleteUpload(url);
+  });
+
+  it("refuse un faux SVG", async () => {
+    await expect(
+      saveImage(new File(["pas du svg"], "x.svg", { type: "image/svg+xml" })),
+    ).rejects.toThrow(/invalide/);
   });
 });
 
