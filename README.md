@@ -206,6 +206,39 @@ openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:BACKUP_PASSPHRASE \
 
 Volumes persistants : `db-data`, `db-backups`, `uploads`, `caddy-data`.
 
+### Déploiement automatique
+
+Chaque push sur `main` est déployé par le job `deploy` de la CI, **seulement
+si** lint, tests unitaires, build, e2e, audit et gitleaks sont verts. Il se
+connecte en SSH, avance le dépôt du serveur au commit testé (`--ff-only`) puis
+relance `docker compose … up -d --build`.
+
+Mise en place, une fois :
+
+```bash
+# 1. Sur votre poste : clé dédiée au déploiement, sans phrase de passe
+ssh-keygen -t ed25519 -N "" -C "github-deploy-cybersphere" -f deploy_key
+# 2. Sur le serveur : l'autoriser pour l'utilisateur qui lance docker
+cat deploy_key.pub >> ~/.ssh/authorized_keys
+# 3. Empreinte du serveur, à vérifier puis copier dans DEPLOY_KNOWN_HOSTS
+ssh-keyscan -p 22 cyber-sphere.net
+```
+
+Puis, dans GitHub → *Settings → Environments* → créer `production` et y
+ajouter les secrets :
+
+| Secret | Valeur |
+| --- | --- |
+| `DEPLOY_HOST` | adresse du serveur (ex. `cyber-sphere.net`) |
+| `DEPLOY_USER` | utilisateur SSH (membre du groupe `docker`) |
+| `DEPLOY_PORT` | facultatif, `22` par défaut |
+| `DEPLOY_PATH` | chemin du dépôt cloné sur le serveur |
+| `DEPLOY_SSH_KEY` | contenu de `deploy_key` (clé **privée**) |
+| `DEPLOY_KNOWN_HOSTS` | sortie de `ssh-keyscan` |
+
+Supprimez ensuite `deploy_key` de votre poste. Le dépôt du serveur doit
+pouvoir faire `git fetch` seul (dépôt public, ou *deploy key* en lecture).
+
 ## CI
 
 GitHub Actions (`.github/workflows/ci.yml`) : ESLint + tests unitaires +

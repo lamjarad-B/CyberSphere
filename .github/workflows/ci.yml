@@ -119,3 +119,51 @@ jobs:
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    name: Déploiement en production
+    # Uniquement sur un push vers main, et seulement si tout le reste est vert
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint-build, e2e, audit, secrets]
+    runs-on: ubuntu-latest
+    environment: production
+    # Un seul déploiement à la fois ; un push récent n'annule pas celui en cours
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      # ssh natif plutôt qu'une action tierce : la clé de prod ne transite
+      # par aucun code extérieur au dépôt
+      - name: Configurer SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Empreinte du serveur épinglée : pas de confiance au premier contact
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Mettre à jour et reconstruire sur le serveur
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" \
+            -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- "$DEPLOY_PATH" "$GITHUB_SHA" <<'EOF'
+          set -euo pipefail
+          cd "$1"
+          git fetch --quiet origin main
+          # Déploie exactement le commit testé ; refuse si le serveur a divergé
+          git merge --ff-only "$2"
+          docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+          docker image prune -f
+          EOF
+
+      - name: Effacer la clé
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
