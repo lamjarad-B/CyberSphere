@@ -8,6 +8,8 @@ import { categoryLabel } from "@/lib/articles";
 import { getDictionary } from "@/i18n/dictionaries";
 import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
+import { IDLE_TIMEOUT_SECONDS, SESSION_REFRESH_SECONDS } from "@/lib/session-timeout";
+import { IdleLogout } from "./idle-logout";
 import { UserMenu } from "./user-menu";
 import { buttonClass, buttonGhostClass } from "./ui";
 
@@ -109,6 +111,13 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
           </Suspense>
           <ThemeToggle />
 
+          {session && (
+            <IdleLogout
+              timeoutSeconds={IDLE_TIMEOUT_SECONDS}
+              refreshSeconds={SESSION_REFRESH_SECONDS}
+              loginPath={href("/connexion")}
+            />
+          )}
           {session ? (
             <UserMenu
               name={session.user.name}

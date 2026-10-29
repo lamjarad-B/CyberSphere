@@ -6,9 +6,18 @@ import { auth } from "./auth";
 /** Rôles ayant accès à l'interface d'administration. */
 const STAFF_ROLES = ["admin", "author"];
 
-/** Session de la requête courante (mise en cache par requête). */
+/**
+ * Session de la requête courante (mise en cache par requête).
+ * Lecture seule (disableRefresh) : un Server Component ne peut pas réécrire
+ * le cookie, or une prolongation en base sans prolongation du cookie ferait
+ * expirer celui-ci dans le navigateur en pleine activité. Seul le battement
+ * de cœur de <IdleLogout> (/api/auth/get-session) prolonge la session.
+ */
 export const getSession = cache(async () => {
-  return auth.api.getSession({ headers: await headers() });
+  return auth.api.getSession({
+    headers: await headers(),
+    query: { disableRefresh: true },
+  });
 });
 
 type AppSession = NonNullable<Awaited<ReturnType<typeof getSession>>>;

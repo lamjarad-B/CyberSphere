@@ -11,6 +11,7 @@ import { deleteUpload } from "./uploads";
 import { sendEmail, verificationEmail, resetPasswordEmail } from "./email";
 import { LOCALE_COOKIE, type Locale } from "./i18n";
 import { rateLimit } from "./rate-limit";
+import { IDLE_TIMEOUT_SECONDS, SESSION_REFRESH_SECONDS } from "./session-timeout";
 import { SITE_URL } from "./site";
 import { registerSchema } from "./validations";
 
@@ -106,6 +107,10 @@ export const auth = betterAuth({
     // d'ajouter une passkey — qui contournerait mot de passe et 2FA et
     // survivrait à une réinitialisation — sans se reconnecter.
     freshAge: 15 * 60,
+    // Déconnexion après inactivité (lib/session-timeout) : la session expire
+    // ce délai après sa dernière prolongation, au lieu de 7 jours.
+    expiresIn: IDLE_TIMEOUT_SECONDS,
+    updateAge: SESSION_REFRESH_SECONDS,
   },
   rateLimit: {
     enabled: true,

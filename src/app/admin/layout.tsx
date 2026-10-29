@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { requireStaffAccount } from "@/lib/session";
+import { IDLE_TIMEOUT_SECONDS, SESSION_REFRESH_SECONDS } from "@/lib/session-timeout";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { IdleLogout } from "@/components/idle-logout";
 import { buttonClass, cardClass } from "@/components/ui";
 
 export const metadata: Metadata = {
@@ -14,6 +16,13 @@ export default async function AdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const session = await requireStaffAccount();
+  const idleLogout = (
+    <IdleLogout
+      timeoutSeconds={IDLE_TIMEOUT_SECONDS}
+      refreshSeconds={SESSION_REFRESH_SECONDS}
+      loginPath="/connexion"
+    />
+  );
 
   // 2FA obligatoire pour accéder à l'administration : un compte à
   // privilèges compromis par simple mot de passe est le pire scénario.
@@ -22,6 +31,7 @@ export default async function AdminLayout({
   if (!session.user.twoFactorEnabled) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16">
+        {idleLogout}
         <div className={`${cardClass} space-y-4 p-8`}>
           <h1 className="text-2xl font-bold">Double authentification requise</h1>
           <p className="text-sm text-muted">
@@ -40,6 +50,7 @@ export default async function AdminLayout({
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
+      {idleLogout}
       <aside className="flex flex-col gap-6 border-b border-border bg-surface p-4 md:w-60 md:shrink-0 md:border-b-0 md:border-r">
         <Link href="/" className="flex items-center gap-2 px-2 pt-2" aria-label="CyberSphere">
           <Image
