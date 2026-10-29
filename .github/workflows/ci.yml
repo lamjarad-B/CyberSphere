@@ -132,6 +132,25 @@ jobs:
       group: deploy-production
       cancel-in-progress: false
     steps:
+      # Un secret absent vaut une chaîne vide : on l'annonce par son nom
+      # plutôt que de laisser ssh échouer sur un message d'usage obscur
+      - name: Vérifier les secrets
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          missing=0
+          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_PATH DEPLOY_SSH_KEY DEPLOY_KNOWN_HOSTS; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Secret $name manquant ou vide (environnement « production »)"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
       # ssh natif plutôt qu'une action tierce : la clé de prod ne transite
       # par aucun code extérieur au dépôt
       - name: Configurer SSH
