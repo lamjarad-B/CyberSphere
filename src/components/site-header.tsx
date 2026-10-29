@@ -12,6 +12,7 @@ import { IDLE_TIMEOUT_SECONDS, SESSION_REFRESH_SECONDS } from "@/lib/session-tim
 import { IdleLogout } from "./idle-logout";
 import { UserMenu } from "./user-menu";
 import { buttonClass, buttonGhostClass } from "./ui";
+import { CloseOnNavigate } from "./close-on-navigate";
 
 export async function SiteHeader({ locale }: { locale: Locale }) {
   const t = getDictionary(locale);
@@ -29,9 +30,9 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4">
+      <div className="relative mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4">
         <div className="flex items-center gap-8">
-          <Link href={href("/")} className="flex items-center" aria-label="CyberSphere">
+          <Link href={href("/")} className="flex shrink-0 items-center" aria-label="CyberSphere">
             <Image
               src="/images/Logo/cybersphere-lockup-sombre.png"
               alt="CyberSphere"
@@ -50,47 +51,58 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
             />
           </Link>
 
-          <nav className="hidden items-center gap-1 md:flex" aria-label={t.nav.mainAria}>
+          <nav className="hidden items-center gap-1 lg:flex" aria-label={t.nav.mainAria}>
             <Link
               href={href("/articles")}
-              className="rounded-md px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-accent"
+              className="whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-accent"
             >
               {t.nav.articles}
             </Link>
             <Link
               href={href("/series")}
-              className="rounded-md px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-accent"
+              className="whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-accent"
             >
               {t.nav.series}
             </Link>
-            {categories.map((category) => (
-              <div key={category.id} className="group relative">
-                <Link
-                  href={href(`/categories/${category.slug}`)}
-                  className="flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-accent"
+            {categories.length > 0 && (
+              // Les intitulés de rubriques sont trop longs pour tenir côte à côte :
+              // un seul déclencheur ouvre un panneau pleine largeur. Le groupe
+              // occupe toute la hauteur du header pour que le survol ne se perde
+              // pas entre le libellé et le panneau.
+              <div className="group flex h-16 items-center">
+                <button
+                  type="button"
+                  aria-haspopup="true"
+                  className="flex items-center gap-1 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-accent group-focus-within:text-accent group-hover:text-accent"
                 >
-                  {categoryLabel(category, locale)}
-                  {category.children.length > 0 && (
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
-                      <path d="m6 9 6 6 6-6" />
-                    </svg>
-                  )}
-                </Link>
-                {category.children.length > 0 && (
-                  <div className="invisible absolute left-0 top-full z-50 w-56 rounded-lg border border-border bg-surface p-1.5 opacity-0 shadow-xl transition-all group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
-                    {category.children.map((child) => (
+                  {t.nav.topics}
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="transition-transform group-hover:rotate-180" aria-hidden>
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+                <div className="invisible absolute inset-x-4 top-full z-50 grid grid-cols-3 gap-x-6 gap-y-5 rounded-b-xl border border-t-0 border-border bg-surface p-6 opacity-0 shadow-xl transition-all group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+                  {categories.map((category) => (
+                    <div key={category.id} className="space-y-1">
                       <Link
-                        key={child.id}
-                        href={href(`/categories/${child.slug}`)}
-                        className="block rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-accent/10 hover:text-accent"
+                        href={href(`/categories/${category.slug}`)}
+                        className="block rounded-md px-2 py-1 text-sm font-semibold transition-colors hover:text-accent"
                       >
-                        {categoryLabel(child, locale)}
+                        {categoryLabel(category, locale)}
                       </Link>
-                    ))}
-                  </div>
-                )}
+                      {category.children.map((child) => (
+                        <Link
+                          key={child.id}
+                          href={href(`/categories/${child.slug}`)}
+                          className="block rounded-md px-2 py-1 text-sm text-muted transition-colors hover:bg-accent/10 hover:text-accent"
+                        >
+                          {categoryLabel(child, locale)}
+                        </Link>
+                      ))}
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
+            )}
           </nav>
         </div>
 
@@ -138,7 +150,8 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
           )}
 
           {/* Menu mobile */}
-          <details className="relative md:hidden">
+          <details className="relative lg:hidden">
+            <CloseOnNavigate />
             <summary
               className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-md border border-border text-muted [&::-webkit-details-marker]:hidden"
               aria-label={t.nav.menuAria}
@@ -147,7 +160,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
                 <path d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </summary>
-            <nav className="absolute right-0 top-full z-50 mt-2 w-64 rounded-lg border border-border bg-surface p-2 shadow-xl">
+            <nav className="absolute right-0 top-full z-50 mt-2 max-h-[calc(100dvh-5rem)] w-72 max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain rounded-lg border border-border bg-surface p-2 shadow-xl">
               <Link href={href("/articles")} className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-accent/10">
                 {t.nav.articles}
               </Link>

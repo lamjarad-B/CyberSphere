@@ -74,10 +74,10 @@ export default async function HomePage({
                 <img
                   src={featured.coverImage}
                   alt=""
-                  className="h-full min-h-56 w-full object-cover"
+                  className="aspect-[1200/630] w-full object-cover md:aspect-auto md:h-full md:min-h-56"
                 />
               ) : (
-                <div className="flex h-full min-h-56 items-center justify-center bg-gradient-to-br from-accent/20 via-surface to-surface">
+                <div className="flex aspect-video h-full items-center md:aspect-auto md:min-h-56 justify-center bg-gradient-to-br from-accent/20 via-surface to-surface">
                   <Image
                     src="/images/Logo/cybersphere-icone.png"
                     alt=""
@@ -89,9 +89,9 @@ export default async function HomePage({
                 </div>
               )}
             </Link>
-            <div className="flex flex-col gap-4 p-8">
-              <div className="flex items-center gap-3">
-                <span className="rounded-full bg-accent px-2.5 py-0.5 font-mono text-xs font-semibold text-accent-contrast">
+            <div className="flex flex-col gap-4 p-6 sm:p-8">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <span className="whitespace-nowrap rounded-full bg-accent px-2.5 py-0.5 font-mono text-xs font-semibold text-accent-contrast">
                   {t.featured}
                 </span>
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted">
