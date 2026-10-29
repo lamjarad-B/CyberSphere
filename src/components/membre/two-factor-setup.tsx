@@ -39,7 +39,7 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
     });
     setLoading(false);
 
-    if (error || !data) {
+    if (error || !data || data.method !== "totp") {
       setError(
         error?.status === 429 ? t.auth.tooManyAttempts : labels.wrongPassword,
       );
