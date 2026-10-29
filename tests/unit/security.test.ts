@@ -9,7 +9,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import { deleteUpload, saveImage, UPLOAD_DIR, uploadFileName } from "@/lib/uploads";
-import { newArticleEmail, securityAlertEmail } from "@/lib/email";
+import { contactMessageEmail, newArticleEmail, securityAlertEmail } from "@/lib/email";
+import { contactSchema } from "@/lib/validations";
 import { productionConfigErrors } from "@/lib/config-check";
 import { referrerHostFrom } from "@/lib/stats";
 import { confirmNewsletter, unsubscribeNewsletter } from "@/lib/newsletter";
@@ -284,5 +285,37 @@ describe("E-mails : échappement HTML", () => {
     });
     expect(html).not.toContain("<script>");
     expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("échappe le contenu d'un message de contact (saisi par le visiteur)", () => {
+    const { html } = contactMessageEmail({
+      name: "<b>Eve</b>",
+      email: "eve@example.com",
+      subject: "<img src=x onerror=alert(1)>",
+      message: "<script>alert(1)</script>",
+      locale: "fr",
+    });
+    expect(html).not.toContain("<script>");
+    expect(html).not.toContain("<img src=x");
+    expect(html).not.toContain("<b>Eve</b>");
+  });
+});
+
+describe("Formulaire de contact : validation", () => {
+  const valid = {
+    name: "Eve",
+    email: "eve@example.com",
+    subject: "Bonjour",
+    message: "Un message assez long.",
+  };
+
+  it("aplatit les retours chariot du sujet (anti-injection d'en-têtes)", () => {
+    const parsed = contactSchema.parse({ ...valid, subject: "Salut\r\nBcc: victime@example.com" });
+    expect(parsed.subject).toBe("Salut Bcc: victime@example.com");
+  });
+
+  it("refuse un message trop court ou une adresse invalide", () => {
+    expect(contactSchema.safeParse({ ...valid, message: "court" }).success).toBe(false);
+    expect(contactSchema.safeParse({ ...valid, email: "pas-une-adresse" }).success).toBe(false);
   });
 });

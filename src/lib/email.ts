@@ -33,13 +33,15 @@ type SendEmailInput = {
   text: string;
   /** En-têtes supplémentaires (ex. List-Unsubscribe pour la newsletter). */
   headers?: Record<string, string>;
+  /** Adresse de réponse (formulaire de contact : l'expéditeur du message). */
+  replyTo?: string | { name: string; address: string };
 };
 
 /**
  * Envoie un e-mail via SMTP. En l'absence de configuration SMTP (développement),
  * le contenu est écrit dans la console pour rester testable sans serveur mail.
  */
-export async function sendEmail({ to, subject, html, text, headers }: SendEmailInput) {
+export async function sendEmail({ to, subject, html, text, headers, replyTo }: SendEmailInput) {
   const tx = getTransporter();
   if (!tx) {
     console.log(
@@ -54,6 +56,7 @@ export async function sendEmail({ to, subject, html, text, headers }: SendEmailI
     text,
     html,
     headers,
+    replyTo,
   });
 }
 
@@ -101,7 +104,7 @@ function layout(
     <div style="max-width:520px;margin:0 auto;background:#0f1622;border:1px solid #1e293b;border-radius:12px;padding:32px">
       <p style="font-family:monospace;color:#22d3ee;font-weight:bold;font-size:18px;margin:0 0 8px">&gt;_ CyberSphere</p>
       <h1 style="font-size:20px;margin:0 0 16px">${escapeHtml(title)}</h1>
-      <p style="color:#8b98a9;line-height:1.6;margin:0 0 24px">${escapeHtml(intro)}</p>
+      <p style="color:#8b98a9;line-height:1.6;margin:0 0 24px;white-space:pre-wrap">${escapeHtml(intro)}</p>
       ${detailRows ? `<table style="font-size:14px;margin:0 0 24px;border-collapse:collapse">${detailRows}</table>` : ""}
       <a href="${escapeHtml(url)}" style="display:inline-block;background:#22d3ee;color:#06222b;font-weight:bold;text-decoration:none;padding:12px 24px;border-radius:8px">
         ${ctaLabel}
@@ -349,6 +352,33 @@ export function securityAlertEmail(input: {
     subject: copy.subject,
     text: `${copy.title}\n\n${copy.intro}\n\n${detailText}\n\n${footer}\n${input.accountUrl}`,
     html: layout(input.locale, copy.title, copy.intro, cta, input.accountUrl, footer, input.details),
+  };
+}
+
+/**
+ * Message reçu via le formulaire de contact, transmis à l'équipe (en
+ * français, comme l'administration). Tout le contenu vient du visiteur :
+ * il passe par l'échappement de `layout`, le message tient lieu d'intro.
+ */
+export function contactMessageEmail(input: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  locale: Locale;
+}): EmailContent {
+  const details: [string, string][] = [
+    ["De", input.name],
+    ["E-mail", input.email],
+    ["Langue", input.locale],
+  ];
+  const replyUrl = `mailto:${input.email}?subject=${encodeURIComponent(`Re: ${input.subject}`)}`;
+  const footer =
+    "Message reçu via le formulaire de contact de CyberSphere. Répondre à cet e-mail écrit directement à l'expéditeur.";
+  const detailText = details.map(([label, value]) => `${label} : ${value}`).join("\n");
+  return {
+    text: `${input.subject}\n\n${detailText}\n\n${input.message}\n\n${footer}`,
+    html: layout("fr", input.subject, input.message, "Répondre", replyUrl, footer, details),
   };
 }
 

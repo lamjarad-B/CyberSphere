@@ -44,6 +44,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     bilingual("/", { changeFrequency: "daily", priority: 1 }),
     bilingual("/articles", { changeFrequency: "daily", priority: 0.9 }),
     bilingual("/series", { changeFrequency: "weekly", priority: 0.7 }),
+    bilingual("/contact", { changeFrequency: "yearly", priority: 0.3 }),
     ...articles.map((article) =>
       bilingual(`/articles/${article.slug}`, {
         lastModified: article.updatedAt,

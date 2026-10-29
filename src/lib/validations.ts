@@ -93,6 +93,20 @@ export const newsletterSchema = z.object({
   locale: z.enum(["fr", "en"]).default("fr"),
 });
 
+/** Une ligne : pas de retour chariot (le sujet finit dans un en-tête SMTP). */
+const singleLine = (min: number, max: number) =>
+  z
+    .string()
+    .transform((value) => value.replace(/[\r\n]+/g, " ").trim())
+    .pipe(z.string().min(min).max(max));
+
+export const contactSchema = z.object({
+  name: singleLine(2, 80),
+  email: z.email(),
+  subject: singleLine(3, 120),
+  message: z.string().trim().min(10).max(5000),
+});
+
 export const categorySchema = z.object({
   name: z
     .string()

@@ -38,6 +38,9 @@ export function SiteFooter({ locale }: { locale: Locale }) {
               <Link href={href("/recherche")} className="transition-colors hover:text-accent">
                 {t.search}
               </Link>
+              <Link href={href("/contact")} className="transition-colors hover:text-accent">
+                {t.contact}
+              </Link>
               <Link href={href("/securite")} className="transition-colors hover:text-accent">
                 {t.reportVuln}
               </Link>
