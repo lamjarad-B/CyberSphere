@@ -76,9 +76,23 @@ export function ArticleCard({
           </Link>
         </h3>
         <p className="line-clamp-3 text-sm text-muted">{article.excerpt}</p>
-        <p className="mt-auto pt-2 text-xs text-muted">
-          {formatDate(article.publishedAt, locale)} · {article.author.name}
-        </p>
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2">
+          <p className="text-xs text-muted">
+            {formatDate(article.publishedAt, locale)} · {article.author.name}
+          </p>
+          {/* Doublon du lien du titre : masqué au clavier et aux lecteurs d’écran */}
+          <Link
+            href={localeHref(locale, `/articles/${article.slug}`)}
+            className="text-sm font-medium text-accent transition-colors hover:underline"
+            tabIndex={-1}
+            aria-hidden
+          >
+            {locale === "en" ? "Read the article" : "Lire l’article"}{" "}
+            <span className="inline-block transition-transform group-hover:translate-x-0.5">
+              →
+            </span>
+          </Link>
+        </div>
       </div>
     </article>
   );
