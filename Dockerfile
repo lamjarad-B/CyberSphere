@@ -40,7 +40,10 @@ RUN V=$(node -p "require('/tmp/package-lock.json').packages['node_modules/prisma
 # ---------- Étape 4 : exécution ----------
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
+# Polices pour librsvg (sharp) : sans elles, le texte d'un SVG téléversé est
+# rastérisé en carrés vides. DejaVu couvre les accents, « — » et « · », et
+# fontconfig la substitue aux familles absentes (Consolas, Menlo…).
+RUN apt-get update && apt-get install -y --no-install-recommends openssl fontconfig fonts-dejavu-core && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
