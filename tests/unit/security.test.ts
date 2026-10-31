@@ -8,7 +8,13 @@ import { rateLimit, resetRateLimits } from "@/lib/rate-limit";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import { deleteUpload, saveImage, UPLOAD_DIR, uploadFileName } from "@/lib/uploads";
+import {
+  deleteUpload,
+  saveImage,
+  UPLOAD_DIR,
+  uploadFileName,
+  uploadUrlsIn,
+} from "@/lib/uploads";
 import { contactMessageEmail, newArticleEmail, securityAlertEmail } from "@/lib/email";
 import { contactSchema } from "@/lib/validations";
 import { productionConfigErrors } from "@/lib/config-check";
@@ -144,6 +150,19 @@ describe("Suppression de fichiers téléversés (anti-traversée)", () => {
       expect(uploadFileName(url)).toBeNull();
     },
   );
+});
+
+describe("Images de corps citées dans le Markdown", () => {
+  it("extrait les URL /uploads/… sans doublon ni chemin hors uploads", () => {
+    const markdown = [
+      "![capture](/uploads/1-aa.webp)",
+      "![bis](/uploads/1-aa.webp) et [lien](/uploads/2-bb.png)",
+      "![schéma](/schemas/flux.svg)",
+      "![piège](/uploads/../.env) ![autre](/uploads/3-cc.webp.sh)",
+    ].join("\n");
+    expect(uploadUrlsIn(markdown)).toEqual(["/uploads/1-aa.webp", "/uploads/2-bb.png"]);
+    expect(uploadUrlsIn(null)).toEqual([]);
+  });
 });
 
 /** PNG minimal (IHDR + IDAT vide + IEND) annonçant des dimensions arbitraires. */

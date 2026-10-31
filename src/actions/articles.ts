@@ -5,7 +5,7 @@ import { after } from "next/server";
 import { db } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { getStaffSession } from "@/lib/session";
-import { deleteUpload, saveImage } from "@/lib/uploads";
+import { deleteUpload, saveImage, uploadUrlsIn } from "@/lib/uploads";
 import { renderMarkdown } from "@/lib/markdown";
 import { slugify, uniqueSlug } from "@/lib/slug";
 import { createPreviewToken } from "@/lib/draft-preview";
@@ -25,6 +25,38 @@ function parseTags(raw: string): string[] {
         .filter((t) => t.length >= 2 && t.length <= 40),
     ),
   ].slice(0, 10);
+}
+
+/** URL /uploads/… du corps d'un article, français et traductions. */
+function bodyUploads(article: {
+  content: string;
+  translations: { content: string }[];
+}): string[] {
+  return uploadUrlsIn([article.content, ...article.translations.map((t) => t.content)].join("\n"));
+}
+
+/**
+ * Supprime les images de corps qui ne sont plus citées nulle part : une
+ * même URL peut avoir été recopiée dans un autre article, sa traduction,
+ * ou servir de couverture — on ne retire que les fichiers sans référence.
+ */
+async function deleteUnreferencedUploads(urls: string[]): Promise<void> {
+  for (const url of urls) {
+    const [article, user] = await Promise.all([
+      db.article.findFirst({
+        where: {
+          OR: [
+            { content: { contains: url } },
+            { coverImage: url },
+            { translations: { some: { content: { contains: url } } } },
+          ],
+        },
+        select: { id: true },
+      }),
+      db.user.findFirst({ where: { image: url }, select: { id: true } }),
+    ]);
+    if (!article && !user) await deleteUpload(url);
+  }
 }
 
 export async function saveArticle(
@@ -113,7 +145,14 @@ export async function saveArticle(
   const existing = id
     ? await db.article.findUnique({
         where: { id },
-        select: { publishedAt: true, status: true, authorId: true, coverImage: true },
+        select: {
+          publishedAt: true,
+          status: true,
+          authorId: true,
+          coverImage: true,
+          content: true,
+          translations: { select: { content: true } },
+        },
       })
     : null;
   if (id) {
@@ -270,6 +309,9 @@ export async function saveArticle(
   }
 
   await deleteUpload(replacedCover);
+  // Images retirées du texte : l'article est déjà enregistré, celles qu'il
+  // cite encore sont donc conservées par la vérification de références
+  if (existing) await deleteUnreferencedUploads(bodyUploads(existing));
 
   const justSubmitted = data.status === "SUBMITTED" && existing?.status !== "SUBMITTED";
 
@@ -324,7 +366,14 @@ export async function deleteArticle(id: string): Promise<ActionResult> {
 
   const article = await db.article.findUnique({
     where: { id },
-    select: { authorId: true, status: true, title: true, coverImage: true },
+    select: {
+      authorId: true,
+      status: true,
+      title: true,
+      coverImage: true,
+      content: true,
+      translations: { select: { content: true } },
+    },
   });
   if (!article) return { ok: false, error: "Article introuvable." };
 
@@ -349,6 +398,7 @@ export async function deleteArticle(id: string): Promise<ActionResult> {
     return { ok: false, error: "Suppression impossible." };
   }
   await deleteUpload(article.coverImage);
+  await deleteUnreferencedUploads(bodyUploads(article));
 
   await logAudit({
     action: "article.suppression",

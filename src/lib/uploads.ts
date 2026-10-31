@@ -103,6 +103,15 @@ export function uploadFileName(url: string | null | undefined): string | null {
 }
 
 /**
+ * URL /uploads/… citées dans un texte Markdown (images de corps d'article),
+ * sans doublon. Même forme de nom que uploadFileName.
+ */
+export function uploadUrlsIn(markdown: string | null | undefined): string[] {
+  const found = markdown?.match(/\/uploads\/[\w-]+\.(?:webp|png|jpe?g|gif)(?![\w.])/gi);
+  return [...new Set(found ?? [])];
+}
+
+/**
  * Supprime un fichier téléversé devenu orphelin (avatar ou couverture
  * remplacés, article supprimé). Ignore toute URL hors de /uploads/ (images
  * du dépôt, valeurs inattendues) et ne lève jamais.
