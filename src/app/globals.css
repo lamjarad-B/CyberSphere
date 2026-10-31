@@ -62,6 +62,14 @@ body {
   overflow-x: auto;
 }
 
+/* Images et schémas : jamais plus larges que la colonne, jamais agrandis */
+.prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 2rem 0;
+}
+
 .prose figure[data-rehype-pretty-code-figure] figcaption[data-rehype-pretty-code-title] {
   font-family: var(--font-mono), monospace;
   font-size: 0.8rem;

@@ -9,6 +9,7 @@ import { deleteUpload, saveImage } from "@/lib/uploads";
 import { renderMarkdown } from "@/lib/markdown";
 import { slugify, uniqueSlug } from "@/lib/slug";
 import { createPreviewToken } from "@/lib/draft-preview";
+import { rateLimit } from "@/lib/rate-limit";
 import { SITE_URL } from "@/lib/site";
 import { dispatchArticleToSubscribers } from "@/lib/newsletter";
 import { notifyAdmins } from "@/lib/notifications";
@@ -367,6 +368,29 @@ export async function previewMarkdown(
   const session = await getStaffSession();
   if (!session) return { html: "<p>Accès refusé.</p>" };
   return { html: await renderMarkdown(content.slice(0, 100_000)) };
+}
+
+/**
+ * Image de corps d'article (capture, photo) : même traitement que la
+ * couverture — ré-encodage WebP, EXIF supprimés. Les schémas SVG ne passent
+ * pas par ici : versionnés dans public/schemas/, ils restent vectoriels.
+ */
+export async function uploadArticleImage(
+  formData: FormData,
+): Promise<{ url?: string; error?: string }> {
+  const session = await getStaffSession();
+  if (!session) return { error: "Accès refusé." };
+  if (!rateLimit(`article-image:${session.user.id}`, 30, 10 * 60_000)) {
+    return { error: "Trop d'images envoyées. Réessayez dans quelques minutes." };
+  }
+
+  const image = formData.get("image");
+  if (!(image instanceof File)) return { error: "Aucune image reçue." };
+  try {
+    return { url: await saveImage(image) };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Upload impossible." };
+  }
 }
 
 /**

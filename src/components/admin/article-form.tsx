@@ -2,7 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState, useSyncExternalStore, useTransition } from "react";
-import { getPreviewLink, previewMarkdown, saveArticle } from "@/actions/articles";
+import {
+  getPreviewLink,
+  previewMarkdown,
+  saveArticle,
+  uploadArticleImage,
+} from "@/actions/articles";
 import { pretranslateArticle } from "@/actions/translate";
 import { ARTICLE_KINDS, kindLabel, type ArticleKindValue } from "@/lib/articles";
 import {
@@ -81,6 +86,9 @@ function toLocalInput(iso: string | null | undefined): string | undefined {
 export function ArticleForm({ categories, series, article, canPublish }: ArticleFormProps) {
   const router = useRouter();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [uploadingImage, startUploadingImage] = useTransition();
   const [content, setContent] = useState(article?.content ?? "");
   const [tab, setTab] = useState<"write" | "preview">("write");
   const [previewHtml, setPreviewHtml] = useState("");
@@ -119,6 +127,24 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
       textarea.focus();
       const cursor = selectionStart + before.length + selected.length;
       textarea.setSelectionRange(cursor, cursor);
+    });
+  }
+
+  function uploadImage(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = ""; // permet de renvoyer le même fichier
+    if (!file) return;
+    setImageError(null);
+    startUploadingImage(async () => {
+      const formData = new FormData();
+      formData.set("image", file);
+      const { url, error } = await uploadArticleImage(formData);
+      if (!url) {
+        setImageError(error ?? "Upload impossible.");
+        return;
+      }
+      // Curseur placé entre les crochets : le texte alternatif reste à écrire
+      insertSnippet("\n![", `](${url})\n`);
     });
   }
 
@@ -297,6 +323,22 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                     {tool.label}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  title="Image — capture ou photo, ré-encodée en WebP. Schéma : fichier SVG dans public/schemas/, puis ![description](/schemas/fichier.svg)"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={uploadingImage}
+                  className="rounded px-2 py-1 font-mono text-xs text-muted transition-colors hover:bg-accent/10 hover:text-accent disabled:opacity-50"
+                >
+                  {uploadingImage ? "Envoi…" : "🖼"}
+                </button>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  onChange={uploadImage}
+                  className="hidden"
+                />
               </div>
               <textarea
                 ref={textareaRef}
@@ -307,6 +349,7 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                 className={`${inputClass} min-h-[28rem] resize-y rounded-t-none font-mono text-[13px] leading-relaxed`}
                 placeholder={"## Introduction\n\nVotre article en **Markdown**…\n\nUne affirmation sourcée[^1].\n\n[^1]: ANSSI, « Panorama de la cybermenace », 2025, https://cyber.gouv.fr"}
               />
+              {imageError && <p className={`${errorClass} mt-1`}>{imageError}</p>}
               <p className="mt-1 text-xs text-muted">
                 Sources : appel de note <code>[^1]</code> dans le texte, puis{" "}
                 <code>[^1]: Auteur, « Titre », date, URL</code> en fin d&apos;article — elles
