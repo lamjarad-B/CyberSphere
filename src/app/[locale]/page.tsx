@@ -38,14 +38,24 @@ export default async function HomePage({
   const locale = toLocale((await params).locale);
   const t = copy[locale];
 
-  const latest = await db.article.findMany({
-    where: { status: "PUBLISHED" },
-    orderBy: { publishedAt: "desc" },
-    take: 7,
-    select: articleCardSelect,
-  });
+  // « À la une » : l'article épinglé encore valide, sinon le dernier publié
+  const [pinned, latest] = await Promise.all([
+    db.article.findFirst({
+      where: { status: "PUBLISHED", featuredUntil: { gt: new Date() } },
+      orderBy: { publishedAt: "desc" },
+      select: articleCardSelect,
+    }),
+    db.article.findMany({
+      where: { status: "PUBLISHED" },
+      orderBy: { publishedAt: "desc" },
+      take: 7,
+      select: articleCardSelect,
+    }),
+  ]);
 
-  const [featuredRow, ...restRows] = latest;
+  const [featuredRow, ...restRows] = pinned
+    ? [pinned, ...latest.filter((row) => row.slug !== pinned.slug).slice(0, 6)]
+    : latest;
   const featured = featuredRow ? localizeCard(featuredRow, locale) : undefined;
 
   return (

@@ -41,6 +41,8 @@ export const articleSchema = z.object({
     .default(""),
   // Date de mise en ligne (ISO 8601) si status = SCHEDULED
   scheduledAt: z.string().trim().max(40).default(""),
+  // Fin de l'épinglage « À la une » (ISO 8601), vide : non épinglé
+  featuredUntil: z.string().trim().max(40).default(""),
   coverAlt: z.string().trim().max(200, "Le texte alternatif est limité à 200 caractères").default(""),
   coverAltEn: z
     .string()

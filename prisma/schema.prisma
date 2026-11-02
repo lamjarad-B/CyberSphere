@@ -162,6 +162,8 @@ model Article {
   status         ArticleStatus         @default(DRAFT)
   publishedAt    DateTime?
   views          Int                   @default(0)
+  // Épinglé « À la une » de l'accueil jusqu'à cette date (null : non épinglé)
+  featuredUntil  DateTime?
   authorId       String
   author         User                  @relation(fields: [authorId], references: [id])
   categoryId     String
@@ -181,6 +183,7 @@ model Article {
   updatedAt      DateTime              @updatedAt
 
   @@index([status, publishedAt])
+  @@index([featuredUntil])
   @@index([kind])
   @@index([categoryId])
   @@index([seriesId])

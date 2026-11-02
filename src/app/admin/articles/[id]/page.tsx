@@ -50,6 +50,7 @@ export default async function ModifierArticlePage({
           keyPointsEn: article.translations[0]?.keyPoints ?? "",
           status: article.status,
           publishedAt: article.publishedAt?.toISOString() ?? null,
+          featuredUntil: article.featuredUntil?.toISOString() ?? null,
           coverAlt: article.coverAlt ?? "",
           coverAltEn: article.translations[0]?.coverAlt ?? "",
           tags: article.tags.map((t) => t.name).join(", "),

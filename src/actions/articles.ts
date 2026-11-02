@@ -83,6 +83,7 @@ export async function saveArticle(
     excerptEn: formData.get("excerptEn") ?? "",
     contentEn: formData.get("contentEn") ?? "",
     scheduledAt: formData.get("scheduledAt") ?? "",
+    featuredUntil: formData.get("featuredUntil") ?? "",
     coverAlt: formData.get("coverAlt") ?? "",
     coverAltEn: formData.get("coverAltEn") ?? "",
   });
@@ -123,6 +124,18 @@ export async function saveArticle(
     }
     if (scheduledAt.getTime() > now + 366 * 24 * 3600 * 1000) {
       return { ok: false, error: "Programmation : un an maximum." };
+    }
+  }
+
+  // Épinglage « À la une » : réservé aux administrateurs, un an maximum
+  let featuredUntil: Date | null = null;
+  if (data.featuredUntil) {
+    featuredUntil = new Date(data.featuredUntil);
+    if (Number.isNaN(featuredUntil.getTime())) {
+      return { ok: false, error: "À la une : date de fin invalide." };
+    }
+    if (featuredUntil.getTime() > Date.now() + 366 * 24 * 3600 * 1000) {
+      return { ok: false, error: "À la une : un an maximum." };
     }
   }
 
@@ -237,6 +250,7 @@ export async function saveArticle(
           ...(justPublished && { publishedAt: new Date() }),
           ...(scheduledAt && { publishedAt: scheduledAt }),
           ...(cancelledSchedule && { publishedAt: null }),
+          ...(isAdmin && { featuredUntil }),
           tags: { set: [], ...tagOps },
         },
       });
@@ -266,6 +280,7 @@ export async function saveArticle(
           coverImage: coverImage ?? null,
           coverAlt: data.coverAlt || null,
           publishedAt: justPublished ? new Date() : scheduledAt,
+          featuredUntil: isAdmin ? featuredUntil : null,
           authorId: session.user.id,
           tags: tagOps,
         },

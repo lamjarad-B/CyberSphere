@@ -35,6 +35,8 @@ export type ArticleFormData = {
   status: "DRAFT" | "SUBMITTED" | "SCHEDULED" | "PUBLISHED";
   /** Date de publication (prévue si SCHEDULED), ISO */
   publishedAt: string | null;
+  /** Fin de l'épinglage « À la une », ISO */
+  featuredUntil: string | null;
   coverAlt: string;
   coverAltEn: string;
   tags: string;
@@ -220,6 +222,12 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
     formData.delete("scheduledAtLocal");
     if (status === "SCHEDULED" && localSchedule) {
       formData.set("scheduledAt", new Date(localSchedule).toISOString());
+    }
+    // « À la une jusqu'au » : épinglé jusqu'à la fin du jour choisi (heure locale)
+    const localFeatured = String(formData.get("featuredUntilLocal") ?? "");
+    formData.delete("featuredUntilLocal");
+    if (localFeatured) {
+      formData.set("featuredUntil", new Date(`${localFeatured}T23:59:59`).toISOString());
     }
     setError(null);
     startSaving(async () => {
@@ -508,6 +516,26 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                 </div>
               )}
             </div>
+
+            {canPublish && isClient && (
+              <div>
+                <label htmlFor="featuredUntilLocal" className={labelClass}>
+                  À la une jusqu&apos;au{" "}
+                  <span className="font-normal text-muted">(facultatif)</span>
+                </label>
+                <input
+                  id="featuredUntilLocal"
+                  name="featuredUntilLocal"
+                  type="date"
+                  defaultValue={toLocalInput(article?.featuredUntil)?.slice(0, 10)}
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-muted">
+                  Épingle l&apos;article en tête de l&apos;accueil jusqu&apos;à cette
+                  date, au lieu du dernier publié. Vide : pas d&apos;épinglage.
+                </p>
+              </div>
+            )}
 
             <div>
               <label htmlFor="kind" className={labelClass}>
