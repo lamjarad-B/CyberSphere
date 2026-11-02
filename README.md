@@ -209,10 +209,24 @@ Volumes persistants : `db-data`, `db-backups`, `uploads`, `caddy-data`.
 ### Déploiement automatique
 
 Le déploiement se fait **en pull** depuis la VM : aucun port SSH n'est ouvert
-à Internet. Un script planifié sur le serveur vérifie toutes les 30 minutes
-s'il y a un nouveau commit sur `main` et, le cas échéant, reconstruit et
-relance l'application (`docker compose … up -d --build`). La CI GitHub ne se
-connecte jamais au serveur.
+à Internet, et la VM ne compile plus rien.
+
+1. À chaque push sur `main` dont la CI est verte, le job `image` construit
+   l'image de l'application et la publie sur
+   `ghcr.io/lamjarad-b/cybersphere` (tags `latest` et `sha-<commit>`).
+2. Sur la VM, un script planifié télécharge l'image et ne relance le
+   conteneur que si elle a changé — quelques secondes d'interruption :
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml pull app
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d app
+```
+
+Les valeurs `NEXT_PUBLIC_*` étant figées au build, elles sont lues dans les
+**variables** GitHub Actions du dépôt (*Settings → Secrets and variables →
+Actions → Variables*) : `NEXT_PUBLIC_APP_URL` (obligatoire) et
+`NEXT_PUBLIC_TURNSTILE_SITE_KEY`. Revenir à une version précise :
+`APP_IMAGE=ghcr.io/lamjarad-b/cybersphere:sha-<commit>` dans `.env.production`.
 
 ## CI
 

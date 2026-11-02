@@ -41,6 +41,10 @@ services:
       retries: 12
 
   app:
+    # Image construite et publiée par la CI à chaque push vert sur main.
+    # Mise à jour : docker compose … pull app && docker compose … up -d app
+    # (« up -d --build » reconstruit encore localement, en secours).
+    image: ${APP_IMAGE:-ghcr.io/lamjarad-b/cybersphere:latest}
     build:
       context: .
       dockerfile: Dockerfile
