@@ -53,6 +53,10 @@ const fr = {
     previous: "← Précédent",
     next: "Suivant →",
   },
+  captcha: {
+    error:
+      "La vérification anti-robot n'a pas pu se charger. Désactivez votre bloqueur de publicités pour ce site ou rechargez la page.",
+  },
   userMenu: {
     profile: "Mon profil",
     admin: "Administration",
@@ -310,6 +314,10 @@ const en: Dictionary = {
   pagination: {
     previous: "← Previous",
     next: "Next →",
+  },
+  captcha: {
+    error:
+      "The anti-bot check could not load. Disable your ad blocker for this site or reload the page.",
   },
   userMenu: {
     profile: "My profile",
