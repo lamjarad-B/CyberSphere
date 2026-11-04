@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="478" viewBox="0 0 1200 478" role="img" aria-labelledby="t1">
+  <title id="t1">Calendrier de signalement d'un incident significatif sous NIS2</title>
+  <rect width="1200" height="478" rx="14" fill="#0f1622" stroke="#1e293b" stroke-width="1.5"/>
+
+  <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+    <text x="48" y="60" font-size="30" font-weight="600" fill="#e6edf3">Signaler un incident significatif</text>
+    <text x="48" y="92" font-size="19" fill="#8b98a9">Directive (UE) 2022/2555, article 23</text>
+
+    <line x1="140" y1="205" x2="1060" y2="205" stroke="#1e293b" stroke-width="3"/>
+
+    <circle cx="140" cy="205" r="11" fill="#0f1622" stroke="#8b98a9" stroke-width="3"/>
+    <text x="140" y="178" font-size="18" font-weight="600" fill="#8b98a9" text-anchor="middle">Prise de connaissance</text>
+
+    <circle cx="390" cy="205" r="13" fill="#22d3ee"/>
+    <circle cx="680" cy="205" r="13" fill="#22d3ee"/>
+    <circle cx="970" cy="205" r="13" fill="#22d3ee"/>
+
+    <text x="390" y="176" font-size="27" font-weight="700" fill="#22d3ee" text-anchor="middle">24 heures</text>
+    <text x="680" y="176" font-size="27" font-weight="700" fill="#22d3ee" text-anchor="middle">72 heures</text>
+    <text x="970" y="176" font-size="27" font-weight="700" fill="#22d3ee" text-anchor="middle">1 mois</text>
+
+    <g>
+      <rect x="260" y="238" width="260" height="128" rx="10" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
+      <text x="282" y="270" font-size="21" font-weight="600" fill="#e6edf3">Alerte précoce</text>
+      <text x="282" y="300" font-size="16.5" fill="#8b98a9">
+        <tspan x="282">Acte malveillant suspecté ?</tspan>
+        <tspan x="282" dy="23">Impact transfrontalier</tspan>
+        <tspan x="282" dy="23">possible ?</tspan>
+      </text>
+    </g>
+
+    <g>
+      <rect x="550" y="238" width="260" height="128" rx="10" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
+      <text x="572" y="270" font-size="21" font-weight="600" fill="#e6edf3">Notification</text>
+      <text x="572" y="300" font-size="16.5" fill="#8b98a9">
+        <tspan x="572">Première évaluation de la</tspan>
+        <tspan x="572" dy="23">gravité. Indicateurs de</tspan>
+        <tspan x="572" dy="23">compromission.</tspan>
+      </text>
+    </g>
+
+    <g>
+      <rect x="840" y="238" width="260" height="128" rx="10" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
+      <text x="862" y="270" font-size="21" font-weight="600" fill="#e6edf3">Rapport final</text>
+      <text x="862" y="300" font-size="16.5" fill="#8b98a9">
+        <tspan x="862">Cause première, mesures</tspan>
+        <tspan x="862" dy="23">appliquées, effets. Compté</tspan>
+        <tspan x="862" dy="23">depuis la notification.</tspan>
+      </text>
+    </g>
+
+    <text x="48" y="400" font-size="16.5" fill="#64748b">Les 24 et 72 heures courent depuis la prise de connaissance ; le mois court depuis la notification des 72 heures, non depuis l'incident.</text>
+    <text x="48" y="424" font-size="16.5" fill="#64748b">Les prestataires de services de confiance notifient en 24 heures au lieu de 72.</text>
+    <text x="48" y="448" font-size="16.5" fill="#64748b">Si l'incident est encore en cours, le rapport final devient un rapport d'avancement.</text>
+  </g>
+</svg>
