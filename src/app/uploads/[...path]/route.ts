@@ -8,6 +8,7 @@ const CONTENT_TYPES: Record<string, string> = {
   ".jpeg": "image/jpeg",
   ".webp": "image/webp",
   ".gif": "image/gif",
+  ".svg": "image/svg+xml",
 };
 
 export async function GET(
@@ -32,6 +33,10 @@ export async function GET(
         "Content-Type": type,
         "Cache-Control": "public, max-age=31536000, immutable",
         "X-Content-Type-Options": "nosniff",
+        // SVG ouvert directement (hors <img>) : ni script ni chargement externe
+        ...(type === "image/svg+xml" && {
+          "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+        }),
       },
     });
   } catch {

@@ -194,7 +194,7 @@ export async function saveArticle(
   const cover = formData.get("cover");
   if (cover instanceof File && cover.size > 0) {
     try {
-      coverImage = await saveImage(cover);
+      coverImage = await saveImage(cover, { keepSvg: isAdmin });
     } catch (error) {
       return {
         ok: false,
@@ -437,8 +437,8 @@ export async function previewMarkdown(
 
 /**
  * Image de corps d'article (capture, photo, schéma SVG) : même traitement que la
- * couverture — ré-encodage WebP, EXIF supprimés ; un SVG est rastérisé en haute
- * résolution. Un schéma qui doit rester vectoriel va dans public/schemas/.
+ * couverture — ré-encodage WebP, EXIF supprimés. Un SVG reste vectoriel pour un
+ * administrateur et est rastérisé en haute résolution pour un auteur.
  */
 export async function uploadArticleImage(
   formData: FormData,
@@ -452,7 +452,7 @@ export async function uploadArticleImage(
   const image = formData.get("image");
   if (!(image instanceof File)) return { error: "Aucune image reçue." };
   try {
-    return { url: await saveImage(image) };
+    return { url: await saveImage(image, { keepSvg: session.user.role === "admin" }) };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Upload impossible." };
   }

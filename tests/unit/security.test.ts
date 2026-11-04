@@ -15,6 +15,7 @@ import {
   uploadFileName,
   uploadUrlsIn,
 } from "@/lib/uploads";
+import { sanitizeSvg } from "@/lib/svg";
 import { contactMessageEmail, newArticleEmail, securityAlertEmail } from "@/lib/email";
 import { contactSchema } from "@/lib/validations";
 import { productionConfigErrors } from "@/lib/config-check";
@@ -219,6 +220,67 @@ describe("Uploads : SVG rastérisé", () => {
     await expect(
       saveImage(new File(["pas du svg"], "x.svg", { type: "image/svg+xml" })),
     ).rejects.toThrow(/invalide/);
+  });
+});
+
+describe("Uploads : SVG conservé (administrateurs)", () => {
+  const xmlns = 'xmlns="http://www.w3.org/2000/svg"';
+  const svgFile = (svg: string) => new File([svg], "s.svg", { type: "image/svg+xml" });
+
+  it("stocke un schéma en SVG, sans perdre son contenu", async () => {
+    const svg = `<svg ${xmlns} viewBox="0 0 9 9"><defs><marker id="a"><path d="M0 0"/></marker></defs><line x2="9" marker-end="url(#a)"/><text>Été &amp; hiver</text></svg>`;
+    const url = await saveImage(svgFile(svg), { keepSvg: true });
+    expect(url).toMatch(/^\/uploads\/[\w-]+\.svg$/);
+    expect(uploadFileName(url)).not.toBeNull();
+    expect(uploadUrlsIn(`![x](${url})`)).toEqual([url]);
+
+    const stored = await readFile(path.join(UPLOAD_DIR, uploadFileName(url)!), "utf8");
+    expect(stored).toContain('marker-end="url(#a)"');
+    expect(stored).toContain("Été &amp; hiver");
+    await deleteUpload(url);
+  });
+
+  it("rastérise toujours sans keepSvg (avatars, auteurs)", async () => {
+    const url = await saveImage(svgFile(`<svg ${xmlns} width="9" height="9"><rect width="9" height="9"/></svg>`));
+    expect(url).toMatch(/\.webp$/);
+    await deleteUpload(url);
+  });
+
+  it.each([
+    [`<svg ${xmlns}><script>alert(1)</script></svg>`, /script/],
+    [`<svg ${xmlns}><SCRIPT>alert(1)</SCRIPT></svg>`, /SCRIPT/],
+    [`<svg ${xmlns} onload="alert(1)"/>`, /onload/],
+    [`<svg ${xmlns} ONLOAD="alert(1)"/>`, /ONLOAD/],
+    [`<svg ${xmlns}><foreignObject/></svg>`, /foreignObject/],
+    [`<svg ${xmlns}><a href="javascript:alert(1)"><text>x</text></a></svg>`, /<a>/],
+    [`<svg ${xmlns}><image href="https://evil.test/x.png"/></svg>`, /image/],
+    [`<svg ${xmlns}><use href="#a"/></svg>`, /use/],
+    [`<svg ${xmlns}><set attributeName="onmouseover" to="alert(1)"/></svg>`, /set/],
+    [`<svg ${xmlns}><animate attributeName="href" to="javascript:alert(1)"/></svg>`, /animate/],
+    [`<svg ${xmlns}><style>*{fill:red}</style></svg>`, /style/],
+    [`<svg ${xmlns} style="fill:url(https://evil.test)"/>`, /style/],
+    [`<svg ${xmlns}><rect fill="url(https://evil.test/a#b)"/></svg>`, /externe/],
+    [`<svg ${xmlns}><html:script xmlns:html="http://www.w3.org/1999/xhtml"/></svg>`, /html:script/],
+    [`<!DOCTYPE svg [<!ENTITY x "y">]><svg ${xmlns}>&x;</svg>`, /DOCTYPE/],
+    [`<?xml-stylesheet href="https://evil.test/a.xsl"?><svg ${xmlns}/>`, /instruction/],
+    ["<svg/>", /pas un SVG/],
+    ["<html/>", /html/],
+    ["pas du svg", /XML invalide/],
+    [`<svg ${xmlns}>`, /XML invalide/],
+  ])("refuse %s", (svg, message) => {
+    expect(() => sanitizeSvg(Buffer.from(svg))).toThrow(message);
+  });
+
+  it("refuse un SVG en UTF-16 (contournement de filtre)", () => {
+    const svg = `<svg ${xmlns}><script>alert(1)</script></svg>`;
+    expect(() => sanitizeSvg(Buffer.from(`\ufeff${svg}`, "utf16le"))).toThrow(/UTF-8/);
+  });
+
+  it("n'écrit aucun fichier pour un SVG refusé, et neutralise les commentaires", async () => {
+    await expect(
+      saveImage(svgFile(`<svg ${xmlns}><script/></svg>`), { keepSvg: true }),
+    ).rejects.toThrow(/script/);
+    expect(sanitizeSvg(Buffer.from(`<svg ${xmlns}><!-- <script>x</script> --></svg>`))).not.toContain("script");
   });
 });
 

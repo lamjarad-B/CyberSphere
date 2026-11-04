@@ -333,7 +333,7 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                 ))}
                 <button
                   type="button"
-                  title="Image, capture ou schéma (png, jpg, webp, gif, svg) — convertie en WebP côté serveur"
+                  title="Image, capture ou schéma (png, jpg, webp, gif, svg) — convertie en WebP ; un SVG envoyé par un admin reste vectoriel"
                   onClick={() => imageInputRef.current?.click()}
                   disabled={uploadingImage}
                   className="rounded px-2 py-1 font-mono text-xs text-muted transition-colors hover:bg-accent/10 hover:text-accent disabled:opacity-50"
@@ -647,7 +647,8 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                 className="block w-full text-sm text-muted file:mr-3 file:rounded-md file:border file:border-border file:bg-surface file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground"
               />
               <p className="mt-1 text-xs text-muted">
-                Ré-encodée en WebP côté serveur (métadonnées EXIF supprimées).
+                Ré-encodée en WebP côté serveur (métadonnées EXIF supprimées). Un SVG
+                envoyé par un admin reste vectoriel.
               </p>
               <label htmlFor="coverAlt" className={`${labelClass} mt-3`}>
                 Texte alternatif{" "}

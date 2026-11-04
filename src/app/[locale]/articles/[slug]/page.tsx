@@ -110,7 +110,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: "article",
       locale: locale === "en" ? "en_US" : "fr_FR",
       publishedTime: article.publishedAt?.toISOString(),
-      images: article.coverImage ? [article.coverImage] : undefined,
+      // Les réseaux sociaux n'affichent pas le SVG en aperçu de lien
+      images:
+        article.coverImage && !article.coverImage.endsWith(".svg")
+          ? [article.coverImage]
+          : undefined,
     },
   };
 }

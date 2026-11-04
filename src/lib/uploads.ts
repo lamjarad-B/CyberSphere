@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
+import { sanitizeSvg } from "./svg";
 
 export const UPLOAD_DIR = path.join(process.cwd(), "uploads");
 
@@ -37,8 +38,15 @@ const MAX_INPUT_PIXELS = 40_000_000;
  * Un SVG est **rastérisé** (librsvg) puis ré-encodé de même : aucun SVG
  * n'est jamais servi depuis /uploads, donc aucun <script> ni gestionnaire
  * d'événement embarqué ne peut s'exécuter dans l'origine du site.
+ *
+ * Exception réservée aux administrateurs, `keepSvg` : le SVG reste vectoriel,
+ * après validation par liste blanche (lib/svg). La route /uploads le sert sous
+ * une CSP `sandbox`. Ne jamais l'activer pour un membre (avatars) ou un auteur.
  */
-export async function saveImage(file: File): Promise<string> {
+export async function saveImage(
+  file: File,
+  { keepSvg = false }: { keepSvg?: boolean } = {},
+): Promise<string> {
   if (file.size === 0) throw new Error("Fichier vide");
   if (file.size > MAX_SIZE) throw new Error("Image trop lourde (5 Mo maximum)");
   if (!ALLOWED_TYPES.has(file.type)) {
@@ -46,6 +54,10 @@ export async function saveImage(file: File): Promise<string> {
   }
 
   const source = Buffer.from(await file.arrayBuffer());
+  if (keepSvg && file.type === "image/svg+xml") {
+    return writeUpload(sanitizeSvg(source), "svg");
+  }
+
   let encoded: Buffer;
   try {
     const density = file.type === "image/svg+xml" ? await svgDensity(source) : undefined;
@@ -77,9 +89,14 @@ export async function saveImage(file: File): Promise<string> {
     throw new Error("Fichier invalide : ce n'est pas une image lisible");
   }
 
-  const name = `${Date.now()}-${randomBytes(8).toString("hex")}.webp`;
+  return writeUpload(encoded, "webp");
+}
+
+/** Le nom de fichier est aléatoire — jamais celui fourni par le client. */
+async function writeUpload(data: Buffer | string, extension: string): Promise<string> {
+  const name = `${Date.now()}-${randomBytes(8).toString("hex")}.${extension}`;
   await mkdir(UPLOAD_DIR, { recursive: true });
-  await writeFile(path.join(UPLOAD_DIR, name), encoded);
+  await writeFile(path.join(UPLOAD_DIR, name), data);
   return `/uploads/${name}`;
 }
 
@@ -101,7 +118,7 @@ async function svgDensity(source: Buffer): Promise<number> {
  * « .. » — aucune traversée de répertoire possible.
  */
 export function uploadFileName(url: string | null | undefined): string | null {
-  return url?.match(/^\/uploads\/([\w-]+\.(?:webp|png|jpe?g|gif))$/i)?.[1] ?? null;
+  return url?.match(/^\/uploads\/([\w-]+\.(?:webp|svg|png|jpe?g|gif))$/i)?.[1] ?? null;
 }
 
 /**
@@ -109,7 +126,7 @@ export function uploadFileName(url: string | null | undefined): string | null {
  * sans doublon. Même forme de nom que uploadFileName.
  */
 export function uploadUrlsIn(markdown: string | null | undefined): string[] {
-  const found = markdown?.match(/\/uploads\/[\w-]+\.(?:webp|png|jpe?g|gif)(?![\w.])/gi);
+  const found = markdown?.match(/\/uploads\/[\w-]+\.(?:webp|svg|png|jpe?g|gif)(?![\w.])/gi);
   return [...new Set(found ?? [])];
 }
 
