@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="tf2">
+  <title id="tf2">Contrôleur frigorifique exposé sur Internet, et architecture recommandée par le CERT-FR</title>
+  <rect width="1200" height="600" rx="14" fill="#0f1622" stroke="#1e293b" stroke-width="1.5"/>
+
+  <defs>
+    <marker id="af" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444"/>
+    </marker>
+  </defs>
+
+  <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+    <text x="48" y="58" font-size="29" font-weight="600" fill="#e6edf3">Pourquoi un contrôleur de froid est joignable</text>
+    <text x="48" y="89" font-size="18" fill="#8b98a9">La télémaintenance du prestataire, et ce que recommande le CERT-FR</text>
+
+    <text x="48" y="146" font-size="20" font-weight="700" fill="#ef4444">Configuration constatée</text>
+
+    <rect x="48" y="166" width="196" height="76" rx="10" fill="#0d1526" stroke="#334155" stroke-width="1.5"/>
+    <text x="146" y="198" font-size="18" font-weight="600" fill="#e6edf3" text-anchor="middle">Prestataire</text>
+    <text x="146" y="222" font-size="15" fill="#8b98a9" text-anchor="middle">télémaintenance</text>
+
+    <rect x="330" y="166" width="196" height="76" rx="10" fill="#0d1526" stroke="#334155" stroke-width="1.5"/>
+    <text x="428" y="198" font-size="18" font-weight="600" fill="#e6edf3" text-anchor="middle">Internet</text>
+    <text x="428" y="222" font-size="15" fill="#8b98a9" text-anchor="middle">IP publique, redirection, 4G</text>
+
+    <rect x="612" y="166" width="236" height="76" rx="10" fill="#2a0f0f" stroke="#ef4444" stroke-width="2"/>
+    <text x="730" y="198" font-size="18" font-weight="600" fill="#e6edf3" text-anchor="middle">Contrôleur de froid</text>
+    <text x="730" y="222" font-size="15" fill="#fca5a5" text-anchor="middle">interface d'administration</text>
+
+    <rect x="934" y="166" width="218" height="76" rx="10" fill="#0d1526" stroke="#334155" stroke-width="1.5"/>
+    <text x="1043" y="198" font-size="18" font-weight="600" fill="#e6edf3" text-anchor="middle">Chambre froide</text>
+    <text x="1043" y="222" font-size="15" fill="#8b98a9" text-anchor="middle">consigne, dégivrage</text>
+
+    <g stroke="#475569" stroke-width="2.5" fill="none" marker-end="url(#af)">
+      <path d="M 244 204 L 320 204"/>
+      <path d="M 526 204 L 602 204"/>
+      <path d="M 848 204 L 924 204"/>
+    </g>
+
+    <text x="730" y="282" font-size="16" fill="#fca5a5" text-anchor="middle">Mot de passe par défaut, micrologiciel obsolète, équipement en fin de vie</text>
+
+    <line x1="48" y1="330" x2="1152" y2="330" stroke="#1e293b" stroke-width="1.5"/>
+
+    <text x="48" y="382" font-size="20" font-weight="700" fill="#22d3ee">Configuration recommandée</text>
+
+    <rect x="48" y="402" width="196" height="76" rx="10" fill="#0d1526" stroke="#334155" stroke-width="1.5"/>
+    <text x="146" y="434" font-size="18" font-weight="600" fill="#e6edf3" text-anchor="middle">Prestataire</text>
+    <text x="146" y="458" font-size="15" fill="#8b98a9" text-anchor="middle">télémaintenance</text>
+
+    <rect x="330" y="402" width="196" height="76" rx="10" fill="#07323c" stroke="#22d3ee" stroke-width="2"/>
+    <text x="428" y="434" font-size="18" font-weight="600" fill="#22d3ee" text-anchor="middle">VPN</text>
+    <text x="428" y="458" font-size="15" fill="#cbd5e1" text-anchor="middle">accès authentifié</text>
+
+    <rect x="612" y="402" width="236" height="76" rx="10" fill="#0d1526" stroke="#22d3ee" stroke-width="2"/>
+    <text x="730" y="434" font-size="18" font-weight="600" fill="#e6edf3" text-anchor="middle">Contrôleur de froid</text>
+    <text x="730" y="458" font-size="15" fill="#8b98a9" text-anchor="middle">réseau protégé, niveau strict</text>
+
+    <rect x="934" y="402" width="218" height="76" rx="10" fill="#0d1526" stroke="#334155" stroke-width="1.5"/>
+    <text x="1043" y="434" font-size="18" font-weight="600" fill="#e6edf3" text-anchor="middle">Chambre froide</text>
+    <text x="1043" y="458" font-size="15" fill="#8b98a9" text-anchor="middle">consigne, dégivrage</text>
+
+    <g stroke="#475569" stroke-width="2.5" fill="none" marker-end="url(#af)">
+      <path d="M 244 440 L 320 440"/>
+      <path d="M 526 440 L 602 440"/>
+      <path d="M 848 440 L 924 440"/>
+    </g>
+
+    <text x="48" y="528" font-size="16" fill="#64748b">Sur un équipement en fin de vie que l'éditeur ne corrige plus, le CERT-FR avertit qu'une réinitialisation d'usine ne suffit pas :</text>
+    <text x="48" y="552" font-size="16" fill="#64748b">il sera de nouveau compromis s'il reste exposé. En octobre 2026, Forescout recensait 12 976 services de ce type joignables depuis Internet.</text>
+  </g>
+</svg>
