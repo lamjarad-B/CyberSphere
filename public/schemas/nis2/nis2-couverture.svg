@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="tc">
+  <title id="tc">NIS2 : de 500 à 15 000 entités régulées, de 6 à 18 secteurs</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#0f1622"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.85" cy="0.12" r="0.9">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#1e293b" stroke-width="1"/>
+    </pattern>
+    <marker id="ac" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#22d3ee"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#grid)" opacity="0.5"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+    <rect x="72" y="74" width="7" height="104" rx="3.5" fill="#22d3ee"/>
+    <text x="104" y="140" font-size="82" font-weight="700" fill="#e6edf3" letter-spacing="-1">NIS2</text>
+    <text x="104" y="182" font-size="27" fill="#8b98a9">Ce qu'exige la directive, et où en est la France</text>
+
+    <g>
+      <rect x="72" y="250" width="488" height="190" rx="14" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
+      <text x="104" y="296" font-size="20" font-weight="600" fill="#8b98a9" letter-spacing="1.5">ENTITÉS RÉGULÉES EN FRANCE</text>
+      <text x="104" y="384" font-size="62" font-weight="700" fill="#64748b">500</text>
+      <path d="M 232 364 L 296 364" stroke="#22d3ee" stroke-width="4" fill="none" marker-end="url(#ac)"/>
+      <text x="320" y="384" font-size="62" font-weight="700" fill="#22d3ee">15 000</text>
+      <text x="104" y="418" font-size="17" fill="#64748b">environ, selon l'étude d'impact du projet de loi</text>
+    </g>
+
+    <g>
+      <rect x="592" y="250" width="536" height="190" rx="14" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
+      <text x="624" y="296" font-size="20" font-weight="600" fill="#8b98a9" letter-spacing="1.5">SECTEURS CONCERNÉS</text>
+      <text x="624" y="384" font-size="62" font-weight="700" fill="#64748b">6</text>
+      <path d="M 676 364 L 740 364" stroke="#22d3ee" stroke-width="4" fill="none" marker-end="url(#ac)"/>
+      <text x="764" y="384" font-size="62" font-weight="700" fill="#22d3ee">18</text>
+      <text x="624" y="418" font-size="17" fill="#64748b">de l'énergie à l'administration publique</text>
+    </g>
+
+    <rect x="72" y="492" width="1056" height="74" rx="12" fill="#2a0f0f" stroke="#7f1d1d" stroke-width="1.5"/>
+    <circle cx="112" cy="529" r="7" fill="#ef4444"/>
+    <text x="138" y="536" font-size="23" fill="#fca5a5">
+      <tspan font-weight="700" fill="#fecaca">8 juillet 2026 :</tspan>
+      <tspan> la France renvoyée devant la Cour de justice de l'Union européenne.</tspan>
+    </text>
+  </g>
+</svg>
