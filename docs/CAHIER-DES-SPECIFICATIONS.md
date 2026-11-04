@@ -637,6 +637,7 @@ Mise en œuvre des recommandations de la revue v2.3 (7 octobre 2026).
 
 - Nouveau statut `SCHEDULED` : `publishedAt` porte la date de mise en ligne. Réservé aux admins ; date future (≥ 1 min, ≤ 1 an), saisie en heure locale du navigateur puis convertie en UTC.
 - Bascule `SCHEDULED → PUBLISHED` **conditionnelle** (`updateMany` sur le statut) : avec plusieurs instances, une seule publie et une seule newsletter part. Publier manuellement un article programmé l'avance (date = maintenant, newsletter envoyée) ; le repasser en brouillon annule la programmation.
+- Avant sa mise en ligne, l'URL d'un article programmé affiche au public un écran « Article à venir » (HTTP 200, `noindex`), sans titre, contenu ni date ; les autres statuts non publiés restent en 404.
 - Dates affichées dans un fuseau fixe (`NEXT_PUBLIC_DISPLAY_TIMEZONE`, `Europe/Paris` par défaut) : identiques côté serveur (UTC en conteneur) et navigateur.
 
 ### 12.4 Tâches de fond

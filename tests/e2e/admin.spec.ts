@@ -133,9 +133,15 @@ test.describe("Administration", () => {
     expect(scheduled.coverAlt).toBe("Illustration de test");
     expect(scheduled.publishedAt!.getTime()).toBeGreaterThan(Date.now());
 
-    // Pas encore public
+    // Pas encore public : annoncé « à venir », sans titre ni contenu, hors index
     const anonymous = await page.context().browser()!.newContext({ extraHTTPHeaders: { "X-Forwarded-For": "10.250.0.1" } });
-    expect((await anonymous.request.get(`/articles/${scheduled.slug}`)).status()).toBe(404);
+    const upcoming = await anonymous.request.get(`/articles/${scheduled.slug}`);
+    expect(upcoming.status()).toBe(200);
+    const upcomingHtml = await upcoming.text();
+    expect(upcomingHtml).toContain("Article à venir");
+    expect(upcomingHtml).toContain("noindex");
+    expect(upcomingHtml).not.toContain(title);
+    expect(upcomingHtml).not.toContain("Article programmé.");
 
     // On avance l'échéance : la tâche (chaque minute) doit publier l'article
     await db.article.update({

@@ -14,7 +14,7 @@ import { ArticleCard } from "@/components/article-card";
 import { ArticleActions } from "@/components/article-actions";
 import { CodeCopy } from "@/components/code-copy";
 import { KeyPoints } from "@/components/key-points";
-import { cardClass } from "@/components/ui";
+import { buttonClass, cardClass } from "@/components/ui";
 import {
   CommentSection,
   type CommentView,
@@ -29,6 +29,9 @@ const copy = {
     draftBanner: "Brouillon — cet article n'est visible que par l'équipe.",
     scheduledBanner: (date: string) =>
       `Programmé pour le ${date} — cet article n'est pas encore visible du public.`,
+    upcomingTitle: "Article à venir",
+    upcomingBody: "Cet article n'est pas encore disponible. Revenez bientôt !",
+    upcomingLink: "Voir tous les articles",
     untranslatedBanner: "",
     readingTime: (min: number) => `${min} min de lecture`,
     views: (n: number) => `${n} vue${n > 1 ? "s" : ""}`,
@@ -47,6 +50,9 @@ const copy = {
     draftBanner: "Draft — this article is only visible to the team.",
     scheduledBanner: (date: string) =>
       `Scheduled for ${date} — this article is not visible to the public yet.`,
+    upcomingTitle: "Upcoming article",
+    upcomingBody: "This article isn't available yet. Check back soon!",
+    upcomingLink: "See all articles",
     untranslatedBanner:
       "This article hasn't been translated into English yet — you're reading the original French version.",
     readingTime: (min: number) => `${min} min read`,
@@ -81,6 +87,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
     },
   });
+  if (article?.status === "SCHEDULED") {
+    return { title: copy[locale].upcomingTitle, robots: { index: false } };
+  }
   if (!article || article.status !== "PUBLISHED") return {};
   const translation = locale === "en" ? article.translations[0] : undefined;
   const title = translation?.title ?? article.title;
@@ -157,7 +166,19 @@ export default async function ArticlePage({ params }: Props) {
     const canSeeUnpublished =
       staff?.user.role === "admin" ||
       (staff?.user.role === "author" && staff.user.id === article.authorId);
-    if (!canSeeUnpublished) notFound();
+    if (!canSeeUnpublished) {
+      // Programmé : on annonce l'article sans rien en révéler (ni titre ni date)
+      if (article.status !== "SCHEDULED") notFound();
+      return (
+        <div className="flex flex-col items-center gap-6 px-4 py-24 text-center">
+          <h1 className="text-4xl font-bold">{t.upcomingTitle}</h1>
+          <p className="max-w-md text-muted">{t.upcomingBody}</p>
+          <Link href={localeHref(locale, "/articles")} className={buttonClass}>
+            {t.upcomingLink}
+          </Link>
+        </div>
+      );
+    }
   }
 
   if (article.status === "PUBLISHED") {
