@@ -436,9 +436,9 @@ export async function previewMarkdown(
 }
 
 /**
- * Image de corps d'article (capture, photo) : même traitement que la
- * couverture — ré-encodage WebP, EXIF supprimés. Les schémas SVG ne passent
- * pas par ici : versionnés dans public/schemas/, ils restent vectoriels.
+ * Image de corps d'article (capture, photo, schéma SVG) : même traitement que la
+ * couverture — ré-encodage WebP, EXIF supprimés ; un SVG est rastérisé en haute
+ * résolution. Un schéma qui doit rester vectoriel va dans public/schemas/.
  */
 export async function uploadArticleImage(
   formData: FormData,

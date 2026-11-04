@@ -66,7 +66,9 @@ export async function saveImage(file: File): Promise<string> {
         fit: "inside",
         withoutEnlargement: true,
       })
-      .webp({ quality: 82 })
+      // Sans perte pour un SVG : la compression avec perte bave autour du
+      // texte d'un schéma, pour un gain de poids négligeable sur des aplats.
+      .webp(density === undefined ? { quality: 82 } : { lossless: true })
       .toBuffer();
   } catch (error) {
     if (error instanceof Error && error.message.includes("pixel limit")) {

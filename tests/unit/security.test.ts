@@ -208,6 +208,7 @@ describe("Uploads : SVG rastérisé", () => {
 
     const stored = await readFile(path.join(UPLOAD_DIR, uploadFileName(url)!));
     expect(stored.subarray(8, 12).toString("ascii")).toBe("WEBP");
+    expect(stored.subarray(12, 16).toString("ascii")).toBe("VP8L"); // sans perte
     expect(stored.toString("latin1")).not.toContain("alert");
     // rendu à pleine résolution, pas en vignette de 24 px
     expect((await sharp(stored).metadata()).width).toBe(2560);

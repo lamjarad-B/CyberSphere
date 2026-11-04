@@ -333,7 +333,7 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                 ))}
                 <button
                   type="button"
-                  title="Image — capture ou photo, ré-encodée en WebP. Schéma : fichier SVG dans public/schemas/, puis ![description](/schemas/fichier.svg)"
+                  title="Image, capture ou schéma (png, jpg, webp, gif, svg) — convertie en WebP côté serveur"
                   onClick={() => imageInputRef.current?.click()}
                   disabled={uploadingImage}
                   className="rounded px-2 py-1 font-mono text-xs text-muted transition-colors hover:bg-accent/10 hover:text-accent disabled:opacity-50"
@@ -343,7 +343,7 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                 <input
                   ref={imageInputRef}
                   type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
                   onChange={uploadImage}
                   className="hidden"
                 />
