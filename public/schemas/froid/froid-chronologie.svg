@@ -1,85 +1,59 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="542" viewBox="0 0 1200 542" role="img" aria-labelledby="tf1">
+<svg xmlns="http://www.w3.org/2000/svg" width="768" height="636" viewBox="0 0 768 636" role="img" aria-labelledby="tf1">
   <title id="tf1">Chronologie de la campagne contre les contrôleurs frigorifiques, du 11 octobre au 3 novembre 2026</title>
-  <rect width="1200" height="542" rx="14" fill="#0f1622" stroke="#1e293b" stroke-width="1.5"/>
+  <rect width="768" height="636" rx="14" fill="#0f1622" stroke="#1e293b" stroke-width="1.5"/>
 
   <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
-    <text x="48" y="58" font-size="29" font-weight="600" fill="#e6edf3">Trois semaines, des surgelés au plasma</text>
-    <text x="48" y="89" font-size="18" fill="#8b98a9">Campagne contre les contrôleurs frigorifiques, octobre et novembre 2026</text>
+    <text x="32" y="48" font-size="24" font-weight="600" fill="#e6edf3">Trois semaines, des surgelés au plasma</text>
+    <text x="32" y="76" font-size="15" fill="#8b98a9">Campagne contre les contrôleurs frigorifiques, octobre et novembre 2026</text>
 
-    <line x1="150" y1="200" x2="1065" y2="200" stroke="#1e293b" stroke-width="3"/>
+    <rect x="148" y="260" width="588" height="88" rx="10" fill="#2a1f07" stroke="#f59e0b" stroke-width="2"/>
 
-    <circle cx="150" cy="200" r="12" fill="#22d3ee"/>
-    <circle cx="380" cy="200" r="12" fill="#22d3ee"/>
-    <circle cx="610" cy="200" r="12" fill="#f59e0b"/>
-    <circle cx="840" cy="200" r="12" fill="#22d3ee"/>
-    <circle cx="1065" cy="200" r="12" fill="#22d3ee"/>
+    <line x1="132" y1="122" x2="132" y2="440" stroke="#334155" stroke-width="3"/>
 
-    <g font-size="21" font-weight="700" fill="#22d3ee" text-anchor="middle">
-      <text x="150" y="172">11-12 oct.</text>
-      <text x="380" y="172">12-16 oct.</text>
-      <text x="840" y="172">1-2 nov.</text>
-      <text x="1065" y="172">2 nov.</text>
+    <circle cx="132" cy="122" r="8" fill="#22d3ee"/>
+    <circle cx="132" cy="206" r="8" fill="#22d3ee"/>
+    <circle cx="132" cy="280" r="8" fill="#f59e0b"/>
+    <circle cx="132" cy="376" r="8" fill="#22d3ee"/>
+    <circle cx="132" cy="439" r="8" fill="#22d3ee"/>
+
+    <g font-size="15" font-weight="700" fill="#22d3ee" text-anchor="end">
+      <text x="112" y="128">11-12 oct.</text>
+      <text x="112" y="212">12-16 oct.</text>
+      <text x="112" y="382">1-2 nov.</text>
+      <text x="112" y="445">2 nov.</text>
     </g>
-    <text x="610" y="172" font-size="21" font-weight="700" fill="#f59e0b" text-anchor="middle">21 oct.</text>
+    <text x="112" y="286" font-size="15" font-weight="700" fill="#f59e0b" text-anchor="end">21 oct.</text>
 
-    <g>
-      <rect x="48" y="238" width="204" height="150" rx="10" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
-      <text x="68" y="270" font-size="19" font-weight="600" fill="#e6edf3">France</text>
-      <text x="68" y="300" font-size="16" fill="#8b98a9">
-        <tspan x="68">Plusieurs centaines de</tspan>
-        <tspan x="68" dy="22">supermarchés perdent</tspan>
-        <tspan x="68" dy="22">le contrôle de leurs</tspan>
-        <tspan x="68" dy="22">installations.</tspan>
-      </text>
+    <text x="164" y="128" font-size="17" font-weight="600" fill="#e6edf3">France</text>
+    <text x="164" y="151" font-size="15" fill="#8b98a9">
+      <tspan x="164">Plusieurs centaines de supermarchés perdent le contrôle de leurs</tspan>
+      <tspan x="164" dy="21">installations.</tspan>
+    </text>
+
+    <text x="164" y="212" font-size="17" font-weight="600" fill="#e6edf3">Alerte CERT-FR</text>
+    <text x="164" y="235" font-size="15" fill="#8b98a9">ALE-012. Danfoss AK-SM et AK-SC, puis Copeland et Dixell xweb.</text>
+
+    <text x="164" y="286" font-size="17" font-weight="600" fill="#f59e0b">Avertissement</text>
+    <text x="164" y="309" font-size="15" fill="#cbd5e1">
+      <tspan x="164">L'ANSSI désigne au Sénat le secteur de la santé comme cible probable.</tspan>
+      <tspan x="164" dy="21">Forescout chiffre l'exposition.</tspan>
+    </text>
+
+    <text x="164" y="382" font-size="17" font-weight="600" fill="#e6edf3">EFS</text>
+    <text x="164" y="405" font-size="15" fill="#8b98a9">Consignes modifiées sur des équipements d'un prestataire. Anomalie détectée.</text>
+
+    <text x="164" y="445" font-size="17" font-weight="600" fill="#e6edf3">Europe</text>
+    <text x="164" y="468" font-size="15" fill="#8b98a9">
+      <tspan x="164">Incidents signalés dans onze pays au moins, du commerce de détail</tspan>
+      <tspan x="164" dy="21">à l'artisanat.</tspan>
+    </text>
+
+    <line x1="32" y1="516" x2="736" y2="516" stroke="#1e293b" stroke-width="1.5"/>
+    <g font-size="14" fill="#8b98a9">
+      <text x="32" y="544">Le CERT-FR ne nomme ni attaquant, ni vulnérabilité, ni identifiant CVE.</text>
+      <text x="32" y="564">Aucune revendication n'a été publiée à ce jour.</text>
+      <text x="32" y="592">Les détails de l'incident de l'EFS proviennent du Canard enchaîné et n'ont pas été</text>
+      <text x="32" y="612">confirmés publiquement dans leur intégralité.</text>
     </g>
-
-    <g>
-      <rect x="278" y="238" width="204" height="150" rx="10" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
-      <text x="298" y="270" font-size="19" font-weight="600" fill="#e6edf3">Alerte CERT-FR</text>
-      <text x="298" y="300" font-size="16" fill="#8b98a9">
-        <tspan x="298">ALE-012. Danfoss</tspan>
-        <tspan x="298" dy="22">AK-SM et AK-SC, puis</tspan>
-        <tspan x="298" dy="22">Copeland et Dixell</tspan>
-        <tspan x="298" dy="22">xweb.</tspan>
-      </text>
-    </g>
-
-    <g>
-      <rect x="508" y="238" width="204" height="172" rx="10" fill="#2a1f07" stroke="#f59e0b" stroke-width="2"/>
-      <text x="528" y="270" font-size="19" font-weight="600" fill="#f59e0b">Avertissement</text>
-      <text x="528" y="300" font-size="16" fill="#cbd5e1">
-        <tspan x="528">L'ANSSI désigne au</tspan>
-        <tspan x="528" dy="22">Sénat le secteur de la</tspan>
-        <tspan x="528" dy="22">santé comme cible</tspan>
-        <tspan x="528" dy="22">probable. Forescout</tspan>
-        <tspan x="528" dy="22">chiffre l'exposition.</tspan>
-      </text>
-    </g>
-
-    <g>
-      <rect x="738" y="238" width="204" height="150" rx="10" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
-      <text x="758" y="270" font-size="19" font-weight="600" fill="#e6edf3">EFS</text>
-      <text x="758" y="300" font-size="16" fill="#8b98a9">
-        <tspan x="758">Consignes modifiées</tspan>
-        <tspan x="758" dy="22">sur des équipements</tspan>
-        <tspan x="758" dy="22">d'un prestataire.</tspan>
-        <tspan x="758" dy="22">Anomalie détectée.</tspan>
-      </text>
-    </g>
-
-    <g>
-      <rect x="968" y="238" width="184" height="150" rx="10" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
-      <text x="988" y="270" font-size="19" font-weight="600" fill="#e6edf3">Europe</text>
-      <text x="988" y="300" font-size="16" fill="#8b98a9">
-        <tspan x="988">Incidents signalés</tspan>
-        <tspan x="988" dy="22">dans onze pays au</tspan>
-        <tspan x="988" dy="22">moins, du commerce</tspan>
-        <tspan x="988" dy="22">de détail à l'artisanat.</tspan>
-      </text>
-    </g>
-
-    <line x1="48" y1="450" x2="1152" y2="450" stroke="#1e293b" stroke-width="1.5"/>
-    <text x="48" y="482" font-size="16" fill="#8b98a9">Le CERT-FR ne nomme ni attaquant, ni vulnérabilité, ni identifiant CVE. Aucune revendication n'a été publiée à ce jour.</text>
-    <text x="48" y="508" font-size="16" fill="#8b98a9">Les détails de l'incident de l'EFS proviennent du Canard enchaîné et n'ont pas été confirmés publiquement dans leur intégralité.</text>
   </g>
 </svg>

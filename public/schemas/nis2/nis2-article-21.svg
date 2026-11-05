@@ -1,65 +1,71 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="t3">
+<svg xmlns="http://www.w3.org/2000/svg" width="768" height="584" viewBox="0 0 768 584" role="img" aria-labelledby="t3">
   <title id="t3">Les dix domaines de l'article 21 de NIS2, regroupés en quatre familles</title>
-  <rect width="1200" height="700" rx="14" fill="#0f1622" stroke="#1e293b" stroke-width="1.5"/>
+  <rect width="768" height="584" rx="14" fill="#0f1622" stroke="#1e293b" stroke-width="1.5"/>
 
   <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
-    <text x="48" y="60" font-size="30" font-weight="600" fill="#e6edf3">Les dix domaines de l'article 21</text>
-    <text x="48" y="92" font-size="19" fill="#8b98a9">Ce que les mesures de gestion des risques doivent couvrir</text>
+    <text x="32" y="48" font-size="24" font-weight="600" fill="#e6edf3">Les dix domaines de l'article 21</text>
+    <text x="32" y="76" font-size="15" fill="#8b98a9">Ce que les mesures de gestion des risques doivent couvrir</text>
 
     <g>
-      <rect x="48" y="128" width="540" height="268" rx="12" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
-      <rect x="48" y="128" width="6" height="268" rx="3" fill="#22d3ee"/>
-      <text x="78" y="168" font-size="22" font-weight="700" fill="#22d3ee">Gouvernance du risque</text>
-      <text x="520" y="168" font-size="20" font-weight="700" fill="#8b98a9" text-anchor="end">4</text>
-      <g font-size="17.5" fill="#cbd5e1">
-        <text x="78" y="212">Politiques d'analyse des risques et de</text>
-        <text x="78" y="236">sécurité des systèmes d'information</text>
-        <text x="78" y="276">Évaluation de l'efficacité des mesures</text>
-        <text x="78" y="316">Ressources humaines, contrôle d'accès</text>
-        <text x="78" y="340">et gestion des actifs</text>
-        <text x="78" y="372">Hygiène informatique et formation</text>
+      <rect x="32" y="104" width="342" height="226" rx="12" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
+      <rect x="32" y="104" width="6" height="226" rx="3" fill="#22d3ee"/>
+      <text x="54" y="138" font-size="17" font-weight="700" fill="#22d3ee">Gouvernance du risque</text>
+      <text x="358" y="138" font-size="16" font-weight="700" fill="#8b98a9" text-anchor="end">4</text>
+      <g font-size="15" fill="#cbd5e1">
+        <text x="54" y="170">Politiques d'analyse des risques et de</text>
+        <text x="54" y="191">sécurité des systèmes d'information</text>
+        <text x="54" y="222">Évaluation de l'efficacité des mesures</text>
+        <text x="54" y="253">Ressources humaines, contrôle d'accès</text>
+        <text x="54" y="274">et gestion des actifs</text>
+        <text x="54" y="305">Hygiène informatique et formation</text>
       </g>
     </g>
 
     <g>
-      <rect x="612" y="128" width="540" height="268" rx="12" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
-      <rect x="612" y="128" width="6" height="268" rx="3" fill="#22d3ee"/>
-      <text x="642" y="168" font-size="22" font-weight="700" fill="#22d3ee">Technique</text>
-      <text x="1084" y="168" font-size="20" font-weight="700" fill="#8b98a9" text-anchor="end">3</text>
-      <g font-size="17.5" fill="#cbd5e1">
-        <text x="642" y="212">Acquisition, développement et</text>
-        <text x="642" y="236">maintenance des systèmes, traitement</text>
-        <text x="642" y="260">et divulgation des vulnérabilités</text>
-        <text x="642" y="300">Cryptographie et chiffrement</text>
-        <text x="642" y="340">Authentification à plusieurs facteurs</text>
-        <text x="642" y="364">et communications sécurisées</text>
+      <rect x="394" y="104" width="342" height="226" rx="12" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
+      <rect x="394" y="104" width="6" height="226" rx="3" fill="#22d3ee"/>
+      <text x="416" y="138" font-size="17" font-weight="700" fill="#22d3ee">Technique</text>
+      <text x="720" y="138" font-size="16" font-weight="700" fill="#8b98a9" text-anchor="end">3</text>
+      <g font-size="15" fill="#cbd5e1">
+        <text x="416" y="170">Acquisition, développement et</text>
+        <text x="416" y="191">maintenance des systèmes, traitement</text>
+        <text x="416" y="212">et divulgation des vulnérabilités</text>
+        <text x="416" y="243">Cryptographie et chiffrement</text>
+        <text x="416" y="274">Authentification à plusieurs facteurs</text>
+        <text x="416" y="295">et communications sécurisées</text>
       </g>
     </g>
 
     <g>
-      <rect x="48" y="420" width="540" height="196" rx="12" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
-      <rect x="48" y="420" width="6" height="196" rx="3" fill="#22d3ee"/>
-      <text x="78" y="460" font-size="22" font-weight="700" fill="#22d3ee">Absorber un incident</text>
-      <text x="520" y="460" font-size="20" font-weight="700" fill="#8b98a9" text-anchor="end">2</text>
-      <g font-size="17.5" fill="#cbd5e1">
-        <text x="78" y="504">Traitement des incidents</text>
-        <text x="78" y="544">Continuité d'activité : sauvegardes,</text>
-        <text x="78" y="568">reprise après sinistre, gestion de crise</text>
+      <rect x="32" y="346" width="342" height="172" rx="12" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
+      <rect x="32" y="346" width="6" height="172" rx="3" fill="#22d3ee"/>
+      <text x="54" y="380" font-size="17" font-weight="700" fill="#22d3ee">Absorber un incident</text>
+      <text x="358" y="380" font-size="16" font-weight="700" fill="#8b98a9" text-anchor="end">2</text>
+      <g font-size="15" fill="#cbd5e1">
+        <text x="54" y="412">Traitement des incidents</text>
+        <text x="54" y="443">Continuité d'activité : sauvegardes,</text>
+        <text x="54" y="464">reprise après sinistre, gestion de crise</text>
       </g>
     </g>
 
     <g>
-      <rect x="612" y="420" width="540" height="196" rx="12" fill="#07323c" stroke="#22d3ee" stroke-width="2"/>
-      <text x="642" y="460" font-size="22" font-weight="700" fill="#22d3ee">Tiers</text>
-      <text x="1114" y="460" font-size="20" font-weight="700" fill="#22d3ee" text-anchor="end">1</text>
-      <g font-size="17.5" fill="#cbd5e1">
-        <text x="642" y="504">Sécurité de la chaîne d'approvisionnement,</text>
-        <text x="642" y="528">y compris les relations avec les</text>
-        <text x="642" y="552">fournisseurs directs</text>
+      <rect x="394" y="346" width="342" height="172" rx="12" fill="#07323c" stroke="#22d3ee" stroke-width="2"/>
+      <text x="416" y="380" font-size="17" font-weight="700" fill="#22d3ee">Tiers</text>
+      <text x="720" y="380" font-size="16" font-weight="700" fill="#22d3ee" text-anchor="end">1</text>
+      <g font-size="15" fill="#cbd5e1">
+        <text x="416" y="412">Sécurité de la chaîne</text>
+        <text x="416" y="433">d'approvisionnement, y compris les</text>
+        <text x="416" y="454">relations avec les fournisseurs directs</text>
       </g>
-      <text x="642" y="588" font-size="16" font-style="italic" fill="#8b98a9">Atteint par contrat des fournisseurs hors périmètre</text>
+      <g font-size="14" font-style="italic" fill="#8b98a9">
+        <text x="416" y="482">Atteint par contrat des fournisseurs</text>
+        <text x="416" y="501">hors périmètre</text>
+      </g>
     </g>
 
-    <text x="48" y="664" font-size="16.5" fill="#8b98a9">Les mesures doivent être proportionnées au risque encouru : exposition, taille, probabilité et gravité d'un incident, état de l'art, coût.</text>
+    <g font-size="14" fill="#8b98a9">
+      <text x="32" y="544">Les mesures doivent être proportionnées au risque encouru : exposition, taille,</text>
+      <text x="32" y="564">probabilité et gravité d'un incident, état de l'art, coût.</text>
+    </g>
   </g>
 </svg>

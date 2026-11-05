@@ -22,31 +22,32 @@
   <rect width="1200" height="630" fill="url(#glow)"/>
 
   <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
-    <rect x="72" y="74" width="7" height="104" rx="3.5" fill="#22d3ee"/>
-    <text x="104" y="140" font-size="82" font-weight="700" fill="#e6edf3" letter-spacing="-1">NIS2</text>
-    <text x="104" y="182" font-size="27" fill="#8b98a9">Ce qu'exige la directive, et où en est la France</text>
+    <rect x="72" y="58" width="7" height="104" rx="3.5" fill="#22d3ee"/>
+    <text x="104" y="124" font-size="82" font-weight="700" fill="#e6edf3" letter-spacing="-1">NIS2</text>
+    <text x="104" y="166" font-size="27" fill="#8b98a9">Ce qu'exige la directive, et où en est la France</text>
 
     <g>
-      <rect x="72" y="250" width="488" height="190" rx="14" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
-      <text x="104" y="296" font-size="20" font-weight="600" fill="#8b98a9" letter-spacing="1.5">ENTITÉS RÉGULÉES EN FRANCE</text>
-      <text x="104" y="384" font-size="62" font-weight="700" fill="#8b98a9">500</text>
-      <path d="M 232 364 L 296 364" stroke="#22d3ee" stroke-width="4" fill="none" marker-end="url(#ac)"/>
-      <text x="320" y="384" font-size="62" font-weight="700" fill="#22d3ee">15 000</text>
-      <text x="104" y="418" font-size="17" fill="#8b98a9">environ, selon l'étude d'impact du projet de loi</text>
+      <rect x="72" y="212" width="488" height="238" rx="14" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
+      <text x="104" y="258" font-size="22" font-weight="600" fill="#8b98a9" letter-spacing="1">ENTITÉS RÉGULÉES EN FRANCE</text>
+      <text x="104" y="340" font-size="62" font-weight="700" fill="#8b98a9">500</text>
+      <path d="M 232 320 L 296 320" stroke="#22d3ee" stroke-width="4" fill="none" marker-end="url(#ac)"/>
+      <text x="320" y="340" font-size="62" font-weight="700" fill="#22d3ee">15 000</text>
+      <text x="104" y="384" font-size="22" fill="#8b98a9">environ, selon l'étude d'impact</text>
+      <text x="104" y="412" font-size="22" fill="#8b98a9">du projet de loi</text>
     </g>
 
     <g>
-      <rect x="592" y="250" width="536" height="190" rx="14" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
-      <text x="624" y="296" font-size="20" font-weight="600" fill="#8b98a9" letter-spacing="1.5">SECTEURS CONCERNÉS</text>
-      <text x="624" y="384" font-size="62" font-weight="700" fill="#8b98a9">6</text>
-      <path d="M 676 364 L 740 364" stroke="#22d3ee" stroke-width="4" fill="none" marker-end="url(#ac)"/>
-      <text x="764" y="384" font-size="62" font-weight="700" fill="#22d3ee">18</text>
-      <text x="624" y="418" font-size="17" fill="#8b98a9">de l'énergie à l'administration publique</text>
+      <rect x="592" y="212" width="536" height="238" rx="14" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
+      <text x="624" y="258" font-size="22" font-weight="600" fill="#8b98a9" letter-spacing="1">SECTEURS CONCERNÉS</text>
+      <text x="624" y="340" font-size="62" font-weight="700" fill="#8b98a9">6</text>
+      <path d="M 676 320 L 740 320" stroke="#22d3ee" stroke-width="4" fill="none" marker-end="url(#ac)"/>
+      <text x="764" y="340" font-size="62" font-weight="700" fill="#22d3ee">18</text>
+      <text x="624" y="384" font-size="22" fill="#8b98a9">de l'énergie à l'administration publique</text>
     </g>
 
-    <rect x="72" y="492" width="1056" height="74" rx="12" fill="#2a0f0f" stroke="#7f1d1d" stroke-width="1.5"/>
-    <circle cx="112" cy="529" r="7" fill="#ef4444"/>
-    <text x="138" y="536" font-size="23" fill="#fca5a5">
+    <rect x="72" y="486" width="1056" height="74" rx="12" fill="#2a0f0f" stroke="#7f1d1d" stroke-width="1.5"/>
+    <circle cx="112" cy="523" r="7" fill="#ef4444"/>
+    <text x="138" y="530" font-size="23" fill="#fca5a5">
       <tspan font-weight="700" fill="#fecaca">8 juillet 2026 :</tspan>
       <tspan> la France renvoyée devant la Cour de justice de l'Union européenne.</tspan>
     </text>

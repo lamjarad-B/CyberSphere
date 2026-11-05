@@ -1,80 +1,81 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="t2">
+<svg xmlns="http://www.w3.org/2000/svg" width="768" height="672" viewBox="0 0 768 672" role="img" aria-labelledby="t2">
   <title id="t2">Arbre de décision : mon entité relève-t-elle de NIS2 ?</title>
-  <rect width="1200" height="760" rx="14" fill="#0f1622" stroke="#1e293b" stroke-width="1.5"/>
+  <rect width="768" height="672" rx="14" fill="#0f1622" stroke="#1e293b" stroke-width="1.5"/>
 
   <defs>
-    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
     </marker>
   </defs>
 
   <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
-    <text x="48" y="60" font-size="30" font-weight="600" fill="#e6edf3">Mon entité relève-t-elle de NIS2 ?</text>
-    <text x="48" y="92" font-size="19" fill="#8b98a9">Identification par auto-évaluation : aucune désignation préalable par l'État</text>
+    <text x="32" y="48" font-size="24" font-weight="600" fill="#e6edf3">Mon entité relève-t-elle de NIS2 ?</text>
+    <text x="32" y="76" font-size="15" fill="#8b98a9">Identification par auto-évaluation : aucune désignation préalable par l'État</text>
 
-    <g stroke="#64748b" stroke-width="2.5" fill="none" marker-end="url(#a2)">
-      <path d="M 330 183 L 330 222"/>
-      <path d="M 330 300 L 330 339"/>
-      <path d="M 330 417 L 330 456"/>
-      <path d="M 560 261 L 889 261"/>
-      <path d="M 560 378 L 889 378"/>
-      <path d="M 560 495 L 889 495"/>
-      <path d="M 330 534 L 330 596 L 889 596"/>
+    <g stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#a2)">
+      <path d="M 252 144 L 252 170"/>
+      <path d="M 252 244 L 252 270"/>
+      <path d="M 252 344 L 252 370"/>
+      <path d="M 472 208 L 578 208"/>
+      <path d="M 472 308 L 578 308"/>
+      <path d="M 472 408 L 578 408"/>
+      <path d="M 252 444 L 252 500 L 578 500"/>
     </g>
 
-    <rect x="120" y="134" width="420" height="50" rx="10" fill="#0d1526" stroke="#334155" stroke-width="1.5"/>
-    <text x="330" y="166" font-size="20" font-weight="600" fill="#e6edf3" text-anchor="middle">Une entité, publique ou privée</text>
+    <rect x="72" y="100" width="360" height="44" rx="10" fill="#0d1526" stroke="#334155" stroke-width="1.5"/>
+    <text x="252" y="128" font-size="17" font-weight="600" fill="#e6edf3" text-anchor="middle">Une entité, publique ou privée</text>
 
-    <rect x="120" y="222" width="440" height="78" rx="10" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
-    <text x="146" y="252" font-size="20" font-weight="600" fill="#e6edf3">Activité listée aux annexes I ou II ?</text>
-    <text x="146" y="280" font-size="16.5" fill="#8b98a9">Dix-huit secteurs au total</text>
+    <rect x="32" y="172" width="440" height="72" rx="10" fill="#0d1526" stroke="#334155" stroke-width="1.5"/>
+    <text x="54" y="202" font-size="17" font-weight="600" fill="#e6edf3">Activité listée aux annexes I ou II ?</text>
+    <text x="54" y="226" font-size="14" fill="#8b98a9">Dix-huit secteurs au total</text>
 
-    <rect x="120" y="339" width="440" height="78" rx="10" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
-    <text x="146" y="369" font-size="20" font-weight="600" fill="#e6edf3">Catégorie exemptée de seuil ?</text>
-    <text x="146" y="397" font-size="16.5" fill="#8b98a9">DNS, registres, services de confiance, télécoms</text>
+    <rect x="32" y="272" width="440" height="72" rx="10" fill="#0d1526" stroke="#334155" stroke-width="1.5"/>
+    <text x="54" y="302" font-size="17" font-weight="600" fill="#e6edf3">Catégorie exemptée de seuil ?</text>
+    <text x="54" y="326" font-size="14" fill="#8b98a9">DNS, registres, services de confiance, télécoms</text>
 
-    <rect x="120" y="456" width="440" height="78" rx="10" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
-    <text x="146" y="486" font-size="20" font-weight="600" fill="#e6edf3">Seuil de taille atteint ?</text>
-    <text x="146" y="514" font-size="16.5" fill="#8b98a9">≥ 50 salariés, ou CA et bilan &gt; 10 M€</text>
+    <rect x="32" y="372" width="440" height="72" rx="10" fill="#0d1526" stroke="#334155" stroke-width="1.5"/>
+    <text x="54" y="402" font-size="17" font-weight="600" fill="#e6edf3">Seuil de taille atteint ?</text>
+    <text x="54" y="426" font-size="14" fill="#8b98a9">≥ 50 salariés, ou CA et bilan &gt; 10 M€</text>
 
-    <g font-size="17" font-weight="600" fill="#8b98a9">
-      <text x="572" y="254">non</text>
-      <text x="572" y="371">oui</text>
-      <text x="572" y="488">oui</text>
-      <text x="345" y="578">non</text>
-    </g>
-    <g font-size="17" font-weight="600" fill="#8b98a9">
-      <text x="345" y="326">oui</text>
-      <text x="345" y="443">non</text>
+    <g font-size="15" font-weight="600" fill="#8b98a9">
+      <text x="484" y="200">non</text>
+      <text x="484" y="300">oui</text>
+      <text x="484" y="400">oui</text>
+      <text x="264" y="262">oui</text>
+      <text x="264" y="362">non</text>
+      <text x="264" y="478">non</text>
     </g>
 
-    <rect x="900" y="232" width="190" height="58" rx="10" fill="#0d1526" stroke="#334155" stroke-width="1.5"/>
-    <text x="995" y="268" font-size="20" font-weight="600" fill="#8b98a9" text-anchor="middle">Hors périmètre</text>
+    <rect x="580" y="180" width="156" height="56" rx="10" fill="#0d1526" stroke="#334155" stroke-width="1.5"/>
+    <text x="658" y="213" font-size="16" font-weight="600" fill="#8b98a9" text-anchor="middle">Hors périmètre</text>
 
-    <rect x="900" y="349" width="190" height="58" rx="10" fill="#07323c" stroke="#22d3ee" stroke-width="2"/>
-    <text x="995" y="385" font-size="20" font-weight="700" fill="#22d3ee" text-anchor="middle">Régulée</text>
+    <rect x="580" y="280" width="156" height="56" rx="10" fill="#07323c" stroke="#22d3ee" stroke-width="2"/>
+    <text x="658" y="313" font-size="16" font-weight="700" fill="#22d3ee" text-anchor="middle">Régulée</text>
 
-    <rect x="900" y="466" width="190" height="58" rx="10" fill="#07323c" stroke="#22d3ee" stroke-width="2"/>
-    <text x="995" y="502" font-size="20" font-weight="700" fill="#22d3ee" text-anchor="middle">Régulée</text>
+    <rect x="580" y="380" width="156" height="56" rx="10" fill="#07323c" stroke="#22d3ee" stroke-width="2"/>
+    <text x="658" y="413" font-size="16" font-weight="700" fill="#22d3ee" text-anchor="middle">Régulée</text>
 
-    <rect x="900" y="567" width="190" height="58" rx="10" fill="#0d1526" stroke="#334155" stroke-width="1.5"/>
-    <text x="995" y="603" font-size="20" font-weight="600" fill="#8b98a9" text-anchor="middle">Hors périmètre</text>
+    <rect x="580" y="472" width="156" height="56" rx="10" fill="#0d1526" stroke="#334155" stroke-width="1.5"/>
+    <text x="658" y="505" font-size="16" font-weight="600" fill="#8b98a9" text-anchor="middle">Hors périmètre</text>
 
-    <line x1="120" y1="644" x2="1090" y2="644" stroke="#1e293b" stroke-width="1.5"/>
-    <text x="120" y="676" font-size="17" fill="#8b98a9">
-      <tspan font-weight="600" fill="#e6edf3">Les seuils intègrent les entreprises liées et partenaires :</tspan>
-      <tspan> une filiale est appréciée à l'échelle de son groupe.</tspan>
-    </text>
-    <text x="120" y="702" font-size="17" fill="#8b98a9">
-      <tspan font-weight="600" fill="#e6edf3">Ensuite :</tspan>
-      <tspan> est </tspan>
-      <tspan font-weight="600" fill="#e6edf3">essentielle</tspan>
-      <tspan> l'entité d'un secteur hautement critique à partir de 250 salariés,</tspan>
-    </text>
-    <text x="120" y="728" font-size="17" fill="#8b98a9">
-      <tspan>ou 50 M€ de chiffre d'affaires et 43 M€ de bilan ; </tspan>
-      <tspan font-weight="600" fill="#e6edf3">importante</tspan>
-      <tspan> dans les autres cas.</tspan>
-    </text>
+    <line x1="32" y1="548" x2="736" y2="548" stroke="#1e293b" stroke-width="1.5"/>
+    <g font-size="14" fill="#8b98a9">
+      <text x="32" y="576">
+        <tspan font-weight="600" fill="#e6edf3">Les seuils intègrent les entreprises liées et partenaires :</tspan>
+        <tspan> une filiale est appréciée</tspan>
+      </text>
+      <text x="32" y="596">à l'échelle de son groupe.</text>
+      <text x="32" y="624">
+        <tspan font-weight="600" fill="#e6edf3">Ensuite :</tspan>
+        <tspan> est </tspan>
+        <tspan font-weight="600" fill="#e6edf3">essentielle</tspan>
+        <tspan> l'entité d'un secteur hautement critique à partir de 250 salariés,</tspan>
+      </text>
+      <text x="32" y="644">
+        <tspan>ou 50 M€ de chiffre d'affaires et 43 M€ de bilan ; </tspan>
+        <tspan font-weight="600" fill="#e6edf3">importante</tspan>
+        <tspan> dans les autres cas.</tspan>
+      </text>
+    </g>
   </g>
 </svg>
