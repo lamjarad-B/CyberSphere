@@ -49,6 +49,27 @@ function rehypeSafeUrls() {
   return (tree: HastNode) => sanitizeUrls(tree);
 }
 
+function linkImages(node: HastNode, insideLink = false): void {
+  const inside = insideLink || node.tagName === "a";
+  node.children = node.children?.map((child) => {
+    const { src, alt } = child.properties ?? {};
+    // Sans texte alternatif, le lien n'aurait pas de nom (WCAG 2.4.4)
+    if (child.tagName === "img" && !inside && src && alt) {
+      return { type: "element", tagName: "a", properties: { href: src }, children: [child] };
+    }
+    linkImages(child, inside);
+    return child;
+  });
+}
+
+/**
+ * Plugin rehype : chaque image mène à son fichier, pour lire un schéma en grand
+ * sur téléphone. À placer avant rehypeSafeUrls, qui filtre aussi ce lien.
+ */
+function rehypeImageLinks() {
+  return (tree: HastNode) => linkImages(tree);
+}
+
 // Les notes de bas de page GFM (`[^1]`) servent à citer les sources : la
 // section générée en fin d'article porte un libellé propre à chaque langue.
 // Chaque lien de retour a son propre nom, qui reprend le numéro affiché quand
@@ -87,6 +108,7 @@ function createProcessor(locale: Locale) {
       keepBackground: true,
       defaultLang: "text",
     })
+    .use(rehypeImageLinks)
     .use(rehypeSafeUrls)
     .use(rehypeStringify);
 }

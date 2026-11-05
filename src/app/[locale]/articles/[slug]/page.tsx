@@ -475,7 +475,7 @@ export default async function ArticlePage({ params }: Props) {
 
       <CodeCopy>
         <div
-          className="prose prose-neutral max-w-none dark:prose-invert"
+          className="article-prose prose prose-lg prose-neutral max-w-none dark:prose-invert"
           // Contenu compilé côté serveur depuis le Markdown : le HTML brut
           // saisi dans l'éditeur est ignoré par le pipeline (voir lib/markdown.ts)
           dangerouslySetInnerHTML={{ __html: html }}

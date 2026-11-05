@@ -199,6 +199,24 @@ describe("Uploads : bombe de décompression", () => {
   });
 });
 
+describe("Uploads : compression", () => {
+  const image = (format: "png" | "jpeg") =>
+    sharp({ create: { width: 8, height: 8, channels: 3, background: "#0af" } })[format]().toBuffer();
+
+  it.each([
+    ["png", "VP8L"], // sans perte : le texte d'une couverture reste net
+    ["jpeg", "VP8 "],
+  ] as const)("%s → WebP %s", async (format, chunk) => {
+    const file = new File([new Uint8Array(await image(format))], `x.${format}`, {
+      type: `image/${format}`,
+    });
+    const url = await saveImage(file);
+    const stored = await readFile(path.join(UPLOAD_DIR, uploadFileName(url)!));
+    expect(stored.subarray(12, 16).toString("ascii")).toBe(chunk);
+    await deleteUpload(url);
+  });
+});
+
 describe("Uploads : SVG rastérisé", () => {
   it("convertit un SVG (même piégé) en WebP, sans jamais stocker de SVG", async () => {
     const svg =

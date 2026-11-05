@@ -50,6 +50,27 @@ describe("Sommaire : ancres identiques à rehype-slug", () => {
   });
 });
 
+describe("Images du corps d'article", () => {
+  it("mènent à leur fichier, pour être lues en grand", async () => {
+    const html = await renderMarkdown("![Un schéma](/schemas/a.svg)");
+    expect(html).toContain('<a href="/schemas/a.svg"><img src="/schemas/a.svg" alt="Un schéma"');
+  });
+
+  it("gardent le lien écrit par l'auteur", async () => {
+    const html = await renderMarkdown("[![Un schéma](/schemas/a.svg)](https://cyber.gouv.fr)");
+    expect(html.match(/<a /g)).toHaveLength(1);
+    expect(html).toContain('href="https://cyber.gouv.fr"');
+  });
+
+  it("sans texte alternatif, ne créent pas de lien sans nom", async () => {
+    expect(await renderMarkdown("![](/schemas/a.svg)")).not.toContain("<a ");
+  });
+
+  it("ne produisent aucun lien javascript:", async () => {
+    expect(await renderMarkdown("![Piège](javascript:alert(1))")).not.toContain("javascript:");
+  });
+});
+
 describe("Format analytique", () => {
   const md = "Une affirmation sourcée[^1].\n\n[^1]: ANSSI, « Panorama », https://cyber.gouv.fr\n";
 

@@ -29,7 +29,7 @@
   --background: #0a0f16;
   --surface: #0f1622;
   --foreground: #e6edf3;
-  --prose-body: #cbd5e1;
+  --prose-body: #b8c4d3;
   --muted: #8b98a9;
   --border: #1e293b;
   --control: #64748b;
@@ -121,12 +121,24 @@ body {
   overflow-x: auto;
 }
 
+/* Texte courant : environ 70 caractères par ligne. Images, code et tableaux
+   gardent toute la colonne (Markdown place les images dans un <p>). */
+.article-prose > :is(p:not(:has(img)), ul, ol, blockquote, h2, h3, h4, section[data-footnotes]) {
+  max-width: 37rem;
+}
+
 /* Images et schémas : jamais plus larges que la colonne, jamais agrandis */
 .prose img {
   display: block;
   max-width: 100%;
   height: auto;
   margin: 2rem 0;
+}
+
+/* Lien vers le fichier (lib/markdown) : la zone cliquable reste celle de l'image */
+.prose a:has(> img) {
+  display: block;
+  width: fit-content;
 }
 
 .prose figure[data-rehype-pretty-code-figure] figcaption[data-rehype-pretty-code-title] {
