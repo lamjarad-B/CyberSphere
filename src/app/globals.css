@@ -7,7 +7,9 @@
   --background: #f6f8fa;
   --surface: #ffffff;
   --foreground: #111827;
-  --muted: #6b7280;
+  /* Corps des articles : un cran sous --foreground, pour la lecture longue */
+  --prose-body: #374151;
+  --muted: #616875;
   --border: #e5e7eb;
   /* Contour des champs : 3:1 sur --surface et --background (WCAG 1.4.11).
      --border reste réservé aux cartes et séparateurs, décoratifs. */
@@ -27,6 +29,7 @@
   --background: #0a0f16;
   --surface: #0f1622;
   --foreground: #e6edf3;
+  --prose-body: #cbd5e1;
   --muted: #8b98a9;
   --border: #1e293b;
   --control: #64748b;
@@ -79,6 +82,25 @@ body {
 }
 
 /* ---- Rendu Markdown des articles ---- */
+
+/* Palette du site plutôt que les gris neutres du plugin typography. Hors de
+   tout @layer : prime sur prose-neutral et prose-invert, dans les deux thèmes. */
+.prose {
+  --tw-prose-body: var(--prose-body);
+  --tw-prose-headings: var(--foreground);
+  --tw-prose-lead: var(--muted);
+  --tw-prose-links: var(--foreground);
+  --tw-prose-bold: var(--foreground);
+  --tw-prose-counters: var(--muted);
+  --tw-prose-bullets: var(--control);
+  --tw-prose-hr: var(--border);
+  --tw-prose-quotes: var(--foreground);
+  --tw-prose-quote-borders: var(--border);
+  --tw-prose-captions: var(--muted);
+  --tw-prose-code: var(--foreground);
+  --tw-prose-th-borders: var(--control);
+  --tw-prose-td-borders: var(--border);
+}
 
 .prose code::before,
 .prose code::after {

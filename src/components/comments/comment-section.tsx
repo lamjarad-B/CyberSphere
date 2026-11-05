@@ -319,7 +319,7 @@ export function CommentSection({
   return (
     <section className="space-y-4" aria-label={t.comments.aria}>
       <h2 className="text-xl font-bold">
-        {t.comments.title} <span className="font-mono text-accent">({count})</span>
+        {t.comments.title} <span className="font-mono text-muted">({count})</span>
       </h2>
 
       {viewer ? (

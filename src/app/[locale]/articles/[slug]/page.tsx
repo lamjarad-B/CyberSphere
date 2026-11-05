@@ -335,10 +335,10 @@ export default async function ArticlePage({ params }: Props) {
       )}
 
       <header className="space-y-4">
-        <p className="font-mono text-sm text-muted">
+        <p className="text-sm text-muted">
           <Link
             href={localeHref(locale, `/articles?type=${article.kind.toLowerCase()}`)}
-            className="mr-3 rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-accent-contrast"
+            className="mr-3 rounded-full border border-border px-2.5 py-0.5 font-mono text-xs font-semibold transition-colors hover:border-accent hover:text-accent"
           >
             {kindLabel(article.kind, locale)}
           </Link>
@@ -400,7 +400,7 @@ export default async function ArticlePage({ params }: Props) {
               <Link
                 key={tag.id}
                 href={localeHref(locale, `/tags/${tag.slug}`)}
-                className="rounded-full border border-border px-3 py-1 font-mono text-xs text-muted transition-colors hover:border-accent hover:text-accent"
+                className="rounded-full border border-border px-3 py-1 text-xs text-muted transition-colors hover:border-accent hover:text-accent"
               >
                 #{tag.name}
               </Link>

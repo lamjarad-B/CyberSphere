@@ -73,8 +73,8 @@ export default async function ApercuPage({ params, searchParams }: Props) {
       </p>
 
       <header className="space-y-4">
-        <p className="font-mono text-sm text-muted">
-          <span className="mr-3 rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-accent-contrast">
+        <p className="text-sm text-muted">
+          <span className="mr-3 rounded-full border border-border px-2.5 py-0.5 font-mono text-xs font-semibold">
             {kindLabel(article.kind, locale)}
           </span>
           {locale === "en" && article.category.nameEn
