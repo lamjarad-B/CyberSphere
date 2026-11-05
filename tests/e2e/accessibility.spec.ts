@@ -71,6 +71,28 @@ test.describe("Accessibilité", () => {
     await expectNoViolations(page, "/membre");
   });
 
+  for (const theme of ["dark", "light"]) {
+    test(`formulaire de commentaire visiteur et CAPTCHA sans violation, thème ${theme}`, async ({ page }) => {
+      test.setTimeout(120_000);
+      await page.addInitScript((value) => localStorage.setItem("theme", value), theme);
+      const article = await publishedArticle();
+      await page.goto(`/articles/${article.slug}`);
+      const robot = page.getByLabel("Je ne suis pas un robot");
+      // Le widget se charge au premier focus, à refaire si l'hydratation n'était pas finie
+      await expect(async () => {
+        await page.getByLabel(/^Votre commentaire/).blur();
+        await page.getByLabel(/^Votre commentaire/).focus();
+        await expect(robot).toBeVisible({ timeout: 3_000 });
+      }).toPass({ timeout: 30_000 });
+      await expectNoViolations(page, `formulaire visiteur (${theme})`);
+
+      // Contrastes de l'état « vérifié », aux couleurs du thème
+      await robot.click();
+      await expect(page.getByText("Vérifié", { exact: true })).toBeVisible({ timeout: 45_000 });
+      await expectNoViolations(page, `CAPTCHA vérifié (${theme})`);
+    });
+  }
+
   test("pages de liste : pas de saut de niveau de titre après le h1", async ({ page }) => {
     const category = await db.article.findFirstOrThrow({
       where: { status: "PUBLISHED" },
