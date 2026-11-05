@@ -4,6 +4,15 @@ import { slugify, uniqueSlug } from "@/lib/slug";
 import { kindLabel, parseKeyPoints, parseKindParam } from "@/lib/articles";
 import { localeHref, negotiateLocale, toLocale } from "@/lib/i18n";
 import { describeUserAgent } from "@/lib/user-agent";
+import { articleSchema } from "@/lib/validations";
+
+describe("Texte alternatif des couvertures", () => {
+  it("n'a pas de longueur maximale, en français comme en anglais", () => {
+    const description = "Un schéma décrit en détail. ".repeat(200);
+    expect(articleSchema.shape.coverAlt.parse(description)).toBe(description.trim());
+    expect(articleSchema.shape.coverAltEn.parse(description)).toBe(description.trim());
+  });
+});
 
 describe("Slugs", () => {
   it("translittère et ne garde que [a-z0-9-]", () => {

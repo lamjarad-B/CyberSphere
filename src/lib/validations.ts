@@ -43,12 +43,9 @@ export const articleSchema = z.object({
   scheduledAt: z.string().trim().max(40).default(""),
   // Fin de l'épinglage « À la une » (ISO 8601), vide : non épinglé
   featuredUntil: z.string().trim().max(40).default(""),
-  coverAlt: z.string().trim().max(200, "Le texte alternatif est limité à 200 caractères").default(""),
-  coverAltEn: z
-    .string()
-    .trim()
-    .max(200, "Le texte alternatif anglais est limité à 200 caractères")
-    .default(""),
+  // Pas de longueur maximale : un schéma peut demander une longue description
+  coverAlt: z.string().trim().default(""),
+  coverAltEn: z.string().trim().default(""),
   seriesId: z.string().trim().default(""),
   seriesPosition: z.coerce
     .number()

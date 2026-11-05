@@ -664,7 +664,6 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                 id="coverAlt"
                 name="coverAlt"
                 type="text"
-                maxLength={200}
                 defaultValue={article?.coverAlt}
                 className={inputClass}
               />
@@ -675,7 +674,6 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                 id="coverAltEn"
                 name="coverAltEn"
                 type="text"
-                maxLength={200}
                 defaultValue={article?.coverAltEn}
                 className={inputClass}
               />
