@@ -232,21 +232,49 @@ model Tag {
   articles Article[]
 }
 
-model Comment {
-  id        String          @id @default(cuid())
-  content   String
-  articleId String
-  article   Article         @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  authorId  String
-  author    User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  parentId  String?
-  parent    Comment?        @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies   Comment[]       @relation("Replies")
-  reports   CommentReport[]
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+// Un commentaire d'invité attend la relecture d'un admin. PENDING par défaut :
+// un oubli dans le code ne publie jamais rien.
+enum CommentStatus {
+  PENDING
+  APPROVED
+}
 
-  @@index([articleId])
+model Comment {
+  id              String          @id @default(cuid())
+  content         String
+  status          CommentStatus   @default(PENDING)
+  articleId       String
+  article         Article         @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  // Membre connecté, ou null pour un invité : guestName est alors renseigné
+  // (contrainte CHECK posée dans la migration)
+  authorId        String?
+  author          User?           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  guestName       String?
+  // E-mail d'un invité : jamais public, réservé aux admins, supprimé avec le commentaire
+  guestEmail      String?
+  // HMAC de l'adresse IP, jamais l'IP en clair : effacé à l'approbation
+  guestIpHash     String?
+  // Inscription newsletter demandée : traitée seulement à l'approbation
+  newsletterOptIn Boolean         @default(false)
+  guestLocale     String?
+  parentId        String?
+  parent          Comment?        @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies         Comment[]       @relation("Replies")
+  reports         CommentReport[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([articleId, status])
+  @@index([status, createdAt])
+}
+
+// Défis ALTCHA déjà consommés : une preuve de travail ne sert qu'une fois.
+// Purgés après expiration (src/lib/maintenance.ts).
+model UsedCaptchaChallenge {
+  nonce     String   @id
+  expiresAt DateTime
+
+  @@index([expiresAt])
 }
 
 // ---------- Communauté ----------

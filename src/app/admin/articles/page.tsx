@@ -21,7 +21,7 @@ export default async function AdminArticlesPage() {
     include: {
       category: { select: { name: true } },
       author: { select: { name: true } },
-      _count: { select: { comments: true } },
+      _count: { select: { comments: { where: { status: "APPROVED" } } } },
     },
   });
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { deleteComment } from "@/actions/comments";
 import { dismissReport } from "@/actions/reports";
+import { commentAuthorName } from "@/lib/comments";
 import { formatDateTime } from "@/lib/format";
 import { requireAdmin } from "@/lib/session";
 import { ActionButton } from "@/components/admin/action-button";
@@ -24,6 +25,7 @@ export default async function AdminSignalementsPage() {
         select: {
           id: true,
           content: true,
+          guestName: true,
           author: { select: { name: true } },
           article: { select: { title: true, slug: true } },
           _count: { select: { reports: true } },
@@ -76,7 +78,7 @@ export default async function AdminSignalementsPage() {
               )}
 
               <blockquote className="border-l-2 border-border pl-3 text-sm">
-                <p className="mb-1 font-medium">{report.comment.author.name} :</p>
+                <p className="mb-1 font-medium">{commentAuthorName(report.comment)} :</p>
                 <p className="whitespace-pre-wrap text-muted">
                   {report.comment.content}
                 </p>

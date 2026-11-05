@@ -19,6 +19,8 @@
   "dependencies": {
     "@better-auth/passkey": "^1.7.14",
     "@prisma/client": "^6.19.3",
+    "altcha": "^3.5.0",
+    "altcha-lib": "^2.8.0",
     "better-auth": "^1.7.14",
     "github-slugger": "^2.0.0",
     "next": "^16.4.3",

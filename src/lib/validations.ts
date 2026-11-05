@@ -121,14 +121,64 @@ export const categorySchema = z.object({
   parentId: z.string().trim().default(""),
 });
 
+/**
+ * Nettoie un texte destiné au public. Retire ce qui trompe sans se voir :
+ * caractères de contrôle, espaces de largeur nulle et forçages de direction
+ * (U+202E affiche le texte à l'envers). ZWJ et ZWNJ restent : les émojis
+ * composés et le persan en ont besoin.
+ */
+export function cleanText(value: string): string {
+  return value
+    .normalize("NFC")
+    .replace(/\r\n?/g, "\n")
+    .replace(
+      /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u200B\u2060\uFEFF\u202A-\u202E\u2066-\u2069]/g,
+      "",
+    )
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+const commentText = z
+  .string()
+  .transform(cleanText)
+  .pipe(
+    z
+      .string()
+      .min(2, "Le commentaire est trop court")
+      .max(2000, "Le commentaire est limité à 2000 caractères"),
+  );
+
 export const commentSchema = z.object({
-  content: z
-    .string()
-    .trim()
-    .min(2, "Le commentaire est trop court")
-    .max(2000, "Le commentaire est limité à 2000 caractères"),
+  content: commentText,
   articleId: z.string().min(1),
   parentId: z.string().trim().default(""),
+});
+
+/** Au-delà, un commentaire d'invité ressemble à du spam publicitaire. */
+const MAX_GUEST_LINKS = 2;
+
+/** Formulaire sans compte : tout vient d'un inconnu, rien n'est libre de forme. */
+export const guestCommentSchema = z.object({
+  articleId: z.string().min(1).max(64),
+  parentId: z.string().trim().max(64).default(""),
+  content: commentText.refine(
+    (value) => (value.match(/https?:\/\/|www\./gi)?.length ?? 0) <= MAX_GUEST_LINKS,
+  ),
+  // Lettres de toutes les langues, sans balise, adresse ni nom de domaine
+  name: z
+    .string()
+    .transform((value) => cleanText(value).replace(/\s+/g, " "))
+    .pipe(
+      z
+        .string()
+        .min(2)
+        .max(50)
+        .regex(/^[\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N} .'’_-]*$/u)
+        .refine((value) => !/\p{L}{2,}\.\p{L}{2,}/u.test(value)),
+    ),
+  email: z.string().trim().toLowerCase().max(254).pipe(z.email()),
+  newsletter: z.boolean().default(false),
 });
 
 export const profileSchema = z.object({

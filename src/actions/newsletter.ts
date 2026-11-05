@@ -1,15 +1,15 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
 import { requestIp } from "@/lib/audit";
 import { verifyTurnstile } from "@/lib/captcha";
 import { rateLimit } from "@/lib/rate-limit";
-import { sendEmail, newsletterConfirmEmail } from "@/lib/email";
 import { localeHref, toLocale } from "@/lib/i18n";
-import { confirmNewsletter, unsubscribeNewsletter } from "@/lib/newsletter";
-import { SITE_URL as BASE_URL } from "@/lib/site";
+import {
+  confirmNewsletter,
+  requestNewsletterSubscription,
+  unsubscribeNewsletter,
+} from "@/lib/newsletter";
 import { newsletterSchema } from "@/lib/validations";
 import type { ActionResult } from "./comments";
 
@@ -59,42 +59,7 @@ export async function subscribeNewsletter(input: {
       error: en ? "Invalid email address." : "Adresse e-mail invalide.",
     };
   }
-  const email = parsed.data.email.toLowerCase();
-  const locale = parsed.data.locale;
-
-  const existing = await db.newsletterSubscriber.findUnique({
-    where: { email },
-    select: { id: true, confirmed: true, token: true, createdAt: true },
-  });
-
-  // Déjà confirmé : ne pas renvoyer d'e-mail (sinon l'inscription devient
-  // un canal de harcèlement d'adresses tierces)
-  if (existing?.confirmed) return { ok: true };
-
-  // Anti-abus : pas de renvoi si une demande date de moins de 10 minutes
-  if (existing && Date.now() - existing.createdAt.getTime() < 10 * 60_000) {
-    return { ok: true };
-  }
-
-  const token = randomBytes(24).toString("base64url");
-  await db.newsletterSubscriber.upsert({
-    where: { email },
-    create: { email, token, locale },
-    update: { token, locale, createdAt: new Date() },
-  });
-
-  const url = `${BASE_URL}${localeHref(locale, `/newsletter/confirmation?jeton=${token}`)}`;
-  const { html, text } = newsletterConfirmEmail(url, locale);
-  await sendEmail({
-    to: email,
-    subject:
-      locale === "en"
-        ? "Confirm your subscription — CyberSphere newsletter"
-        : "Confirmez votre inscription — newsletter CyberSphere",
-    html,
-    text,
-  });
-
+  await requestNewsletterSubscription(parsed.data.email.toLowerCase(), parsed.data.locale);
   return { ok: true };
 }
 

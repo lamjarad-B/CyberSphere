@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { getAdminSession, getSession } from "@/lib/session";
 import { actionLocale } from "@/lib/action-locale";
+import { commentAuthorName } from "@/lib/comments";
 import { notifyAdmins } from "@/lib/notifications";
 import type { ActionResult } from "./comments";
 
@@ -41,11 +42,14 @@ export async function reportComment(
       id: true,
       authorId: true,
       content: true,
+      status: true,
+      guestName: true,
       author: { select: { name: true } },
       article: { select: { status: true, title: true } },
     },
   });
-  if (!comment || comment.article.status !== "PUBLISHED") {
+  // Un commentaire en attente n'est pas public : il n'a pas à exister ici
+  if (!comment || comment.status !== "APPROVED" || comment.article.status !== "PUBLISHED") {
     return { ok: false, error: t.commentNotFound };
   }
   if (comment.authorId === session.user.id) {
@@ -79,7 +83,7 @@ export async function reportComment(
         path: "/admin/signalements",
         details: [
           ["Article", comment.article.title],
-          ["Auteur", comment.author.name],
+          ["Auteur", commentAuthorName(comment)],
           ["Commentaire", comment.content.slice(0, 200)],
           ["Motif", String(reason ?? "").trim().slice(0, 300) || "—"],
         ],

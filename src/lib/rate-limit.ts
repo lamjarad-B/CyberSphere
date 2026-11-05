@@ -21,6 +21,27 @@ export function rateLimit(key: string, max: number, windowMs: number, now = Date
   return true;
 }
 
+/**
+ * Clé d'une adresse IP pour les limiteurs. Une IPv6 est ramenée à son préfixe
+ * /64 : un abonné en dispose de milliards, compter par adresse ne limiterait rien.
+ */
+export function ipBucket(ip: string | null): string {
+  if (!ip) return "inconnue";
+  const address = ip.split("%")[0].toLowerCase();
+  const mapped = address.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  if (mapped) return mapped[1];
+  if (!address.includes(":")) return address;
+
+  const [head, tail] = address.split("::");
+  const left = head ? head.split(":") : [];
+  const right = tail ? tail.split(":") : [];
+  const missing = address.includes("::") ? Math.max(0, 8 - left.length - right.length) : 0;
+  return [...left, ...Array<string>(missing).fill("0"), ...right]
+    .slice(0, 4)
+    .map((group) => group.replace(/^0+(?=.)/, ""))
+    .join(":");
+}
+
 /** Réinitialise le limiteur (tests). */
 export function resetRateLimits(): void {
   buckets.clear();

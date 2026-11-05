@@ -271,7 +271,7 @@ CyberSphere est **bilingue** : la langue est détectée automatiquement et vous 
 
 ## Participez
 
-La lecture est libre pour tout le monde. En créant un **compte membre** (gratuit), vous pouvez **commenter** et débattre, marquer un article comme **utile**, le mettre en **signets** et **signaler** une erreur.
+La lecture est libre pour tout le monde, et chacun peut **commenter** sans compte : les commentaires sont relus avant publication. Avec un **compte membre** (gratuit), vos commentaires paraissent sans attente, et vous pouvez marquer un article comme **utile**, le mettre en **signets** et **signaler** une erreur.
 
 Bonne lecture — et le débat est ouvert dans les commentaires ! 🛡️`,
     },
@@ -698,7 +698,7 @@ Tools like sqlmap automate detection — **only on applications you are authoriz
       });
       if (!already) {
         await db.comment.create({
-          data: { content, articleId: article.id, authorId: member.id },
+          data: { content, status: "APPROVED", articleId: article.id, authorId: member.id },
         });
       }
     }

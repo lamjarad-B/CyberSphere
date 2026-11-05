@@ -1,5 +1,6 @@
+import { randomBytes } from "node:crypto";
 import { db } from "./db";
-import { sendEmail, newArticleEmail } from "./email";
+import { sendEmail, newArticleEmail, newsletterConfirmEmail } from "./email";
 import { localeHref, type Locale } from "./i18n";
 
 import { SITE_URL as BASE_URL } from "@/lib/site";
@@ -15,6 +16,44 @@ import { SITE_URL as BASE_URL } from "@/lib/site";
 /** Jeton d'abonné reçu de l'extérieur : une chaîne non vide, jamais un objet. */
 function isToken(token: unknown): token is string {
   return typeof token === "string" && token.length > 0 && token.length <= 128;
+}
+
+/**
+ * Enregistre une adresse (déjà validée, en minuscules) comme non confirmée et
+ * envoie le lien de confirmation (double opt-in). Ne dit rien de l'état de la
+ * liste à l'appelant : aucune différence pour une adresse déjà inscrite.
+ */
+export async function requestNewsletterSubscription(email: string, locale: Locale): Promise<void> {
+  const existing = await db.newsletterSubscriber.findUnique({
+    where: { email },
+    select: { id: true, confirmed: true, token: true, createdAt: true },
+  });
+
+  // Déjà confirmé : ne pas renvoyer d'e-mail (sinon l'inscription devient
+  // un canal de harcèlement d'adresses tierces)
+  if (existing?.confirmed) return;
+
+  // Anti-abus : pas de renvoi si une demande date de moins de 10 minutes
+  if (existing && Date.now() - existing.createdAt.getTime() < 10 * 60_000) return;
+
+  const token = randomBytes(24).toString("base64url");
+  await db.newsletterSubscriber.upsert({
+    where: { email },
+    create: { email, token, locale },
+    update: { token, locale, createdAt: new Date() },
+  });
+
+  const url = `${BASE_URL}${localeHref(locale, `/newsletter/confirmation?jeton=${token}`)}`;
+  const { html, text } = newsletterConfirmEmail(url, locale);
+  await sendEmail({
+    to: email,
+    subject:
+      locale === "en"
+        ? "Confirm your subscription — CyberSphere newsletter"
+        : "Confirmez votre inscription — newsletter CyberSphere",
+    html,
+    text,
+  });
 }
 
 /** Confirme une inscription via le jeton reçu par e-mail. */

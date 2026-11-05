@@ -21,6 +21,26 @@ import {
   type Viewer,
 } from "@/components/comments/comment-section";
 
+/**
+ * Champs publics d'un commentaire, en liste explicite : l'e-mail et
+ * l'empreinte IP d'un invité ne doivent jamais atteindre le rendu de la page.
+ */
+const publicCommentSelect = {
+  id: true,
+  content: true,
+  createdAt: true,
+  guestName: true,
+  author: { select: { id: true, name: true, image: true } },
+} as const;
+
+/** Le membre auteur du commentaire, ou le nom saisi par l'invité (id null). */
+function commentAuthor(comment: {
+  author: CommentView["author"] | null;
+  guestName: string | null;
+}): CommentView["author"] {
+  return comment.author ?? { id: null, name: comment.guestName ?? "", image: null };
+}
+
 const copy = {
   fr: {
     home: "Accueil",
@@ -215,13 +235,14 @@ export default async function ArticlePage({ params }: Props) {
       // Libellé des sources dans la langue du texte affiché (repli : français)
       renderMarkdown(content, translation ? "en" : "fr"),
       db.comment.findMany({
-        where: { articleId: article.id, parentId: null },
+        where: { articleId: article.id, parentId: null, status: "APPROVED" },
         orderBy: { createdAt: "desc" },
-        include: {
-          author: { select: { id: true, name: true, image: true } },
+        select: {
+          ...publicCommentSelect,
           replies: {
+            where: { status: "APPROVED" },
             orderBy: { createdAt: "asc" },
-            include: { author: { select: { id: true, name: true, image: true } } },
+            select: publicCommentSelect,
           },
         },
       }),
@@ -263,12 +284,12 @@ export default async function ArticlePage({ params }: Props) {
     id: c.id,
     content: c.content,
     createdAt: formatDateTime(c.createdAt, locale),
-    author: c.author,
+    author: commentAuthor(c),
     replies: c.replies.map((r) => ({
       id: r.id,
       content: r.content,
       createdAt: formatDateTime(r.createdAt, locale),
-      author: r.author,
+      author: commentAuthor(r),
       replies: [],
     })),
   }));

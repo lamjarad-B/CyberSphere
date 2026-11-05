@@ -37,6 +37,8 @@ const actionLabels: Record<string, string> = {
   "tag.creation": "Tag créé",
   "tag.suppression": "Tag supprimé",
   "commentaire.moderation": "Commentaire modéré",
+  "commentaire.approbation": "Commentaire approuvé",
+  "commentaire.purge_file": "File de modération vidée",
   "signalement.classement": "Signalement classé",
   "membre.bannissement": "Membre banni",
   "membre.debannissement": "Membre réintégré",

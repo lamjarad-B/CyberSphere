@@ -30,6 +30,8 @@ function buildCsp(nonce: string): string {
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
     "connect-src 'self'",
+    // ALTCHA calcule dans des workers servis par le site : ni blob ni WASM
+    "worker-src 'self'",
     // Le widget Turnstile s'exécute dans une iframe Cloudflare
     `frame-src ${turnstileEnabled ? "https://challenges.cloudflare.com" : "'none'"}`,
     "object-src 'none'",
