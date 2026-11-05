@@ -43,7 +43,7 @@ export function TwoFactorForm({ redirection }: { redirection?: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-      {error && <p className={errorClass}>{error}</p>}
+      {error && <p className={errorClass} role="alert">{error}</p>}
       <div>
         <label htmlFor="code" className={labelClass}>
           {useBackup ? labels.backupLabel : labels.totpLabel}

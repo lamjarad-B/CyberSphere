@@ -49,8 +49,8 @@
       </text>
     </g>
 
-    <text x="48" y="400" font-size="16.5" fill="#64748b">Les 24 et 72 heures courent depuis la prise de connaissance ; le mois court depuis la notification des 72 heures, non depuis l'incident.</text>
-    <text x="48" y="424" font-size="16.5" fill="#64748b">Les prestataires de services de confiance notifient en 24 heures au lieu de 72.</text>
-    <text x="48" y="448" font-size="16.5" fill="#64748b">Si l'incident est encore en cours, le rapport final devient un rapport d'avancement.</text>
+    <text x="48" y="400" font-size="16.5" fill="#8b98a9">Les 24 et 72 heures courent depuis la prise de connaissance ; le mois court depuis la notification des 72 heures, non depuis l'incident.</text>
+    <text x="48" y="424" font-size="16.5" fill="#8b98a9">Les prestataires de services de confiance notifient en 24 heures au lieu de 72.</text>
+    <text x="48" y="448" font-size="16.5" fill="#8b98a9">Si l'incident est encore en cours, le rapport final devient un rapport d'avancement.</text>
   </g>
 </svg>

@@ -24,7 +24,7 @@ export function TagForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      {error && <p className={errorClass}>{error}</p>}
+      {error && <p className={errorClass} role="alert">{error}</p>}
       <div className="flex gap-2">
         <input
           type="text"

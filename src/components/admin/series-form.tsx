@@ -50,7 +50,7 @@ export function SeriesForm({ series }: SeriesFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <p className={errorClass}>{error}</p>}
+      {error && <p className={errorClass} role="alert">{error}</p>}
 
       <div>
         <label htmlFor="title" className={labelClass}>

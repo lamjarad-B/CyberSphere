@@ -68,7 +68,7 @@ export default async function ApercuPage({ params, searchParams }: Props) {
 
   return (
     <article className="mx-auto max-w-3xl space-y-8">
-      <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-500">
+      <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-warning">
         {copy[locale].banner}
       </p>
 

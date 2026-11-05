@@ -22,7 +22,7 @@ export function Pagination({ page, totalPages, makeHref, locale = "fr" }: Pagina
           {t.previous}
         </Link>
       ) : (
-        <span className={`${buttonGhostClass} pointer-events-none opacity-40`}>
+        <span role="link" aria-disabled="true" className={`${buttonGhostClass} pointer-events-none opacity-40`}>
           {t.previous}
         </span>
       )}
@@ -34,7 +34,7 @@ export function Pagination({ page, totalPages, makeHref, locale = "fr" }: Pagina
           {t.next}
         </Link>
       ) : (
-        <span className={`${buttonGhostClass} pointer-events-none opacity-40`}>
+        <span role="link" aria-disabled="true" className={`${buttonGhostClass} pointer-events-none opacity-40`}>
           {t.next}
         </span>
       )}

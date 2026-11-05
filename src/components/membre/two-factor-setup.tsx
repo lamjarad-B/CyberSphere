@@ -10,6 +10,7 @@ import {
   buttonDangerClass,
   buttonGhostClass,
   errorClass,
+  focusOnMount,
   inputClass,
   labelClass,
   successClass,
@@ -96,8 +97,8 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
   if (step.name === "setup") {
     return (
       <div className="space-y-4">
-        {error && <p className={errorClass}>{error}</p>}
-        <ol className="list-decimal space-y-2 pl-5 text-sm text-muted">
+        {error && <p className={errorClass} role="alert">{error}</p>}
+        <ol ref={focusOnMount} tabIndex={-1} className="list-decimal space-y-2 pl-5 text-sm text-muted">
           <li>{labels.step1}</li>
           <li>{labels.step2}</li>
           <li>{labels.step3}</li>
@@ -147,11 +148,15 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
   if (enabled || step.name === "done") {
     return (
       <div className="space-y-4">
-        <p className={successClass}>
+        <p
+          ref={step.name === "done" ? focusOnMount : undefined}
+          tabIndex={-1}
+          className={successClass}
+        >
           {labels.enabledLabel} <strong>{labels.enabledWord}</strong>.{" "}
           {labels.enabledNotice}
         </p>
-        {error && <p className={errorClass}>{error}</p>}
+        {error && <p className={errorClass} role="alert">{error}</p>}
         <form onSubmit={disable} className="space-y-3" noValidate>
           <div>
             <label htmlFor="disable-password" className={labelClass}>
@@ -177,7 +182,7 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted">{labels.intro}</p>
-      {error && <p className={errorClass}>{error}</p>}
+      {error && <p className={errorClass} role="alert">{error}</p>}
       <form onSubmit={enable} className="space-y-3" noValidate>
         <div>
           <label htmlFor="enable-password" className={labelClass}>

@@ -105,7 +105,7 @@ export default async function AdminDashboardPage() {
                     sur{" "}
                     <Link
                       href={`/articles/${comment.article.slug}`}
-                      className="text-accent hover:underline"
+                      className="text-accent underline"
                     >
                       {comment.article.title}
                     </Link>{" "}

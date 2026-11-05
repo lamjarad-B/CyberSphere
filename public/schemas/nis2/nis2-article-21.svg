@@ -10,7 +10,7 @@
       <rect x="48" y="128" width="540" height="268" rx="12" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
       <rect x="48" y="128" width="6" height="268" rx="3" fill="#22d3ee"/>
       <text x="78" y="168" font-size="22" font-weight="700" fill="#22d3ee">Gouvernance du risque</text>
-      <text x="520" y="168" font-size="20" font-weight="700" fill="#475569" text-anchor="end">4</text>
+      <text x="520" y="168" font-size="20" font-weight="700" fill="#8b98a9" text-anchor="end">4</text>
       <g font-size="17.5" fill="#cbd5e1">
         <text x="78" y="212">Politiques d'analyse des risques et de</text>
         <text x="78" y="236">sécurité des systèmes d'information</text>
@@ -25,7 +25,7 @@
       <rect x="612" y="128" width="540" height="268" rx="12" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
       <rect x="612" y="128" width="6" height="268" rx="3" fill="#22d3ee"/>
       <text x="642" y="168" font-size="22" font-weight="700" fill="#22d3ee">Technique</text>
-      <text x="1084" y="168" font-size="20" font-weight="700" fill="#475569" text-anchor="end">3</text>
+      <text x="1084" y="168" font-size="20" font-weight="700" fill="#8b98a9" text-anchor="end">3</text>
       <g font-size="17.5" fill="#cbd5e1">
         <text x="642" y="212">Acquisition, développement et</text>
         <text x="642" y="236">maintenance des systèmes, traitement</text>
@@ -40,7 +40,7 @@
       <rect x="48" y="420" width="540" height="196" rx="12" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
       <rect x="48" y="420" width="6" height="196" rx="3" fill="#22d3ee"/>
       <text x="78" y="460" font-size="22" font-weight="700" fill="#22d3ee">Absorber un incident</text>
-      <text x="520" y="460" font-size="20" font-weight="700" fill="#475569" text-anchor="end">2</text>
+      <text x="520" y="460" font-size="20" font-weight="700" fill="#8b98a9" text-anchor="end">2</text>
       <g font-size="17.5" fill="#cbd5e1">
         <text x="78" y="504">Traitement des incidents</text>
         <text x="78" y="544">Continuité d'activité : sauvegardes,</text>
@@ -60,6 +60,6 @@
       <text x="642" y="588" font-size="16" font-style="italic" fill="#8b98a9">Atteint par contrat des fournisseurs hors périmètre</text>
     </g>
 
-    <text x="48" y="664" font-size="16.5" fill="#64748b">Les mesures doivent être proportionnées au risque encouru : exposition, taille, probabilité et gravité d'un incident, état de l'art, coût.</text>
+    <text x="48" y="664" font-size="16.5" fill="#8b98a9">Les mesures doivent être proportionnées au risque encouru : exposition, taille, probabilité et gravité d'un incident, état de l'art, coût.</text>
   </g>
 </svg>

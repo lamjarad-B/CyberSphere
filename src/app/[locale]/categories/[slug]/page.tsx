@@ -135,6 +135,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
               key={article.slug}
               article={localizeCard(article, locale)}
               locale={locale}
+              headingLevel={2}
             />
           ))}
         </div>

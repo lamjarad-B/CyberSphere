@@ -19,10 +19,15 @@ export type ArticleCardData = {
 export function ArticleCard({
   article,
   locale,
+  headingLevel = 3,
 }: {
   article: ArticleCardData;
   locale: Locale;
+  /** 2 sur une page de liste, où la carte suit directement le h1 ; 3 sous un h2. */
+  headingLevel?: 2 | 3;
 }) {
+  const Heading = headingLevel === 2 ? "h2" : "h3";
+
   return (
     <article
       className={`${cardClass} group flex flex-col overflow-hidden transition-colors hover:border-accent/60`}
@@ -67,14 +72,14 @@ export function ArticleCard({
             {article.category.name}
           </Link>
         </div>
-        <h3 className="text-lg font-semibold leading-snug">
+        <Heading className="text-lg font-semibold leading-snug">
           <Link
             href={localeHref(locale, `/articles/${article.slug}`)}
             className="transition-colors group-hover:text-accent"
           >
             {article.title}
           </Link>
-        </h3>
+        </Heading>
         <p className="line-clamp-3 text-sm text-muted">{article.excerpt}</p>
         <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2">
           <p className="text-xs text-muted">

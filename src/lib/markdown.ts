@@ -51,9 +51,20 @@ function rehypeSafeUrls() {
 
 // Les notes de bas de page GFM (`[^1]`) servent à citer les sources : la
 // section générée en fin d'article porte un libellé propre à chaque langue.
-const footnoteLabels: Record<Locale, { label: string; backLabel: string }> = {
-  fr: { label: "Sources et notes", backLabel: "Retour au texte" },
-  en: { label: "Sources & notes", backLabel: "Back to content" },
+// Chaque lien de retour a son propre nom, qui reprend le numéro affiché quand
+// une note est citée plusieurs fois (↩², WCAG 2.5.3).
+const footnoteLabels: Record<
+  Locale,
+  { label: string; backLabel: (note: number, call: number) => string }
+> = {
+  fr: {
+    label: "Sources et notes",
+    backLabel: (note, call) => `Retour au texte, note ${note}${call > 1 ? `, appel ${call}` : ""}`,
+  },
+  en: {
+    label: "Sources & notes",
+    backLabel: (note, call) => `Back to content, note ${note}${call > 1 ? `, reference ${call}` : ""}`,
+  },
 };
 
 // remark-rehype sans `allowDangerousHtml` : le HTML brut écrit dans le
@@ -65,7 +76,8 @@ function createProcessor(locale: Locale) {
     .use(remarkGfm)
     .use(remarkRehype, {
       footnoteLabel: label,
-      footnoteBackLabel: backLabel,
+      footnoteBackLabel: (referenceIndex, rereferenceIndex) =>
+        backLabel(referenceIndex + 1, rereferenceIndex),
       // Titre visible (remark-rehype le masque par défaut avec `sr-only`)
       footnoteLabelProperties: { className: ["footnotes-title"] },
     })

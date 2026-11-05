@@ -52,13 +52,13 @@ export function AccountData({ isStaff }: { isStaff: boolean }) {
       </a>
 
       <div className="space-y-3 border-t border-border pt-6">
-        <h3 className="font-semibold text-red-500">{labels.deleteTitle}</h3>
+        <h3 className="font-semibold text-danger">{labels.deleteTitle}</h3>
         {isStaff ? (
           <p className="text-sm text-muted">{labels.staffForbidden}</p>
         ) : (
           <form onSubmit={handleDelete} className="space-y-3" noValidate>
             <p className="text-sm text-muted">{labels.deleteWarning}</p>
-            {error && <p className={errorClass}>{error}</p>}
+            {error && <p className={errorClass} role="alert">{error}</p>}
             <div>
               <label htmlFor="delete-password" className={labelClass}>
                 {labels.passwordLabel}

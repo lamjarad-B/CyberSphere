@@ -3,7 +3,9 @@
  * admins). Une session expire IDLE_TIMEOUT_SECONDS après la dernière
  * activité : better-auth la prolonge (expiration glissante) au plus une fois
  * par SESSION_REFRESH_SECONDS, sur le battement de cœur envoyé par
- * <IdleLogout> tant que l'utilisateur interagit avec la page.
+ * <IdleLogout> tant que l'utilisateur interagit avec la page. Ce composant
+ * prévient deux minutes avant et déconnecte un peu avant ce délai, marge
+ * nécessaire pour que « Rester connecté » trouve une session encore valide.
  *
  * Délai réglable par SESSION_IDLE_TIMEOUT_MINUTES (30 min par défaut,
  * borné entre 5 min et 24 h).

@@ -55,14 +55,14 @@ export default async function AdminSignalementsPage() {
                   </span>{" "}
                   · {formatDateTime(report.createdAt)}
                   {report.comment._count.reports > 1 && (
-                    <span className="ml-2 rounded bg-red-500/15 px-1.5 py-0.5 font-mono font-semibold text-red-500">
+                    <span className="ml-2 rounded bg-red-500/15 px-1.5 py-0.5 font-mono font-semibold text-danger">
                       {report.comment._count.reports} signalements
                     </span>
                   )}
                 </p>
                 <Link
                   href={`/articles/${report.comment.article.slug}`}
-                  className="text-accent hover:underline"
+                  className="text-accent underline"
                 >
                   {report.comment.article.title}
                 </Link>

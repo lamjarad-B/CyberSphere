@@ -10,6 +10,7 @@ import type { Locale } from "@/lib/i18n";
 
 const fr = {
   nav: {
+    skipToContent: "Aller au contenu",
     mainAria: "Navigation principale",
     articles: "Articles",
     series: "Séries",
@@ -63,6 +64,13 @@ const fr = {
     signOut: "Se déconnecter",
     signingOut: "Déconnexion…",
   },
+  idleLogout: {
+    title: "Toujours là ?",
+    description: "Sans activité de votre part, votre session va être fermée par sécurité.",
+    remaining: (time: string) => `Déconnexion dans ${time}`,
+    stay: "Rester connecté",
+    tabAlert: "Déconnexion imminente",
+  },
   theme: {
     toLight: "Passer en thème clair",
     toDark: "Passer en thème sombre",
@@ -70,7 +78,8 @@ const fr = {
   language: {
     label: "Langue",
     switchTo: "Switch to English",
-    switchAria: "Lire ce site en anglais",
+    // Commence par le code affiché : la commande vocale « EN » doit trouver le bouton (WCAG 2.5.3)
+    switchAria: "EN — Lire ce site en anglais",
   },
   codeCopy: {
     copy: "Copier",
@@ -90,8 +99,9 @@ const fr = {
     title: "Commentaires",
     aria: "Commentaires",
     signedInAs: "Connecté en tant que",
-    placeholder: "Votre commentaire…",
-    replyPlaceholder: (name: string) => `Répondre à ${name}…`,
+    label: "Votre commentaire",
+    replyLabel: (name: string) => `Votre réponse à ${name}`,
+    editLabel: "Modifier votre commentaire",
     membersOnly: "Les commentaires sont réservés aux membres connectés.",
     login: "Connexion",
     register: "Inscription",
@@ -273,6 +283,7 @@ const fr = {
 
 const en: Dictionary = {
   nav: {
+    skipToContent: "Skip to content",
     mainAria: "Main navigation",
     articles: "Articles",
     series: "Series",
@@ -325,6 +336,13 @@ const en: Dictionary = {
     signOut: "Sign out",
     signingOut: "Signing out…",
   },
+  idleLogout: {
+    title: "Still there?",
+    description: "Without any activity on your part, your session will be closed for security.",
+    remaining: (time: string) => `Signing out in ${time}`,
+    stay: "Stay signed in",
+    tabAlert: "Signing out soon",
+  },
   theme: {
     toLight: "Switch to light theme",
     toDark: "Switch to dark theme",
@@ -332,7 +350,7 @@ const en: Dictionary = {
   language: {
     label: "Language",
     switchTo: "Lire en français",
-    switchAria: "Read this site in French",
+    switchAria: "FR — Read this site in French",
   },
   codeCopy: {
     copy: "Copy",
@@ -352,8 +370,9 @@ const en: Dictionary = {
     title: "Comments",
     aria: "Comments",
     signedInAs: "Signed in as",
-    placeholder: "Your comment…",
-    replyPlaceholder: (name: string) => `Reply to ${name}…`,
+    label: "Your comment",
+    replyLabel: (name: string) => `Your reply to ${name}`,
+    editLabel: "Edit your comment",
     membersOnly: "Comments are for signed-in members only.",
     login: "Sign in",
     register: "Sign up",

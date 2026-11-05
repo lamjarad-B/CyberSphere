@@ -1,10 +1,10 @@
 import type { ArticleStatus } from "@prisma/client";
 
 const badges: Record<ArticleStatus, { label: string; className: string }> = {
-  PUBLISHED: { label: "Publié", className: "bg-emerald-500/15 text-emerald-500" },
-  SCHEDULED: { label: "Programmé", className: "bg-violet-500/15 text-violet-400" },
-  SUBMITTED: { label: "À valider", className: "bg-sky-500/15 text-sky-500" },
-  DRAFT: { label: "Brouillon", className: "bg-amber-500/15 text-amber-500" },
+  PUBLISHED: { label: "Publié", className: "bg-emerald-500/15 text-success" },
+  SCHEDULED: { label: "Programmé", className: "bg-violet-500/15 text-violet-700 dark:text-violet-400" },
+  SUBMITTED: { label: "À valider", className: "bg-sky-500/15 text-info" },
+  DRAFT: { label: "Brouillon", className: "bg-amber-500/15 text-warning" },
 };
 
 /** Pastille de statut d'un article (administration, en français). */

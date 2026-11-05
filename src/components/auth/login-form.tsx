@@ -13,6 +13,7 @@ import {
   errorClass,
   inputClass,
   labelClass,
+  statusRegionClass,
   successClass,
 } from "@/components/ui";
 import {
@@ -117,17 +118,18 @@ export function LoginForm({ redirection }: { redirection?: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-      {error && <p className={errorClass}>{error}</p>}
+      {error && <p className={errorClass} role="alert">{error}</p>}
 
       {unverifiedEmail && (
         <div className="space-y-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-          <p className="text-amber-600 dark:text-amber-400">
+          <p className="text-warning" role="alert">
             {labels.unverifiedNotice}{" "}
             <span className="font-medium">{unverifiedEmail}</span>.
           </p>
-          {resent ? (
-            <p className={successClass}>{labels.resent}</p>
-          ) : (
+          <div role="status" className={statusRegionClass}>
+            {resent && <p className={successClass}>{labels.resent}</p>}
+          </div>
+          {!resent && (
             <button
               type="button"
               onClick={resend}

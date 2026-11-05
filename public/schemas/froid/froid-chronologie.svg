@@ -79,7 +79,7 @@
     </g>
 
     <line x1="48" y1="450" x2="1152" y2="450" stroke="#1e293b" stroke-width="1.5"/>
-    <text x="48" y="482" font-size="16" fill="#64748b">Le CERT-FR ne nomme ni attaquant, ni vulnérabilité, ni identifiant CVE. Aucune revendication n'a été publiée à ce jour.</text>
-    <text x="48" y="508" font-size="16" fill="#64748b">Les détails de l'incident de l'EFS proviennent du Canard enchaîné et n'ont pas été confirmés publiquement dans leur intégralité.</text>
+    <text x="48" y="482" font-size="16" fill="#8b98a9">Le CERT-FR ne nomme ni attaquant, ni vulnérabilité, ni identifiant CVE. Aucune revendication n'a été publiée à ce jour.</text>
+    <text x="48" y="508" font-size="16" fill="#8b98a9">Les détails de l'incident de l'EFS proviennent du Canard enchaîné et n'ont pas été confirmés publiquement dans leur intégralité.</text>
   </g>
 </svg>

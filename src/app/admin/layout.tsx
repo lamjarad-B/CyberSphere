@@ -5,6 +5,7 @@ import { requireStaffAccount } from "@/lib/session";
 import { IDLE_TIMEOUT_SECONDS, SESSION_REFRESH_SECONDS } from "@/lib/session-timeout";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { IdleLogout } from "@/components/idle-logout";
+import { MAIN_CONTENT_ID, SkipLink } from "@/components/skip-link";
 import { buttonClass, cardClass } from "@/components/ui";
 
 export const metadata: Metadata = {
@@ -30,7 +31,7 @@ export default async function AdminLayout({
   // layout n'est pas réexécuté lors des navigations client.
   if (!session.user.twoFactorEnabled) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-16">
+      <main className="mx-auto max-w-lg px-4 py-16">
         {idleLogout}
         <div className={`${cardClass} space-y-4 p-8`}>
           <h1 className="text-2xl font-bold">Double authentification requise</h1>
@@ -44,15 +45,19 @@ export default async function AdminLayout({
             Activer la 2FA sur mon profil
           </Link>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
+      <SkipLink label="Aller au contenu" />
       {idleLogout}
-      <aside className="flex flex-col gap-6 border-b border-border bg-surface p-4 md:w-60 md:shrink-0 md:border-b-0 md:border-r">
-        <Link href="/" className="flex items-center gap-2 px-2 pt-2" aria-label="CyberSphere">
+      <aside
+        aria-label="Menu d'administration"
+        className="flex flex-col gap-6 border-b border-border bg-surface p-4 md:w-60 md:shrink-0 md:border-b-0 md:border-r"
+      >
+        <Link href="/" className="flex items-center gap-2 px-2 pt-2">
           <Image
             src="/images/Logo/cybersphere-lockup-sombre.png"
             alt="CyberSphere"
@@ -81,7 +86,7 @@ export default async function AdminLayout({
           ← Voir le site
         </Link>
       </aside>
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 md:px-8">
+      <main id={MAIN_CONTENT_ID} className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 md:px-8">
         {children}
       </main>
     </div>

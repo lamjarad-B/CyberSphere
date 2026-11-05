@@ -244,7 +244,7 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {error && <p className={errorClass}>{error}</p>}
+      {error && <p className={errorClass} role="alert">{error}</p>}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
@@ -295,11 +295,14 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
 
           <div>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <span className={`${labelClass} mb-0`}>Contenu (Markdown)</span>
+              <label htmlFor="content" className={`${labelClass} mb-0`}>
+                Contenu (Markdown)
+              </label>
               <div className="flex rounded-md border border-border p-0.5">
                 <button
                   type="button"
                   onClick={() => setTab("write")}
+                  aria-pressed={tab === "write"}
                   className={`rounded px-3 py-1 text-sm font-medium ${
                     tab === "write" ? "bg-accent/15 text-accent" : "text-muted"
                   }`}
@@ -309,6 +312,7 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                 <button
                   type="button"
                   onClick={showPreview}
+                  aria-pressed={tab === "preview"}
                   className={`rounded px-3 py-1 text-sm font-medium ${
                     tab === "preview" ? "bg-accent/15 text-accent" : "text-muted"
                   }`}
@@ -350,6 +354,7 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
               </div>
               <textarea
                 ref={textareaRef}
+                id="content"
                 name="content"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
@@ -357,7 +362,7 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                 className={`${inputClass} min-h-[28rem] resize-y rounded-t-none font-mono text-[13px] leading-relaxed`}
                 placeholder={"## Introduction\n\nVotre article en **Markdown**…\n\nUne affirmation sourcée[^1].\n\n[^1]: ANSSI, « Panorama de la cybermenace », 2025, https://cyber.gouv.fr"}
               />
-              {imageError && <p className={`${errorClass} mt-1`}>{imageError}</p>}
+              {imageError && <p className={`${errorClass} mt-1`} role="alert">{imageError}</p>}
               <p className="mt-1 text-xs text-muted">
                 Sources : appel de note <code>[^1]</code> dans le texte, puis{" "}
                 <code>[^1]: Auteur, « Titre », date, URL</code> en fin d&apos;article — elles
@@ -409,6 +414,7 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
               </div>
               {translateMsg && (
                 <p
+                  role={translateMsg.isError ? "alert" : "status"}
                   className={
                     translateMsg.isError ? errorClass : "text-sm font-medium text-accent"
                   }
@@ -474,7 +480,7 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
           </details>
         </div>
 
-        <aside className="space-y-6">
+        <aside aria-label="Options de publication" className="space-y-6">
           <div className={`${cardClass} space-y-4 p-5`}>
             <div>
               <label htmlFor="status" className={labelClass}>

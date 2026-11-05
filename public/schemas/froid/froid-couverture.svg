@@ -53,7 +53,7 @@
       </text>
     </g>
 
-    <text x="72" y="388" font-size="17" fill="#64748b">Exposition mesurée par Forescout le 22 octobre 2026. Incidents recensés par Euronews le 3 novembre 2026.</text>
+    <text x="72" y="388" font-size="17" fill="#8b98a9">Exposition mesurée par Forescout le 22 octobre 2026. Incidents recensés par Euronews le 3 novembre 2026.</text>
 
     <line x1="110" y1="474" x2="1050" y2="474" stroke="#1e293b" stroke-width="3"/>
     <circle cx="110" cy="474" r="10" fill="#22d3ee"/>

@@ -4,7 +4,14 @@ import { useCallback, useState, useTransition } from "react";
 import { sendContactMessage } from "@/actions/contact";
 import { useI18n } from "@/components/i18n-provider";
 import { TurnstileWidget, captchaEnabled } from "@/components/auth/turnstile-widget";
-import { buttonClass, errorClass, inputClass, labelClass, successClass } from "@/components/ui";
+import {
+  buttonClass,
+  errorClass,
+  inputClass,
+  labelClass,
+  statusRegionClass,
+  successClass,
+} from "@/components/ui";
 
 export function ContactForm({
   defaultName = "",
@@ -56,11 +63,9 @@ export function ContactForm({
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      {sent && (
-        <p className={successClass} role="status">
-          {c.success}
-        </p>
-      )}
+      <div role="status" className={statusRegionClass}>
+        {sent && <p className={successClass}>{c.success}</p>}
+      </div>
       {error && (
         <p className={errorClass} role="alert">
           {error}

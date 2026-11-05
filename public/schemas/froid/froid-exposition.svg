@@ -4,7 +4,7 @@
 
   <defs>
     <marker id="af" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
     </marker>
     <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444"/>
@@ -33,7 +33,7 @@
     <text x="1043" y="198" font-size="18" font-weight="600" fill="#e6edf3" text-anchor="middle">Chambre froide</text>
     <text x="1043" y="222" font-size="15" fill="#8b98a9" text-anchor="middle">consigne, dégivrage</text>
 
-    <g stroke="#475569" stroke-width="2.5" fill="none" marker-end="url(#af)">
+    <g stroke="#64748b" stroke-width="2.5" fill="none" marker-end="url(#af)">
       <path d="M 244 204 L 320 204"/>
       <path d="M 526 204 L 602 204"/>
       <path d="M 848 204 L 924 204"/>
@@ -61,13 +61,13 @@
     <text x="1043" y="434" font-size="18" font-weight="600" fill="#e6edf3" text-anchor="middle">Chambre froide</text>
     <text x="1043" y="458" font-size="15" fill="#8b98a9" text-anchor="middle">consigne, dégivrage</text>
 
-    <g stroke="#475569" stroke-width="2.5" fill="none" marker-end="url(#af)">
+    <g stroke="#64748b" stroke-width="2.5" fill="none" marker-end="url(#af)">
       <path d="M 244 440 L 320 440"/>
       <path d="M 526 440 L 602 440"/>
       <path d="M 848 440 L 924 440"/>
     </g>
 
-    <text x="48" y="528" font-size="16" fill="#64748b">Sur un équipement en fin de vie que l'éditeur ne corrige plus, le CERT-FR avertit qu'une réinitialisation d'usine ne suffit pas :</text>
-    <text x="48" y="552" font-size="16" fill="#64748b">il sera de nouveau compromis s'il reste exposé. En octobre 2026, Forescout recensait 12 976 services de ce type joignables depuis Internet.</text>
+    <text x="48" y="528" font-size="16" fill="#8b98a9">Sur un équipement en fin de vie que l'éditeur ne corrige plus, le CERT-FR avertit qu'une réinitialisation d'usine ne suffit pas :</text>
+    <text x="48" y="552" font-size="16" fill="#8b98a9">il sera de nouveau compromis s'il reste exposé. En octobre 2026, Forescout recensait 12 976 services de ce type joignables depuis Internet.</text>
   </g>
 </svg>

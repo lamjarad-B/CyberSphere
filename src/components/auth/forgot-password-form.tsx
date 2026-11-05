@@ -5,7 +5,14 @@ import { useCallback, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { localeHref } from "@/lib/i18n";
 import { useI18n } from "@/components/i18n-provider";
-import { buttonClass, errorClass, inputClass, labelClass, successClass } from "@/components/ui";
+import {
+  buttonClass,
+  errorClass,
+  focusOnMount,
+  inputClass,
+  labelClass,
+  successClass,
+} from "@/components/ui";
 import {
   TurnstileWidget,
   captchaEnabled,
@@ -56,7 +63,9 @@ export function ForgotPasswordForm() {
   if (sent) {
     return (
       <div className="space-y-4">
-        <p className={successClass}>{labels.sent}</p>
+        <p ref={focusOnMount} tabIndex={-1} className={successClass}>
+          {labels.sent}
+        </p>
         <Link href={localeHref(locale, "/connexion")} className={`${buttonClass} w-full`}>
           {labels.backToLogin}
         </Link>
@@ -66,7 +75,7 @@ export function ForgotPasswordForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-      {error && <p className={errorClass}>{error}</p>}
+      {error && <p className={errorClass} role="alert">{error}</p>}
       <div>
         <label htmlFor="email" className={labelClass}>
           {labels.emailLabel}

@@ -12,8 +12,8 @@ export const metadata: Metadata = { title: "Membres" };
 
 const roleBadge: Record<string, { label: string; className: string }> = {
   admin: { label: "Admin", className: "bg-accent/15 text-accent" },
-  author: { label: "Auteur", className: "bg-violet-500/15 text-violet-400" },
-  user: { label: "Membre", className: "bg-border/60 text-muted" },
+  author: { label: "Auteur", className: "bg-violet-500/15 text-violet-700 dark:text-violet-400" },
+  user: { label: "Membre", className: "bg-border/60 text-foreground" },
 };
 
 const PAGE_SIZE = 50;
@@ -100,18 +100,18 @@ export default async function AdminMembresPage({
                   </td>
                   <td className="px-4 py-3">
                     {member.banned ? (
-                      <span className="rounded-full bg-red-500/15 px-2 py-0.5 font-mono text-[11px] font-semibold text-red-500">
+                      <span className="rounded-full bg-red-500/15 px-2 py-0.5 font-mono text-[11px] font-semibold text-danger">
                         Banni
                       </span>
                     ) : (
-                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 font-mono text-[11px] font-semibold text-emerald-500">
+                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 font-mono text-[11px] font-semibold text-success">
                         Actif
                       </span>
                     )}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs">
                     {member.twoFactorEnabled ? (
-                      <span className="text-emerald-500">activée</span>
+                      <span className="text-success">activée</span>
                     ) : (
                       <span className="text-muted">—</span>
                     )}

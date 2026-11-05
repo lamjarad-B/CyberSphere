@@ -45,7 +45,7 @@ export function SessionManager({ sessions }: { sessions: SessionItem[] }) {
 
   return (
     <div className="space-y-4">
-      {error && <p className={errorClass}>{error}</p>}
+      {error && <p className={errorClass} role="alert">{error}</p>}
 
       <ul className="divide-y divide-border rounded-md border border-border">
         {sessions.map((session) => (

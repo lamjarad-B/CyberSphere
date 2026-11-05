@@ -9,8 +9,18 @@
   --foreground: #111827;
   --muted: #6b7280;
   --border: #e5e7eb;
-  --accent: #0e7490;
+  /* Contour des champs : 3:1 sur --surface et --background (WCAG 1.4.11).
+     --border reste réservé aux cartes et séparateurs, décoratifs. */
+  --control: #878f99;
+  --accent: #0c6a84;
   --accent-contrast: #ffffff;
+  /* Textes d'état : 4,5:1 sur --surface et --background, y compris sur leur
+     teinte de fond à 15 % (WCAG 1.4.3). Aucune teinte unique ne tient dans
+     les deux thèmes. */
+  --danger: #c10007;
+  --success: #006045;
+  --warning: #973c00;
+  --info: #0069a8;
 }
 
 .dark {
@@ -19,8 +29,13 @@
   --foreground: #e6edf3;
   --muted: #8b98a9;
   --border: #1e293b;
+  --control: #64748b;
   --accent: #22d3ee;
   --accent-contrast: #06222b;
+  --danger: #ff6467;
+  --success: #00bc7d;
+  --warning: #fe9a00;
+  --info: #00bcff;
 }
 
 @theme inline {
@@ -29,16 +44,38 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-border: var(--border);
+  --color-control: var(--control);
   --color-accent: var(--accent);
   --color-accent-contrast: var(--accent-contrast);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+/* Header collant : les ancres et le focus clavier s'arrêtent sous lui, pas
+   derrière (sommaire, notes de bas de page, Maj+Tab — WCAG 2.4.11). */
+html {
+  scroll-padding-top: 5rem;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ---- Rendu Markdown des articles ---- */
@@ -102,7 +139,7 @@ body {
   width: 1.5rem;
   margin-right: 1rem;
   text-align: right;
-  color: #6e7681;
+  color: #7d8590;
   user-select: none;
 }
 

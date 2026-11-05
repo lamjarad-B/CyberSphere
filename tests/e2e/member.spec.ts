@@ -12,7 +12,7 @@ test.describe("Espace membre", () => {
     await login(page, author);
     await page.goto(`/articles/${article.slug}`);
     const text = `Commentaire e2e ${Date.now()}`;
-    await page.getByPlaceholder("Votre commentaire…").fill(text);
+    await page.getByLabel("Votre commentaire").fill(text);
     await page.getByRole("button", { name: "Publier" }).click();
     await expect(page.getByText(text)).toBeVisible();
     await page.getByRole("button", { name: "+ Ajouter aux signets" }).click();

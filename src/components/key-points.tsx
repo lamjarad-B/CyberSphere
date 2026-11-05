@@ -4,7 +4,16 @@ import { parseKeyPoints } from "@/lib/articles";
 const labels: Record<Locale, string> = { fr: "Points clés", en: "Key points" };
 
 /** Encadré « Points clés » placé sous le chapô ; rien si le champ est vide. */
-export function KeyPoints({ raw, locale }: { raw: string | null | undefined; locale: Locale }) {
+export function KeyPoints({
+  raw,
+  locale,
+  lang,
+}: {
+  raw: string | null | undefined;
+  locale: Locale;
+  /** Langue des points quand elle diffère de la page (repli non traduit). */
+  lang?: string;
+}) {
   const points = parseKeyPoints(raw);
   if (points.length === 0) return null;
 
@@ -16,7 +25,7 @@ export function KeyPoints({ raw, locale }: { raw: string | null | undefined; loc
       <p className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider text-accent">
         {labels[locale]}
       </p>
-      <ul className="list-disc space-y-2 pl-5 marker:text-accent">
+      <ul lang={lang} className="list-disc space-y-2 pl-5 marker:text-accent">
         {points.map((point, i) => (
           <li key={i}>{point}</li>
         ))}

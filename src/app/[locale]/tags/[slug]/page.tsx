@@ -84,6 +84,7 @@ export default async function TagPage({ params, searchParams }: Props) {
               key={article.slug}
               article={localizeCard(article, locale)}
               locale={locale}
+              headingLevel={2}
             />
           ))}
         </div>

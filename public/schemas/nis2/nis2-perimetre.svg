@@ -4,7 +4,7 @@
 
   <defs>
     <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
     </marker>
   </defs>
 
@@ -12,7 +12,7 @@
     <text x="48" y="60" font-size="30" font-weight="600" fill="#e6edf3">Mon entité relève-t-elle de NIS2 ?</text>
     <text x="48" y="92" font-size="19" fill="#8b98a9">Identification par auto-évaluation : aucune désignation préalable par l'État</text>
 
-    <g stroke="#475569" stroke-width="2.5" fill="none" marker-end="url(#a2)">
+    <g stroke="#64748b" stroke-width="2.5" fill="none" marker-end="url(#a2)">
       <path d="M 330 183 L 330 222"/>
       <path d="M 330 300 L 330 339"/>
       <path d="M 330 417 L 330 456"/>

@@ -36,13 +36,18 @@ export function UserMenu({ name, image, isAdmin }: UserMenuProps) {
             className="h-6 w-6 rounded-full object-cover"
           />
         ) : (
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent/15 font-mono text-xs font-bold text-accent">
+          <span
+            aria-hidden
+            className="flex h-6 w-6 items-center justify-center rounded-full bg-accent/15 font-mono text-xs font-bold text-accent"
+          >
             {name.charAt(0).toUpperCase()}
           </span>
         )}
         <span className="hidden max-w-28 truncate text-sm font-medium sm:block">
           {name}
         </span>
+        {/* Sous 640 px, le nom n'est plus affiché mais continue de nommer le menu */}
+        <span className="sr-only sm:hidden">{name}</span>
       </summary>
       <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-lg border border-border bg-surface p-1.5 shadow-xl">
         <Link
@@ -63,7 +68,7 @@ export function UserMenu({ name, image, isAdmin }: UserMenuProps) {
           type="button"
           onClick={handleSignOut}
           disabled={signingOut}
-          className="block w-full rounded-md px-3 py-2 text-left text-sm text-red-500 transition-colors hover:bg-red-500/10 disabled:opacity-50"
+          className="block w-full rounded-md px-3 py-2 text-left text-sm text-danger transition-colors hover:bg-red-500/10 disabled:opacity-50"
         >
           {signingOut ? t.userMenu.signingOut : t.userMenu.signOut}
         </button>

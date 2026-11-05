@@ -8,6 +8,7 @@ import { categoryLabel } from "@/lib/articles";
 import { getDictionary } from "@/i18n/dictionaries";
 import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
+import { TopicsMenu } from "./topics-menu";
 import { IDLE_TIMEOUT_SECONDS, SESSION_REFRESH_SECONDS } from "@/lib/session-timeout";
 import { IdleLogout } from "./idle-logout";
 import { UserMenu } from "./user-menu";
@@ -30,7 +31,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
-      <div className="relative mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4">
+      <div className="relative mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-3 px-4 sm:gap-4">
         <div className="flex items-center gap-8">
           <Link href={href("/")} className="flex shrink-0 items-center" aria-label="CyberSphere">
             <Image
@@ -39,7 +40,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
               width={1384}
               height={320}
               priority
-              className="hidden h-8 w-auto dark:block"
+              className="hidden h-8 w-auto sm:dark:block"
             />
             <Image
               src="/images/Logo/cybersphere-lockup-clair.png"
@@ -47,7 +48,17 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
               width={1384}
               height={320}
               priority
-              className="block h-8 w-auto dark:hidden"
+              className="hidden h-8 w-auto sm:block sm:dark:hidden"
+            />
+            {/* Téléphone : icône seule, le logo complet ne laisse pas la place
+                aux boutons (cinq une fois connecté) */}
+            <Image
+              src="/images/Logo/cybersphere-icone.png"
+              alt="CyberSphere"
+              width={1024}
+              height={1024}
+              priority
+              className="h-9 w-9 sm:hidden"
             />
           </Link>
 
@@ -66,47 +77,33 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
             </Link>
             {categories.length > 0 && (
               // Les intitulés de rubriques sont trop longs pour tenir côte à côte :
-              // un seul déclencheur ouvre un panneau pleine largeur. Le groupe
-              // occupe toute la hauteur du header pour que le survol ne se perde
-              // pas entre le libellé et le panneau.
-              <div className="group flex h-16 items-center">
-                <button
-                  type="button"
-                  aria-haspopup="true"
-                  className="flex items-center gap-1 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-accent group-focus-within:text-accent group-hover:text-accent"
-                >
-                  {t.nav.topics}
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="transition-transform group-hover:rotate-180" aria-hidden>
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </button>
-                <div className="invisible absolute inset-x-4 top-full z-50 grid grid-cols-3 gap-x-6 gap-y-5 rounded-b-xl border border-t-0 border-border bg-surface p-6 opacity-0 shadow-xl transition-all group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
-                  {categories.map((category) => (
-                    <div key={category.id} className="space-y-1">
+              // un seul déclencheur ouvre un panneau pleine largeur.
+              <TopicsMenu label={t.nav.topics}>
+                {categories.map((category) => (
+                  <div key={category.id} className="space-y-1">
+                    <Link
+                      href={href(`/categories/${category.slug}`)}
+                      className="block rounded-md px-2 py-1 text-sm font-semibold transition-colors hover:text-accent"
+                    >
+                      {categoryLabel(category, locale)}
+                    </Link>
+                    {category.children.map((child) => (
                       <Link
-                        href={href(`/categories/${category.slug}`)}
-                        className="block rounded-md px-2 py-1 text-sm font-semibold transition-colors hover:text-accent"
+                        key={child.id}
+                        href={href(`/categories/${child.slug}`)}
+                        className="block rounded-md px-2 py-1 text-sm text-muted transition-colors hover:bg-accent/10 hover:text-accent"
                       >
-                        {categoryLabel(category, locale)}
+                        {categoryLabel(child, locale)}
                       </Link>
-                      {category.children.map((child) => (
-                        <Link
-                          key={child.id}
-                          href={href(`/categories/${child.slug}`)}
-                          className="block rounded-md px-2 py-1 text-sm text-muted transition-colors hover:bg-accent/10 hover:text-accent"
-                        >
-                          {categoryLabel(child, locale)}
-                        </Link>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </div>
+                    ))}
+                  </div>
+                ))}
+              </TopicsMenu>
             )}
           </nav>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <Link
             href={href("/recherche")}
             aria-label={t.nav.searchAria}
@@ -179,7 +176,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
                     <Link
                       key={child.id}
                       href={href(`/categories/${child.slug}`)}
-                      className="block rounded-md py-1.5 pl-7 pr-3 text-sm text-muted hover:bg-accent/10"
+                      className="block rounded-md py-1.5 pl-7 pr-3 text-sm text-muted hover:bg-accent/10 hover:text-accent"
                     >
                       {categoryLabel(child, locale)}
                     </Link>

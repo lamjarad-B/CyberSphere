@@ -66,6 +66,7 @@ export default async function SerieDetailPage({ params }: Props) {
             key={article.slug}
             article={localizeCard(article, locale)}
             locale={locale}
+            headingLevel={2}
           />
         ))}
       </div>

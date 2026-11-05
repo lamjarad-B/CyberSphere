@@ -9,6 +9,7 @@ import {
   errorClass,
   inputClass,
   labelClass,
+  statusRegionClass,
   successClass,
 } from "@/components/ui";
 
@@ -44,8 +45,10 @@ export function ProfileForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <p className={errorClass}>{error}</p>}
-      {saved && <p className={successClass}>{labels.saved}</p>}
+      {error && <p className={errorClass} role="alert">{error}</p>}
+      <div role="status" className={statusRegionClass}>
+        {saved && <p className={successClass}>{labels.saved}</p>}
+      </div>
 
       <div className="flex items-center gap-4">
         {image ? (

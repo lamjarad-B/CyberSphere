@@ -4,14 +4,21 @@ import { useCallback, useState, useTransition } from "react";
 import { subscribeNewsletter } from "@/actions/newsletter";
 import { useI18n } from "@/components/i18n-provider";
 import { TurnstileWidget, captchaEnabled } from "@/components/auth/turnstile-widget";
-import { buttonClass, inputClass } from "@/components/ui";
+import {
+  buttonClass,
+  errorClass,
+  inputClass,
+  statusRegionClass,
+  successClass,
+} from "@/components/ui";
 
 export function NewsletterForm() {
   const { locale, t } = useI18n();
   const [email, setEmail] = useState("");
   // Honeypot anti-bot : champ invisible, jamais rempli par un humain
   const [website, setWebsite] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [subscribed, setSubscribed] = useState(false);
   const [pending, startTransition] = useTransition();
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   // Jeton Turnstile à usage unique : le widget est régénéré après chaque envoi
@@ -20,17 +27,18 @@ export function NewsletterForm() {
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage(null);
+    setError(null);
+    setSubscribed(false);
     startTransition(async () => {
       const result = await subscribeNewsletter({ email, website, locale, captchaToken });
       setCaptchaToken(null);
       setCaptchaKey((key) => key + 1);
       if (!result.ok) {
-        setMessage(result.error ?? t.newsletter.genericError);
+        setError(result.error ?? t.newsletter.genericError);
         return;
       }
       setEmail("");
-      setMessage(t.newsletter.success);
+      setSubscribed(true);
     });
   }
 
@@ -40,6 +48,7 @@ export function NewsletterForm() {
       <div className="flex gap-2">
         <input
           type="email"
+          autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder={t.newsletter.emailPlaceholder}
@@ -68,7 +77,10 @@ export function NewsletterForm() {
         aria-hidden="true"
         className="absolute -left-[9999px] h-0 w-0 opacity-0"
       />
-      {message && <p className="text-xs text-muted">{message}</p>}
+      {error && <p className={errorClass} role="alert">{error}</p>}
+      <div role="status" className={statusRegionClass}>
+        {subscribed && <p className={successClass}>{t.newsletter.success}</p>}
+      </div>
       <p className="text-xs text-muted">{t.newsletter.note}</p>
     </form>
   );

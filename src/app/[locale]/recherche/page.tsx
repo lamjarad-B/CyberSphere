@@ -74,7 +74,7 @@ function Headline({ text }: { text: string }) {
       …
       {parts.map((part, index) =>
         index % 2 === 1 ? (
-          <mark key={index} className="rounded bg-accent/20 px-0.5 text-accent">
+          <mark key={index} className="rounded bg-accent/20 px-0.5 text-foreground">
             {part}
           </mark>
         ) : (

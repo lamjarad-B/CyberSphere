@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { addComment, deleteComment, updateComment } from "@/actions/comments";
 import { reportComment } from "@/actions/reports";
 import { localeHref } from "@/lib/i18n";
@@ -12,6 +12,7 @@ import {
   cardClass,
   errorClass,
   inputClass,
+  labelClass,
 } from "@/components/ui";
 
 export type CommentView = {
@@ -36,15 +37,17 @@ const textareaClass = `${inputClass} min-h-24 resize-y`;
 function CommentForm({
   articleId,
   parentId,
-  placeholder,
+  label,
   onDone,
 }: {
   articleId: string;
   parentId?: string;
-  placeholder: string;
+  label: string;
   onDone?: () => void;
 }) {
   const { t } = useI18n();
+  // Identifiant unique : les formulaires de réponse coexistent sur la page
+  const fieldId = useId();
   const [content, setContent] = useState("");
   // Honeypot anti-bot : champ invisible, jamais rempli par un humain
   const [website, setWebsite] = useState("");
@@ -66,14 +69,19 @@ function CommentForm({
 
   return (
     <div className="space-y-3">
-      {error && <p className={errorClass}>{error}</p>}
-      <textarea
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder={placeholder}
-        maxLength={2000}
-        className={textareaClass}
-      />
+      {error && <p className={errorClass} role="alert">{error}</p>}
+      <div>
+        <label htmlFor={fieldId} className={labelClass}>
+          {label}
+        </label>
+        <textarea
+          id={fieldId}
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          maxLength={2000}
+          className={textareaClass}
+        />
+      </div>
       <input
         type="text"
         name="website"
@@ -115,6 +123,7 @@ function CommentItem({
   isReply: boolean;
 }) {
   const { t } = useI18n();
+  const editFieldId = useId();
   const [replying, setReplying] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(comment.content);
@@ -180,16 +189,24 @@ function CommentItem({
           <span className="text-xs text-muted">· {comment.createdAt}</span>
         </div>
 
-        {error && <p className={errorClass}>{error}</p>}
+        {error && <p className={errorClass} role="alert">{error}</p>}
 
         {editing ? (
           <div className="space-y-2">
-            <textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              maxLength={2000}
-              className={textareaClass}
-            />
+            <div>
+              <label htmlFor={editFieldId} className={labelClass}>
+                {t.comments.editLabel}
+              </label>
+              {/* Le bouton « Modifier » vient de disparaître : le focus passe au champ */}
+              <textarea
+                id={editFieldId}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                maxLength={2000}
+                autoFocus
+                className={textareaClass}
+              />
+            </div>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -242,20 +259,20 @@ function CommentItem({
                 type="button"
                 onClick={remove}
                 disabled={pending}
-                className="font-medium text-red-500 hover:underline disabled:opacity-50"
+                className="font-medium text-danger hover:underline disabled:opacity-50"
               >
                 {t.comments.delete}
               </button>
             )}
             {!isOwner &&
               (reported ? (
-                <span className="text-muted">{t.comments.reported}</span>
+                <span className="text-muted" role="status">{t.comments.reported}</span>
               ) : (
                 <button
                   type="button"
                   onClick={report}
                   disabled={pending}
-                  className="font-medium text-muted hover:text-red-500 disabled:opacity-50"
+                  className="font-medium text-muted hover:text-danger disabled:opacity-50"
                 >
                   {t.comments.report}
                 </button>
@@ -268,7 +285,7 @@ function CommentItem({
             <CommentForm
               articleId={articleId}
               parentId={comment.id}
-              placeholder={t.comments.replyPlaceholder(comment.author.name)}
+              label={t.comments.replyLabel(comment.author.name)}
               onDone={() => setReplying(false)}
             />
           </div>
@@ -311,7 +328,7 @@ export function CommentSection({
             {t.comments.signedInAs}{" "}
             <span className="font-medium text-foreground">{viewer.name}</span>
           </p>
-          <CommentForm articleId={articleId} placeholder={t.comments.placeholder} />
+          <CommentForm articleId={articleId} label={t.comments.label} />
         </div>
       ) : (
         <div className={`${cardClass} flex flex-col items-start gap-3 p-5`}>

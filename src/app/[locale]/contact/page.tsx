@@ -43,7 +43,7 @@ export default async function ContactPage({ params }: Props) {
         <p className="mt-2 text-muted">{t.intro}</p>
         <p className="mt-2 text-sm text-muted">
           {t.vuln1}{" "}
-          <Link href={localeHref(locale, "/securite")} className="text-accent hover:underline">
+          <Link href={localeHref(locale, "/securite")} className="text-accent underline">
             {t.vuln2}
           </Link>
           .

@@ -29,19 +29,19 @@
     <g>
       <rect x="72" y="250" width="488" height="190" rx="14" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
       <text x="104" y="296" font-size="20" font-weight="600" fill="#8b98a9" letter-spacing="1.5">ENTITÉS RÉGULÉES EN FRANCE</text>
-      <text x="104" y="384" font-size="62" font-weight="700" fill="#64748b">500</text>
+      <text x="104" y="384" font-size="62" font-weight="700" fill="#8b98a9">500</text>
       <path d="M 232 364 L 296 364" stroke="#22d3ee" stroke-width="4" fill="none" marker-end="url(#ac)"/>
       <text x="320" y="384" font-size="62" font-weight="700" fill="#22d3ee">15 000</text>
-      <text x="104" y="418" font-size="17" fill="#64748b">environ, selon l'étude d'impact du projet de loi</text>
+      <text x="104" y="418" font-size="17" fill="#8b98a9">environ, selon l'étude d'impact du projet de loi</text>
     </g>
 
     <g>
       <rect x="592" y="250" width="536" height="190" rx="14" fill="#0d1526" stroke="#1e293b" stroke-width="1.5"/>
       <text x="624" y="296" font-size="20" font-weight="600" fill="#8b98a9" letter-spacing="1.5">SECTEURS CONCERNÉS</text>
-      <text x="624" y="384" font-size="62" font-weight="700" fill="#64748b">6</text>
+      <text x="624" y="384" font-size="62" font-weight="700" fill="#8b98a9">6</text>
       <path d="M 676 364 L 740 364" stroke="#22d3ee" stroke-width="4" fill="none" marker-end="url(#ac)"/>
       <text x="764" y="384" font-size="62" font-weight="700" fill="#22d3ee">18</text>
-      <text x="624" y="418" font-size="17" fill="#64748b">de l'énergie à l'administration publique</text>
+      <text x="624" y="418" font-size="17" fill="#8b98a9">de l'énergie à l'administration publique</text>
     </g>
 
     <rect x="72" y="492" width="1056" height="74" rx="12" fill="#2a0f0f" stroke="#7f1d1d" stroke-width="1.5"/>

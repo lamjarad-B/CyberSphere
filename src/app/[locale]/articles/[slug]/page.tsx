@@ -202,6 +202,8 @@ export default async function ArticlePage({ params }: Props) {
   // sinon repli sur l'original français (avec bandeau d'avertissement).
   const translation = locale === "en" ? article.translations[0] : undefined;
   const untranslated = locale === "en" && !translation;
+  // Repli sur l'original : ces textes restent en français dans une page anglaise
+  const contentLang = untranslated ? "fr" : undefined;
   const title = translation?.title ?? article.title;
   const excerpt = translation?.excerpt ?? article.excerpt;
   const content = translation?.content ?? article.content;
@@ -314,7 +316,7 @@ export default async function ArticlePage({ params }: Props) {
   return (
     <article className="mx-auto max-w-3xl space-y-8">
       {article.status !== "PUBLISHED" && (
-        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-500">
+        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-warning">
           {article.status === "SUBMITTED"
             ? t.submittedBanner
             : article.status === "SCHEDULED"
@@ -325,7 +327,7 @@ export default async function ArticlePage({ params }: Props) {
 
       {untranslated && (
         <p
-          className="rounded-md border border-sky-500/40 bg-sky-500/10 px-4 py-2 text-sm text-sky-600 dark:text-sky-400"
+          className="rounded-md border border-sky-500/40 bg-sky-500/10 px-4 py-2 text-sm text-info"
           lang="en"
         >
           {t.untranslatedBanner}
@@ -363,9 +365,13 @@ export default async function ArticlePage({ params }: Props) {
           </Link>
         </p>
 
-        <h1 className="text-3xl font-bold leading-tight sm:text-4xl">{title}</h1>
+        <h1 lang={contentLang} className="text-3xl font-bold leading-tight sm:text-4xl">
+          {title}
+        </h1>
 
-        <p className="text-lg text-muted">{excerpt}</p>
+        <p lang={contentLang} className="text-lg text-muted">
+          {excerpt}
+        </p>
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted">
           <span className="flex items-center gap-2">
@@ -403,7 +409,7 @@ export default async function ArticlePage({ params }: Props) {
         )}
       </header>
 
-      <KeyPoints raw={keyPoints} locale={locale} />
+      <KeyPoints raw={keyPoints} locale={locale} lang={contentLang} />
 
       {article.series && article.series.articles.length > 1 && (
         <aside className={`${cardClass} space-y-2 p-5`} aria-label={t.seriesAria}>
@@ -411,7 +417,7 @@ export default async function ArticlePage({ params }: Props) {
             {t.seriesLabel}{" "}
             <Link
               href={localeHref(locale, `/series/${article.series.slug}`)}
-              className="text-accent hover:underline"
+              className="text-accent underline"
             >
               {seriesTitle}
             </Link>
@@ -440,6 +446,7 @@ export default async function ArticlePage({ params }: Props) {
         <img
           src={article.coverImage}
           alt={coverAlt}
+          lang={contentLang}
           className="w-full rounded-xl border border-border object-cover"
         />
       )}
@@ -472,7 +479,7 @@ export default async function ArticlePage({ params }: Props) {
           // Contenu compilé côté serveur depuis le Markdown : le HTML brut
           // saisi dans l'éditeur est ignoré par le pipeline (voir lib/markdown.ts)
           dangerouslySetInnerHTML={{ __html: html }}
-          lang={untranslated ? "fr" : undefined}
+          lang={contentLang}
         />
       </CodeCopy>
 

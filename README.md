@@ -247,7 +247,9 @@ build, tests de bout en bout Playwright (avec un service PostgreSQL),
   en-têtes de sécurité, gardes d'accès, inscription, 2FA (codes TOTP calculés),
   alertes, commentaires/signalements, export et suppression RGPD, newsletter
   (double opt-in, désabonnement en un clic), exigence 2FA de l'admin,
-  cloisonnement des brouillons, publication programmée.
+  cloisonnement des brouillons, publication programmée, accessibilité (axe sur
+  les pages publiques dans les deux thèmes, lien d'évitement, panneau des
+  thématiques au clavier, ancres sous le header, avertissement avant déconnexion).
 
 ```bash
 npx playwright install chromium     # une fois

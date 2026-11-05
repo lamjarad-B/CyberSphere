@@ -8,6 +8,7 @@ import {
   errorClass,
   inputClass,
   labelClass,
+  statusRegionClass,
   successClass,
 } from "@/components/ui";
 
@@ -59,8 +60,10 @@ export function PasswordForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <p className={errorClass}>{error}</p>}
-      {saved && <p className={successClass}>{labels.saved}</p>}
+      {error && <p className={errorClass} role="alert">{error}</p>}
+      <div role="status" className={statusRegionClass}>
+        {saved && <p className={successClass}>{labels.saved}</p>}
+      </div>
 
       <div>
         <label htmlFor="current" className={labelClass}>

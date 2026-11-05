@@ -32,16 +32,21 @@ export function CodeCopy({ children }: { children: React.ReactNode }) {
         "absolute right-2 top-2 rounded border border-white/15 bg-white/10 px-2 py-1 font-mono text-[11px] text-white/80 opacity-0 transition-opacity hover:bg-white/20 focus:opacity-100 group-hover:opacity-100";
       parent.classList.add("group");
 
+      // Le nom accessible vient d'aria-label : il change avec le texte visible,
+      // sinon le résultat de la copie n'est pas annoncé
+      const show = (text: string, aria: string) => {
+        button.textContent = text;
+        button.setAttribute("aria-label", aria);
+      };
+
       button.addEventListener("click", async () => {
         try {
           await navigator.clipboard.writeText(pre.textContent ?? "");
-          button.textContent = labels.copied;
+          show(labels.copied, labels.copied);
         } catch {
-          button.textContent = labels.failed;
+          show(labels.failed, labels.failed);
         }
-        setTimeout(() => {
-          button.textContent = labels.copy;
-        }, 1500);
+        setTimeout(() => show(labels.copy, labels.aria), 1500);
       });
 
       parent.appendChild(button);

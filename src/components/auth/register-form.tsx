@@ -10,6 +10,7 @@ import type { Dictionary } from "@/i18n/dictionaries";
 import {
   buttonClass,
   errorClass,
+  focusOnMount,
   inputClass,
   labelClass,
   successClass,
@@ -89,7 +90,7 @@ export function RegisterForm() {
   if (registeredEmail) {
     return (
       <div className="space-y-4">
-        <p className={successClass}>
+        <p ref={focusOnMount} tabIndex={-1} className={successClass}>
           {labels.created}{" "}
           <span className="font-medium">{registeredEmail}</span>.
         </p>
@@ -103,7 +104,7 @@ export function RegisterForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-      {error && <p className={errorClass}>{error}</p>}
+      {error && <p className={errorClass} role="alert">{error}</p>}
       <div>
         <label htmlFor="name" className={labelClass}>
           {labels.name}

@@ -60,7 +60,7 @@ export function PasskeyManager({ passkeys }: { passkeys: PasskeyItem[] }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted">{labels.intro}</p>
-      {error && <p className={errorClass}>{error}</p>}
+      {error && <p className={errorClass} role="alert">{error}</p>}
 
       {passkeys.length > 0 && (
         <ul className="divide-y divide-border rounded-md border border-border">
