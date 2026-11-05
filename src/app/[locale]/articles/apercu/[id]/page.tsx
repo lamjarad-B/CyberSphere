@@ -104,7 +104,7 @@ export default async function ApercuPage({ params, searchParams }: Props) {
 
       <CodeCopy>
         <div
-          className="article-prose prose prose-lg prose-neutral max-w-none dark:prose-invert"
+          className="prose prose-lg prose-neutral max-w-none dark:prose-invert"
           dangerouslySetInnerHTML={{ __html: html }}
         />
       </CodeCopy>

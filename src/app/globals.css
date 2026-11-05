@@ -121,12 +121,6 @@ body {
   overflow-x: auto;
 }
 
-/* Texte courant : environ 70 caractères par ligne. Images, code et tableaux
-   gardent toute la colonne (Markdown place les images dans un <p>). */
-.article-prose > :is(p:not(:has(img)), ul, ol, blockquote, h2, h3, h4, section[data-footnotes]) {
-  max-width: 37rem;
-}
-
 /* Images et schémas : jamais plus larges que la colonne, jamais agrandis */
 .prose img {
   display: block;
