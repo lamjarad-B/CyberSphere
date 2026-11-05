@@ -260,19 +260,10 @@ test.describe("Commentaires sans compte", () => {
       newsletterOptIn: false,
     });
 
-    // L'inscription part après la réponse (after()) et reste en double opt-in
+    // Case cochée : abonné dès l'approbation (after()), sans lien de confirmation
     await expect
       .poll(async () => db.newsletterSubscriber.findUnique({ where: { email: guest.email } }))
-      .toMatchObject({ confirmed: false });
-    const { token } = await db.newsletterSubscriber.findUniqueOrThrow({
-      where: { email: guest.email },
-    });
-    await page.goto(`/newsletter/confirmation?jeton=${token}`);
-    await page.getByRole("button", { name: "Confirmer mon inscription" }).click();
-    await expect(page.getByRole("heading", { name: /Inscription confirmée/ })).toBeVisible();
-    expect(
-      (await db.newsletterSubscriber.findUniqueOrThrow({ where: { email: guest.email } })).confirmed,
-    ).toBe(true);
+      .toMatchObject({ confirmed: true });
     expect(
       await db.auditLog.count({
         where: { action: "commentaire.approbation", targetId: pending.id },
@@ -689,6 +680,9 @@ test.describe("Commentaires sans compte", () => {
     await replay(admin.page.request, approval);
     await expect.poll(status).toBe("APPROVED");
     await admin.close();
+
+    // Case non cochée : l'approbation n'abonne personne
+    expect(await db.newsletterSubscriber.count({ where: { email: guest.email } })).toBe(0);
   });
 
   test("modération : supprimer un commentaire, puis vider la file sans toucher aux publiés", async ({

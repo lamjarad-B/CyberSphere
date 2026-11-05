@@ -9,8 +9,7 @@ import { actionLocale } from "@/lib/action-locale";
 import { verifyAltcha } from "@/lib/altcha";
 import { hashCommentIp } from "@/lib/comments";
 import { toLocale } from "@/lib/i18n";
-import { requestNewsletterSubscription } from "@/lib/newsletter";
-import { notifyAdmins } from "@/lib/notifications";
+import { notifyAdmins, notifyCommentPublished } from "@/lib/notifications";
 import { ipBucket, rateLimit } from "@/lib/rate-limit";
 import { getAdminSession, getSession } from "@/lib/session";
 import { commentSchema, guestCommentSchema } from "@/lib/validations";
@@ -281,9 +280,9 @@ export async function addGuestComment(input: {
 /**
  * Publie un commentaire en attente. L'empreinte d'IP de l'invité est effacée ;
  * son e-mail reste, réservé aux admins, jusqu'à la suppression du commentaire.
- * L'inscription newsletter demandée part seulement maintenant : tant qu'aucun
- * humain n'a validé le commentaire, le formulaire public ne peut faire envoyer
- * aucun e-mail à un tiers.
+ * L'invité est prévenu et, s'il a coché la case, abonné seulement maintenant :
+ * tant qu'aucun humain n'a validé le commentaire, le formulaire public ne peut
+ * faire envoyer aucun e-mail à un tiers.
  */
 export async function approveComment(id: string): Promise<ActionResult> {
   const session = await getAdminSession();
@@ -296,12 +295,18 @@ export async function approveComment(id: string): Promise<ActionResult> {
       guestEmail: true,
       guestLocale: true,
       newsletterOptIn: true,
-      article: { select: { slug: true } },
+      article: {
+        select: {
+          slug: true,
+          title: true,
+          translations: { where: { locale: "en" }, select: { title: true } },
+        },
+      },
     },
   });
   if (!comment) return { ok: false, error: "Commentaire introuvable." };
 
-  // Conditionnelle : deux approbations simultanées n'inscrivent qu'une fois
+  // Conditionnelle : deux approbations simultanées ne préviennent qu'une fois
   const { count } = await db.comment.updateMany({
     where: { id, status: "PENDING" },
     data: {
@@ -313,15 +318,18 @@ export async function approveComment(id: string): Promise<ActionResult> {
   });
   if (count !== 1) return { ok: true };
 
-  const { guestEmail, guestLocale, newsletterOptIn } = comment;
-  if (newsletterOptIn && guestEmail) {
-    after(async () => {
-      try {
-        await requestNewsletterSubscription(guestEmail, toLocale(guestLocale ?? ""));
-      } catch (error) {
-        console.error("[commentaires] inscription newsletter impossible :", error);
-      }
-    });
+  const { article, guestEmail, guestLocale, newsletterOptIn } = comment;
+  if (guestEmail) {
+    const locale = toLocale(guestLocale ?? "");
+    after(() =>
+      notifyCommentPublished({
+        email: guestEmail,
+        locale,
+        articleTitle: locale === "en" ? (article.translations[0]?.title ?? article.title) : article.title,
+        articleSlug: article.slug,
+        subscribe: newsletterOptIn,
+      }),
+    );
   }
 
   await logAudit({

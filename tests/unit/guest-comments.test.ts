@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createChallenge, solveChallenge, type Challenge } from "altcha-lib";
 import { deriveKey } from "altcha-lib/algorithms/pbkdf2";
 import { createAltchaChallenge, verifyAltcha } from "@/lib/altcha";
+import { commentPublishedEmail } from "@/lib/email";
 import { ipBucket } from "@/lib/rate-limit";
 import { cleanText, guestCommentSchema } from "@/lib/validations";
 
@@ -278,5 +279,29 @@ describe("ipBucket", () => {
   it("ne lève jamais sur une adresse malformée", () => {
     expect(() => ipBucket("1:2:3:4:5:6:7:8:9::a:b")).not.toThrow();
     expect(() => ipBucket("::::")).not.toThrow();
+  });
+});
+
+describe("E-mail de publication d'un commentaire", () => {
+  const base = { articleTitle: '<img src=x onerror="alert(1)">', url: "https://site/a" };
+
+  it("échappe le titre de l'article", () => {
+    const { html } = commentPublishedEmail(base);
+    expect(html).toContain("&lt;img src=x");
+    expect(html).not.toContain("<img src=x");
+  });
+
+  it("sans case cochée : ni abonnement annoncé, ni lien de désinscription", () => {
+    const { html, text } = commentPublishedEmail(base);
+    expect(text).not.toContain("nouvel article");
+    expect(html).not.toContain("désabonner");
+  });
+
+  it("case cochée : annonce l'abonnement et donne le lien de désinscription", () => {
+    const unsubscribeUrl = "https://site/newsletter/desinscription?jeton=abc";
+    const { html, text } = commentPublishedEmail({ ...base, unsubscribeUrl });
+    expect(text).toContain("à chaque nouvel article");
+    expect(text).toContain(unsubscribeUrl);
+    expect(html).toContain(`href="${unsubscribeUrl}"`);
   });
 });

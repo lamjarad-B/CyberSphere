@@ -2,12 +2,14 @@ import { createHash } from "node:crypto";
 import { db } from "./db";
 import {
   adminNotificationEmail,
+  commentPublishedEmail,
   securityAlertEmail,
   sendEmail,
   type SecurityAlertKind,
 } from "./email";
 import { formatDateTime } from "./format";
 import { localeHref, type Locale } from "./i18n";
+import { subscribeApprovedCommenter } from "./newsletter";
 import { SITE_URL } from "./site";
 import { describeUserAgent } from "./user-agent";
 
@@ -88,6 +90,48 @@ export async function sendSecurityAlert(input: {
     await sendEmail({ to: user.email, subject, html, text });
   } catch (error) {
     console.error("[alerte] envoi impossible :", error);
+  }
+}
+
+/**
+ * Prévient un invité que son commentaire est publié et, s'il a coché la case,
+ * l'abonne à la newsletter. Conçu pour `after()` ; ne lève jamais.
+ */
+export async function notifyCommentPublished(input: {
+  email: string;
+  locale: Locale;
+  articleTitle: string;
+  articleSlug: string;
+  subscribe: boolean;
+}): Promise<void> {
+  const { email, locale } = input;
+  try {
+    const token = input.subscribe ? await subscribeApprovedCommenter(email, locale) : null;
+    const { html, text } = commentPublishedEmail({
+      articleTitle: input.articleTitle,
+      url: `${SITE_URL}${localeHref(locale, `/articles/${input.articleSlug}`)}`,
+      unsubscribeUrl: token
+        ? `${SITE_URL}${localeHref(locale, `/newsletter/desinscription?jeton=${token}`)}`
+        : undefined,
+      locale,
+    });
+    await sendEmail({
+      to: email,
+      subject:
+        locale === "en"
+          ? "Your comment is online — CyberSphere"
+          : "Votre commentaire est en ligne — CyberSphere",
+      html,
+      text,
+      headers: token
+        ? {
+            "List-Unsubscribe": `<${SITE_URL}/api/newsletter/desinscription?jeton=${token}>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          }
+        : undefined,
+    });
+  } catch (error) {
+    console.error("[commentaires] notification de publication impossible :", error);
   }
 }
 

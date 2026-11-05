@@ -109,13 +109,13 @@ const fr = {
     email: "E-mail",
     newsletter: "Recevoir la newsletter",
     newsletterHint:
-      "Un e-mail à chaque nouvel article. Un lien de confirmation vous sera envoyé une fois votre commentaire validé.",
+      "Un e-mail à chaque nouvel article, une fois votre commentaire publié. Désinscription en un clic.",
     submitGuest: "Envoyer le commentaire",
     guestSuccess: "Merci ! Votre commentaire sera publié après relecture.",
     guest: "Invité",
     captchaRequired: "Cochez la case « Je ne suis pas un robot ».",
     guestPrivacy:
-      "Votre e-mail n'est jamais publié : seuls les administrateurs du site y ont accès, et il est supprimé avec votre commentaire.",
+      "Votre e-mail n'est jamais publié : il sert à vous prévenir de la publication de votre commentaire. Seuls les administrateurs du site y ont accès, et il est supprimé avec votre commentaire.",
     removalLink: "Demander le retrait d'un commentaire",
     memberHint: "Vous avez un compte ?",
     memberLink: "Connectez-vous pour publier sans attente",
@@ -393,13 +393,13 @@ const en: Dictionary = {
     email: "Email",
     newsletter: "Get the newsletter",
     newsletterHint:
-      "One email for each new article. We'll send you a confirmation link once your comment has been approved.",
+      "One email for each new article, once your comment is published. Unsubscribe in one click.",
     submitGuest: "Send comment",
     guestSuccess: "Thank you! Your comment will be published after review.",
     guest: "Guest",
     captchaRequired: "Please tick the “I'm not a robot” box.",
     guestPrivacy:
-      "Your email is never published: only the site's administrators can see it, and it's deleted along with your comment.",
+      "Your email is never published: we use it to tell you when your comment goes online. Only the site's administrators can see it, and it's deleted along with your comment.",
     removalLink: "Request the removal of a comment",
     memberHint: "Have an account?",
     memberLink: "Sign in to post without waiting",

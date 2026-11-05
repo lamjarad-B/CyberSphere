@@ -228,6 +228,59 @@ Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : aucune n
   };
 }
 
+/**
+ * Prévient un invité que son commentaire est en ligne. `unsubscribeUrl` s'il a
+ * coché la newsletter : il apprend ici qu'il est abonné et peut se retirer en un
+ * clic, y compris si quelqu'un d'autre a saisi son adresse.
+ */
+export function commentPublishedEmail(input: {
+  articleTitle: string;
+  url: string;
+  unsubscribeUrl?: string;
+  locale?: Locale;
+}): EmailContent {
+  const { articleTitle, url, unsubscribeUrl } = input;
+  const unsubscribeHref = unsubscribeUrl ? escapeHtml(unsubscribeUrl) : "";
+  if (input.locale === "en") {
+    const intro = `Your comment on "${articleTitle}" is now online. Thank you for joining the conversation!${
+      unsubscribeUrl ? "\n\nYou will now receive an email for each new article." : ""
+    }`;
+    return {
+      text: `${intro}
+
+Read the article: ${url}${unsubscribeUrl ? `\n\nUnsubscribe: ${unsubscribeUrl}` : ""}`,
+      html: layout(
+        "en",
+        "Your comment is online",
+        intro,
+        "Read the article",
+        url,
+        `You're receiving this email because you left a comment on CyberSphere.${
+          unsubscribeUrl ? ` <a href="${unsubscribeHref}" style="color:#8b98a9">Unsubscribe</a>` : ""
+        }`,
+      ),
+    };
+  }
+  const intro = `Votre commentaire sur « ${articleTitle} » est en ligne. Merci de votre participation !${
+    unsubscribeUrl ? "\n\nVous recevrez désormais un e-mail à chaque nouvel article." : ""
+  }`;
+  return {
+    text: `${intro}
+
+Lire l'article : ${url}${unsubscribeUrl ? `\n\nSe désabonner : ${unsubscribeUrl}` : ""}`,
+    html: layout(
+      "fr",
+      "Votre commentaire est en ligne",
+      intro,
+      "Lire l'article",
+      url,
+      `Vous recevez cet e-mail car vous avez laissé un commentaire sur CyberSphere.${
+        unsubscribeUrl ? ` <a href="${unsubscribeHref}" style="color:#8b98a9">Se désabonner</a>` : ""
+      }`,
+    ),
+  };
+}
+
 /** E-mail « nouvel article publié » envoyé aux abonnés confirmés. */
 export function newArticleEmail(input: {
   title: string;
