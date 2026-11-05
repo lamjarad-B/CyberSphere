@@ -1,6 +1,6 @@
 # CyberSphere — Cahier des spécifications techniques et fonctionnelles
 
-**Version du document :** 2.6 · **Date :** 7 octobre 2026 · **État du projet :** **v2.6 livrée** (v1 : commit `402fb40`)
+**Version du document :** 2.8 · **Date :** 5 novembre 2026 · **État du projet :** **v2.8 livrée** (v1 : commit `402fb40`)
 
 > **Note v2** — La montée de version proposée au §7 a été **entièrement
 > implémentée** le 10 juillet 2026 : les trois paliers (durcissement sécurité,
@@ -37,6 +37,10 @@
 > d'**analyse** (menaces, géopolitique, régulation, stratégie), la technique
 > restant une rubrique parmi d'autres. Types d'article, encadré « Points
 > clés », sources en notes de bas de page, filtre par type. Détails au §14.
+>
+> **Note v2.8** — Commentaires ouverts sans compte : formulaire protégé par une
+> preuve de travail ALTCHA, modération a priori et plafonds anti-abus. L'e-mail de
+> l'invité n'est jamais public. Détails au §15.
 
 ---
 
@@ -46,9 +50,10 @@ CyberSphere est un blog de cybersécurité personnel tourné vers l'**analyse** 
 et cyberattaques, géopolitique, régulation, stratégie et tendances — avec, à l'occasion,
 des articles techniques (cf. §14). Le contenu est rédigé en Markdown depuis une
 interface d'administration intégrée, stocké en base de données, et rendu côté serveur
-avec coloration syntaxique du code. Le site propose un espace membre dont l'unique
-privilège éditorial est le dépôt de commentaires — **aucun commentaire n'est possible
-sans compte vérifié**.
+avec coloration syntaxique du code. Le site propose un espace membre dont le principal
+privilège éditorial est la publication de commentaires sans attente : un visiteur peut
+commenter sans compte, mais **son commentaire n'est publié qu'après l'approbation d'un
+administrateur** (cf. §15).
 
 S'agissant d'un blog de cybersécurité, la sécurité de la plateforme elle-même est un
 objectif de premier rang : chaque choix d'implémentation est documenté au §5.
@@ -57,8 +62,8 @@ objectif de premier rang : chaque choix d'implémentation est documenté au §5.
 
 | Acteur | Description | Capacités |
 |---|---|---|
-| **Visiteur** | Utilisateur anonyme | Lecture des articles publiés, navigation, recherche, lecture des commentaires, flux RSS |
-| **Membre** (`role: user`) | Utilisateur inscrit, e-mail vérifié | + Commenter, répondre, modifier/supprimer **ses** commentaires, gérer son profil |
+| **Visiteur** | Utilisateur anonyme | Lecture des articles publiés, navigation, recherche, lecture des commentaires, flux RSS, commentaires et réponses soumis à relecture |
+| **Membre** (`role: user`) | Utilisateur inscrit, e-mail vérifié | + Commenter et répondre sans relecture, modifier/supprimer **ses** commentaires, gérer son profil |
 | **Administrateur** (`role: admin`) | Propriétaire du blog | + Interface `/admin` complète : articles, catégories, tags, modération, gestion des membres |
 
 ---
@@ -116,24 +121,26 @@ objectif de premier rang : chaque choix d'implémentation est documenté au §5.
 - Liste de ses propres commentaires.
 
 ### 2.3 Règle d'or des commentaires
-- **Lecture** : ouverte à tous.
-- **Écriture** : réservée aux membres connectés, non bannis, à l'e-mail vérifié. Les visiteurs voient une invite à se connecter.
+- **Lecture** : ouverte à tous, limitée aux commentaires approuvés.
+- **Écriture par un membre** connecté, non banni, à l'e-mail vérifié : publication immédiate.
+- **Écriture par un visiteur** : sans compte, avec nom, e-mail et CAPTCHA ALTCHA. Le commentaire reste invisible tant qu'un administrateur ne l'a pas approuvé (cf. §15).
 
 ### 2.4 Commentaires
 - Dépôt sur les articles **publiés uniquement** ; contenu texte brut (2–2000 caractères), échappé à l'affichage (aucun HTML interprété).
 - **Réponses sur un seul niveau** : répondre à une réponse rattache automatiquement le commentaire au parent d'origine (pas de fils infinis).
 - Le membre peut **modifier et supprimer ses propres commentaires** ; l'administrateur peut supprimer n'importe quel commentaire.
-- Intégrité vérifiée côté serveur : le parent doit exister et appartenir au même article.
+- Un visiteur ne peut ni modifier ni supprimer son commentaire : il en fait la demande par le formulaire de contact.
+- Intégrité vérifiée côté serveur : le parent doit exister, être approuvé et appartenir au même article.
 
 ### 2.5 Administration (`/admin`)
 
 | Page | Fonctionnalités |
 |---|---|
-| **Dashboard** (`/admin`) | Compteurs : articles (total/publiés), commentaires, membres, vues cumulées ; derniers commentaires et articles |
+| **Dashboard** (`/admin`) | Compteurs : articles (total/publiés), commentaires (publiés, à modérer), membres, vues cumulées ; derniers commentaires et articles |
 | **Articles** (`/admin/articles`, `/nouveau`, `/[id]`) | CRUD complet : éditeur Markdown avec **aperçu serveur** (même pipeline que le rendu public), upload d'image de couverture, tags libres (max 10, dédupliqués, `connectOrCreate`), statut brouillon/publié, date de publication figée au premier passage en « publié », slug unique généré côté serveur |
 | **Catégories** (`/admin/categories`) | CRUD, choix du parent, garde-fous : pas d'auto-parenté, 2 niveaux max, une catégorie ayant des enfants ne peut devenir sous-catégorie, suppression bloquée si des articles l'utilisent |
 | **Tags** (`/admin/tags`) | CRUD |
-| **Commentaires** (`/admin/commentaires`) | Modération : liste globale, suppression |
+| **Commentaires** (`/admin/commentaires`) | Modération : file d'attente des invités (approbation, suppression, vidage de la file), liste des commentaires publiés (suppression) |
 | **Membres** (`/admin/membres`) | Liste, **bannissement/débannissement** ; le ban révoque **immédiatement toutes les sessions** du membre (transaction) ; impossible de se bannir soi-même ou de bannir un admin |
 
 ---
@@ -749,3 +756,78 @@ Libellés centralisés dans `kindLabel` (`src/lib/articles.ts`). Le type s'affic
 ### 14.5 Vérifications effectuées (v2.6)
 
 `tsc --noEmit` et ESLint sans erreur ; **84 tests unitaires** (80 en v2.5 : section « Sources » libellée selon la langue et visible, `javascript:` neutralisé dans une note, découpage des points clés, validation du filtre `?type=`) ; nouveau parcours de bout en bout (type affiché, encadré « Points clés », section « Sources et notes », filtre `?type=`).
+
+---
+
+## 15. Commentaires sans compte — CyberSphere v2.8
+
+Les commentaires étaient réservés aux membres. La v2.8 les ouvre aux visiteurs, sans inscription, avec un formulaire simple : commentaire, nom, e-mail, case newsletter et CAPTCHA. En contrepartie, rien n'est publié sans la relecture d'un administrateur. Le parcours des membres connectés ne change pas.
+
+### 15.1 Choix du CAPTCHA : ALTCHA plutôt que Cap
+
+| Critère | ALTCHA (retenu) | Cap |
+|---|---|---|
+| Calcul dans le navigateur | PBKDF2 par WebCrypto, sans WASM | WASM |
+| CSP | `worker-src 'self'` suffit, sans `'wasm-unsafe-eval'` | Exigerait `'wasm-unsafe-eval'` sur une CSP à nonces |
+| Provenance du code | Bundle servi par le site, aucun tiers | WASM chargé depuis jsDelivr par défaut |
+| Côté serveur | `altcha-lib`, intégré à l'application | Conteneur et Valkey en mode autonome ; `@cap.js/server` marqué « legacy » |
+
+L'entrée `altcha/external` est utilisée : elle n'embarque ni worker en `blob:` ni feuille de style en ligne. Seul le worker PBKDF2 est enregistré ; les workers Argon2 et scrypt, qui contiennent du WASM, ne sont jamais chargés.
+
+### 15.2 Défi et vérification
+
+- **Paramètres** (`src/lib/altcha.ts`, `GET /api/commentaires/defi`) : PBKDF2/SHA-256, cost 2 000, compteur tiré entre 2 000 et 6 000, validité de 10 minutes, réponse `Cache-Control: no-store`.
+- **Signature** : HMAC par deux clés dérivées de `BETTER_AUTH_SECRET` par HKDF (séparation des usages). Aucune nouvelle variable d'environnement à configurer.
+- **Vérification sans re-dérivation** : le serveur compare une signature de la clé soumise, sans relancer PBKDF2. Vérifier reste donc bien moins coûteux que résoudre.
+- **Usage unique** : le nonce du défi résolu est inséré de façon atomique dans `UsedCaptchaChallenge` ; un second envoi de la même preuve échoue, même en concurrence. Les entrées sont purgées après expiration.
+- **Échec fermé** : une preuve absente, malformée, expirée, falsifiée ou rejouée est refusée. Contrairement à Turnstile sans clé, ALTCHA n'a pas d'état désactivé.
+
+Une preuve de travail impose un coût, elle ne prouve pas qu'un humain écrit : la barrière finale est la modération.
+
+### 15.3 Modération a priori
+
+- **Statut** : `Comment.status` vaut `PENDING` par défaut en base (échec fermé : un oubli dans le code ne publie rien). La migration laisse les commentaires existants en `APPROVED`, et seul le parcours membre demande explicitement ce statut.
+- **Décision** : `/admin/commentaires` présente la file, des plus anciens aux plus récents. Approuver, supprimer ou vider la file exige une session admin complète (2FA comprise) et laisse une trace d'audit (`commentaire.approbation`, `commentaire.moderation`, `commentaire.purge_file`).
+- **Visibilité** : pages publiques, signalements et réponses ne portent que sur des commentaires `APPROVED`. Un commentaire en attente ne peut être ni lu, ni signalé, ni recevoir de réponse.
+- **Notification** : les administrateurs sont prévenus au premier commentaire en attente seulement, hors du chemin de réponse (`after()`). Un afflux de commentaires ne devient pas un afflux d'e-mails.
+
+### 15.4 Limites anti-abus
+
+| Contrôle | Seuil |
+|---|---|
+| Tentatives d'envoi par IP | 5 / 10 min |
+| Défis délivrés par IP | 20 / 10 min |
+| Commentaires en attente par IP ou par e-mail | 3 |
+| Commentaires en attente au total | 200, formulaire suspendu au-delà |
+| Liens par commentaire d'invité | 2 |
+| Doublon exact | Ignoré, réponse de succès |
+| Honeypot rempli | Rien n'est créé, réponse de succès |
+
+Les limites par IP regroupent les adresses IPv6 par préfixe /64 : un seul abonné en dispose de milliards.
+
+### 15.5 Validation et rendu
+
+- **Texte** : `cleanText` retire les caractères de contrôle, les forçages de direction Unicode (bidi) et les caractères de largeur nulle, qui peuvent tromper le lecteur sans se voir.
+- **Nom** : une ligne, sans URL. **E-mail** : une seule adresse, jamais une liste.
+- **Usurpation** : un badge « Invité » accompagne tout commentaire sans compte, sur le site comme dans l'administration.
+- **Rendu** : texte brut échappé par React, sans lien cliquable, y compris dans l'administration. Dans les e-mails aux administrateurs, les valeurs sont échappées.
+
+### 15.6 Données personnelles
+
+| Donnée | Conservation |
+|---|---|
+| E-mail de l'invité | Tant que le commentaire existe : jamais public, visible des seuls admins, supprimé avec le commentaire |
+| Adresse IP | Jamais en clair : seul un HMAC à clé est conservé, effacé à l'approbation |
+| Commentaire jamais modéré | Purgé après 30 jours |
+
+Aucun champ de modération n'est transmis aux pages publiques. Un invité demande le retrait de son commentaire par le formulaire de contact.
+
+### 15.7 Newsletter
+
+La case est décochée par défaut. L'inscription en double opt-in n'est déclenchée qu'à l'approbation du commentaire : aucun e-mail n'est envoyé à une adresse non vérifiée sur simple soumission anonyme, ce qui ferme la voie au harcèlement d'adresses tierces. Un commentaire refusé n'inscrit personne. Une fois son inscription confirmée, l'invité reçoit un e-mail à chaque première publication d'un article, comme tout abonné, avec un lien de désinscription dans chaque e-mail.
+
+### 15.8 Vérifications effectuées (v2.8)
+
+`tsc --noEmit` et ESLint sans erreur ; **183 tests unitaires** (preuve rejouée, envois simultanés, défi altéré, expiré ou signé avec une autre clé, validation du formulaire). Tests E2E sur Chrome, build de production et base jetable : suite complète de 49 tests (46 réussis, 3 échecs : clic au centre de la case bloqué par la coche du widget, assertion trop précoce dans un test), puis, après correction, 30 sur 30 pour `guest-comments`, `accessibility` et `member`. Après le passage à la conservation de l'e-mail : 28 sur 28 pour `guest-comments`, `newsletter` et `accessibility`. Parcours newsletter contrôlé une fois sur un vrai serveur (case cochée, approbation, confirmation, publication) : l'abonné confirmé reçoit l'e-mail, l'invité qui n'a pas confirmé ne reçoit rien. Temps de résolution mesuré sur un ordinateur de bureau à 16 cœurs : 1,2 à 3 s.
+
+Non vérifié : le widget sous `next dev`, le temps de résolution sur téléphone, l'envoi réel des e-mails (SMTP désactivé pendant les tests : le courrier est écrit dans le journal du serveur).
