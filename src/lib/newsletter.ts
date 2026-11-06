@@ -57,23 +57,21 @@ export async function requestNewsletterSubscription(email: string, locale: Local
 }
 
 /**
- * Abonne directement un invité qui a coché la case et dont un admin vient
- * d'approuver le commentaire : pas de lien de confirmation, ce filtre humain en
- * tient lieu. Le formulaire newsletter du site, sans ce filtre, reste en double
- * opt-in. Renvoie le jeton de désinscription.
+ * Abonne directement un invité qui a coché la case, sans lien de confirmation
+ * (choix du propriétaire du site), une fois son commentaire resté en ligne 24 h :
+ * un commentaire abusif retiré à temps n'abonne personne. Le formulaire
+ * newsletter du site, sans ce délai, reste en double opt-in.
  */
-export async function subscribeApprovedCommenter(email: string, locale: Locale): Promise<string> {
-  const { token } = await db.newsletterSubscriber.upsert({
+export async function subscribeCommenter(email: string, locale: Locale): Promise<void> {
+  await db.newsletterSubscriber.upsert({
     where: { email },
     create: { email, token: randomBytes(24).toString("base64url"), locale },
     update: {},
-    select: { token: true },
   });
   await db.newsletterSubscriber.updateMany({
     where: { email, confirmed: false },
     data: { confirmed: true, confirmedAt: new Date() },
   });
-  return token;
 }
 
 /** Confirme une inscription via le jeton reçu par e-mail. */

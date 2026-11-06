@@ -48,7 +48,7 @@ export async function reportComment(
       article: { select: { status: true, title: true } },
     },
   });
-  // Un commentaire en attente n'est pas public : il n'a pas à exister ici
+  // Un commentaire masqué n'est pas public : il n'a pas à exister ici
   if (!comment || comment.status !== "APPROVED" || comment.article.status !== "PUBLISHED") {
     return { ok: false, error: t.commentNotFound };
   }

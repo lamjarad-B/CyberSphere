@@ -11,7 +11,7 @@ export function commentAuthorName(comment: {
 
 /**
  * Empreinte de l'adresse IP d'un invité : assez pour compter ses commentaires
- * en attente et repérer une même origine en modération, sans conserver l'IP.
+ * du jour et repérer une même origine en modération, sans conserver l'IP.
  * HMAC à clé dédiée (HKDF) : un simple hash se retrouverait par force brute,
  * les adresses IPv4 étant peu nombreuses.
  */

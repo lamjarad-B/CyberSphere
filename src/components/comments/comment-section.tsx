@@ -127,8 +127,8 @@ function RequiredLabel({ htmlFor, children }: { htmlFor: string; children: React
 }
 
 /**
- * Commentaire sans compte : il part en modération et n'apparaît qu'une fois
- * approuvé par un admin (actions/comments.ts).
+ * Commentaire sans compte : publié aussitôt, un admin peut ensuite le masquer ou
+ * le supprimer (actions/comments.ts).
  */
 function GuestCommentForm({
   articleId,

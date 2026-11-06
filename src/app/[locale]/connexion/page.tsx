@@ -8,12 +8,12 @@ import { cardClass } from "@/components/ui";
 const copy = {
   fr: {
     title: "Connexion",
-    intro: "Connectez-vous pour publier vos commentaires sans attente de relecture.",
+    intro: "Connectez-vous pour commenter avec votre compte et retrouver vos signets.",
     idle: "Vous avez été déconnecté après une période d'inactivité.",
   },
   en: {
     title: "Sign in",
-    intro: "Sign in to post your comments without waiting for review.",
+    intro: "Sign in to comment with your account and find your bookmarks.",
     idle: "You were signed out after a period of inactivity.",
   },
 };

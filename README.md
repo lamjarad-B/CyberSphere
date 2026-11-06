@@ -100,8 +100,8 @@ connexion (origine non approuvée).
 
 | Rôle | Capacités |
 |------|-----------|
-| Visiteur | Lecture, recherche full-text, RSS (global, par catégorie, par tag), newsletter, commentaires soumis à relecture |
-| Membre (`user`) | + Commentaires publiés sans attente, réactions « utile », signets, signalements, profil, 2FA, passkeys, gestion de ses sessions, export et suppression de son compte (RGPD) |
+| Visiteur | Lecture, recherche full-text, RSS (global, par catégorie, par tag), newsletter, commentaires sans compte |
+| Membre (`user`) | + Commentaires sous son nom, réactions « utile », signets, signalements, profil, 2FA, passkeys, gestion de ses sessions, export et suppression de son compte (RGPD) |
 | Auteur (`author`) | + Rédaction d'articles (brouillon → soumission à validation, les admins sont prévenus par e-mail) |
 | Admin (`admin`) | + Publication immédiate ou **programmée**, catégories/tags/séries, modération + file de signalements (notification e-mail), membres & rôles, statistiques, journal d'audit |
 
@@ -141,16 +141,16 @@ connexion (origine non approuvée).
 - **Anti-spam** : honeypots + limitation de fréquence sur commentaires et
   newsletter (par membre, et par IP + Turnstile pour la newsletter). Les
   commentaires d'invités passent en plus par une preuve de travail ALTCHA à
-  usage unique, des plafonds par IP (IPv6 regroupée par /64), par e-mail et au
-  total, puis par une **modération a priori** : rien n'est publié sans
-  l'approbation d'un admin.
+  usage unique et des plafonds par IP (IPv6 regroupée par /64), par e-mail et
+  au total. Ils sont publiés aussitôt, les admins sont prévenus par e-mail et
+  peuvent les masquer ou les supprimer.
 - **RGPD** : export JSON des données (`/membre`), suppression du compte par le
   membre (mot de passe exigé), purge automatique des sessions expirées, des
-  inscriptions newsletter non confirmées (7 j), des commentaires d'invités non
-  modérés (30 j) et du journal d'audit (`AUDIT_RETENTION_DAYS`, 365 j par
+  inscriptions newsletter non confirmées (7 j) et du journal d'audit
+  (`AUDIT_RETENTION_DAYS`, 365 j par
   défaut). L'empreinte d'IP d'un invité (HMAC, jamais l'IP en clair) est
-  effacée dès l'approbation de son commentaire ; son e-mail, jamais public et
-  réservé aux admins, est supprimé avec le commentaire.
+  effacée après 30 jours ; son e-mail, jamais public et réservé aux admins, est
+  supprimé avec le commentaire.
 - **Divulgation responsable** : `/.well-known/security.txt` (RFC 9116) + `/securite`.
 
 ## Multilingue (FR/EN)

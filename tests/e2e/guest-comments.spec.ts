@@ -22,7 +22,7 @@ import {
 } from "./helpers";
 
 const DEFI = "/api/commentaires/defi";
-const SUCCESS = "Merci ! Votre commentaire sera publié après relecture.";
+const SUCCESS = "Merci ! Votre commentaire est publié.";
 const NAME_PREFIX = "Lecteur e2e";
 const EMAIL_PREFIX = "e2e-guest-";
 // La preuve de travail se calcule avant l'envoi : bien au-delà des 5 s d'un expect
@@ -110,11 +110,10 @@ async function openAdmin(browser: Browser, request: APIRequestContext) {
   return { page, close: () => context.close() };
 }
 
-async function approve(adminPage: Page, content: string) {
-  await adminPage.goto("/admin/commentaires");
-  const row = adminPage.locator("li").filter({ hasText: content });
-  await row.getByRole("button", { name: "Approuver" }).click();
-  await expect(row).toBeHidden();
+async function deleteGuestData() {
+  // Les réponses partent en cascade
+  await db.comment.deleteMany({ where: { guestName: { startsWith: NAME_PREFIX } } });
+  await db.newsletterSubscriber.deleteMany({ where: { email: { startsWith: EMAIL_PREFIX } } });
 }
 
 function collectCspErrors(page: Page): string[] {
@@ -184,14 +183,9 @@ async function solvedProof(client: APIRequestContext): Promise<string> {
 }
 
 test.describe("Commentaires sans compte", () => {
-  test.afterEach(async () => {
-    // Les réponses partent en cascade ; l'e-mail d'un commentaire approuvé est
-    // déjà effacé, d'où le filtre sur le nom
-    await db.comment.deleteMany({ where: { guestName: { startsWith: NAME_PREFIX } } });
-    await db.newsletterSubscriber.deleteMany({ where: { email: { startsWith: EMAIL_PREFIX } } });
-  });
+  test.afterEach(deleteGuestData);
 
-  test("parcours nominal : relu avant publication, e-mail jamais exposé, CSP respectée", async ({
+  test("parcours nominal : publié aussitôt, e-mail jamais exposé, CSP respectée", async ({
     browser,
     request,
   }) => {
@@ -214,61 +208,35 @@ test.describe("Commentaires sans compte", () => {
     expect(workers.length).toBeGreaterThan(0);
     for (const url of workers) expect(url.startsWith(BASE_URL)).toBe(true);
 
-    // En attente : invisible, même pour son auteur après rechargement
-    await page.reload();
-    await expect(guestForm(page)).toBeVisible();
-    await expect(page.getByText(guest.content)).toBeHidden();
-    expect(await page.content()).not.toContain(guest.email);
-
-    const pending = await db.comment.findFirstOrThrow({ where: { guestEmail: guest.email } });
-    expect(pending).toMatchObject({
-      status: "PENDING",
-      authorId: null,
-      articleId: article.id,
-      guestName: guest.name,
-      content: guest.content,
-      newsletterOptIn: true,
-    });
-    expect(pending.guestIpHash).toBeTruthy();
-    expect(pending.guestIpHash).not.toContain(ip);
-
-    // Aucun e-mail ne part vers une adresse non vérifiée avant la relecture humaine
-    expect(await db.newsletterSubscriber.count({ where: { email: guest.email } })).toBe(0);
-
-    const admin = await openAdmin(browser, request);
-    const adminCspErrors = collectCspErrors(admin.page);
-    await admin.page.goto("/admin/commentaires");
-    const row = admin.page.locator("li").filter({ hasText: guest.content });
-    await expect(row).toContainText(guest.email);
-    await approve(admin.page, guest.content);
-    await admin.page.getByRole("link", { name: /Publiés/ }).click();
-    await expect(admin.page.locator("li").filter({ hasText: guest.content })).toContainText(guest.email);
-    await admin.close();
-
+    // En ligne sans rechargement, puis toujours après rechargement
+    await expect(guestBlock(page, guest.content)).toContainText(guest.name);
     await page.reload();
     const block = guestBlock(page, guest.content);
     await expect(block).toContainText(guest.name);
     await expect(block.getByText("Invité", { exact: true })).toBeVisible();
     expect(await page.content()).not.toContain(guest.email);
 
-    // L'e-mail reste, réservé aux admins ; l'empreinte d'IP est effacée
-    const approved = await db.comment.findUniqueOrThrow({ where: { id: pending.id } });
-    expect(approved).toMatchObject({
+    const comment = await db.comment.findFirstOrThrow({ where: { guestEmail: guest.email } });
+    expect(comment).toMatchObject({
       status: "APPROVED",
-      guestEmail: guest.email,
-      guestIpHash: null,
-      newsletterOptIn: false,
+      authorId: null,
+      articleId: article.id,
+      guestName: guest.name,
+      content: guest.content,
+      newsletterOptIn: true,
     });
+    expect(comment.guestIpHash).toBeTruthy();
+    expect(comment.guestIpHash).not.toContain(ip);
 
-    // Case cochée : abonné dès l'approbation (after()), sans lien de confirmation
-    await expect
-      .poll(async () => db.newsletterSubscriber.findUnique({ where: { email: guest.email } }))
-      .toMatchObject({ confirmed: true });
-    expect(
-      await db.auditLog.count({
-        where: { action: "commentaire.approbation", targetId: pending.id },
-      }),
-    ).toBe(1);
+    // La case attend 24 h : supprimer le commentaire d'ici là annule l'inscription
+    expect(await db.newsletterSubscriber.count({ where: { email: guest.email } })).toBe(0);
+
+    // L'e-mail reste, réservé aux admins
+    const admin = await openAdmin(browser, request);
+    const adminCspErrors = collectCspErrors(admin.page);
+    await admin.page.goto("/admin/commentaires");
+    await expect(admin.page.locator("li").filter({ hasText: guest.content })).toContainText(guest.email);
+    await admin.close();
 
     expect(cspErrors).toEqual([]);
     expect(adminCspErrors).toEqual([]);
@@ -349,7 +317,7 @@ test.describe("Commentaires sans compte", () => {
     await context.close();
   });
 
-  test("une preuve authentique ne contourne rien : statut forcé, parent en attente, origine, type", async ({
+  test("une preuve authentique ne contourne rien : statut forcé, parent masqué, origine, type", async ({
     browser,
     playwright,
   }) => {
@@ -368,20 +336,25 @@ test.describe("Commentaires sans compte", () => {
       patched(action, {
         ...forced,
         captcha: await solvedProof(forcedClient),
-        status: "APPROVED",
+        status: "HIDDEN",
         authorId: someone.id,
         guestIpHash: "falsifie",
       }),
     );
     expect(await forcedResponse.text()).toContain('"ok":true');
     const row = await db.comment.findFirstOrThrow({ where: { content: forced.content } });
-    expect(row).toMatchObject({ status: "PENDING", authorId: null });
+    expect(row).toMatchObject({ status: "APPROVED", authorId: null });
     expect(row.guestIpHash).not.toBe("falsifie");
     await forcedClient.dispose();
 
-    // Répondre à un commentaire encore en attente reste impossible
+    // Répondre à un commentaire masqué reste impossible
     const hidden = await db.comment.create({
-      data: { content: `${seed.content} parent`, articleId: article.id, guestName: seed.name },
+      data: {
+        content: `${seed.content} parent`,
+        status: "HIDDEN",
+        articleId: article.id,
+        guestName: seed.name,
+      },
     });
     const replyGuest = newGuest();
     const replyClient = await apiClient(playwright);
@@ -442,17 +415,15 @@ test.describe("Commentaires sans compte", () => {
     await fillGuestForm(guestForm(page), guest);
     await send(guestForm(page));
     await expectSent(page);
+    await page.reload();
+    await expect(page.getByText(guest.content)).toBeVisible();
+    expect(await xss(page)).toBeUndefined();
 
     const admin = await openAdmin(browser, request);
     await admin.page.goto("/admin/commentaires");
     await expect(admin.page.getByText(guest.content)).toBeVisible();
     expect(await xss(admin.page)).toBeUndefined();
-    await approve(admin.page, guest.content);
     await admin.close();
-
-    await page.reload();
-    await expect(page.getByText(guest.content)).toBeVisible();
-    expect(await xss(page)).toBeUndefined();
   });
 
   for (const name of ["<b>x</b>", "http://spam.example"]) {
@@ -481,30 +452,28 @@ test.describe("Commentaires sans compte", () => {
     expect(await db.comment.count({ where: { guestEmail: guest.email } })).toBe(0);
   });
 
-  test("quota : 3 commentaires en attente par e-mail, même depuis des IP différentes", async ({
-    browser,
+  test("quota : 5 commentaires par jour pour un e-mail, même depuis une autre IP", async ({
+    page,
   }) => {
-    test.setTimeout(240_000);
+    const article = await publishedArticle();
     const guest = newGuest();
-    for (let attempt = 1; attempt <= 4; attempt++) {
-      const context = await newClient(browser);
-      const page = await context.newPage();
-      await openArticle(page);
-      await fillGuestForm(guestForm(page), { ...guest, content: `${guest.content} n°${attempt}` });
-      await send(guestForm(page));
-      if (attempt <= 3) await expectSent(page);
-      else await expect(commentAlert(page)).toBeVisible({ timeout: POW_TIMEOUT });
-      await context.close();
-    }
-    expect(await db.comment.count({ where: { guestEmail: guest.email } })).toBe(3);
+    await db.comment.createMany({
+      data: Array.from({ length: 5 }, (_, index) => ({
+        content: `${guest.content} n°${index}`,
+        articleId: article.id,
+        guestName: guest.name,
+        guestEmail: guest.email,
+      })),
+    });
+    await openArticle(page);
+    await fillGuestForm(guestForm(page), guest);
+    await send(guestForm(page));
+    await expect(commentAlert(page)).toBeVisible({ timeout: POW_TIMEOUT });
+    expect(await db.comment.count({ where: { guestEmail: guest.email } })).toBe(5);
   });
 
-  test("réponse : visible seulement après approbation, rattachée au parent", async ({
-    browser,
-    page,
-    request,
-  }) => {
-    test.setTimeout(180_000);
+  test("réponse : publiée aussitôt, rattachée au parent", async ({ page }) => {
+    test.setTimeout(120_000);
     const article = await publishedArticle();
     const author = newGuest();
     const parent = await db.comment.create({
@@ -532,17 +501,8 @@ test.describe("Commentaires sans compte", () => {
 
     await page.reload();
     await expect(page.getByText(author.content)).toBeVisible();
-    await expect(page.getByText(guest.content)).toBeHidden();
-    const reply = await db.comment.findFirstOrThrow({ where: { guestEmail: guest.email } });
-    expect(reply).toMatchObject({ status: "PENDING", parentId: parent.id });
-
-    const admin = await openAdmin(browser, request);
-    await approve(admin.page, guest.content);
-    await admin.close();
-
-    await page.reload();
     await expect(page.getByText(guest.content)).toBeVisible();
-    expect(await db.comment.findUniqueOrThrow({ where: { id: reply.id } })).toMatchObject({
+    expect(await db.comment.findFirstOrThrow({ where: { guestEmail: guest.email } })).toMatchObject({
       status: "APPROVED",
       parentId: parent.id,
     });
@@ -620,7 +580,7 @@ test.describe("Commentaires sans compte", () => {
     await db.comment.deleteMany({ where: { content: text } });
   });
 
-  test("autorisation : file et approbation réservées aux admins", async ({
+  test("autorisation : masquer un commentaire est réservé aux admins", async ({
     browser,
     playwright,
     request,
@@ -628,9 +588,10 @@ test.describe("Commentaires sans compte", () => {
     test.setTimeout(180_000);
     const article = await publishedArticle();
     const guest = newGuest();
-    const pending = await db.comment.create({
+    const comment = await db.comment.create({
       data: {
         content: guest.content,
+        status: "APPROVED",
         articleId: article.id,
         guestName: guest.name,
         guestEmail: guest.email,
@@ -638,9 +599,9 @@ test.describe("Commentaires sans compte", () => {
       },
     });
     const status = async () =>
-      (await db.comment.findUniqueOrThrow({ where: { id: pending.id } })).status;
+      (await db.comment.findUniqueOrThrow({ where: { id: comment.id } })).status;
 
-    // La vraie requête d'approbation, interceptée avant d'atteindre le serveur
+    // La vraie requête de masquage, interceptée avant d'atteindre le serveur
     const admin = await openAdmin(browser, request);
     const actions = captureActions(admin.page);
     await admin.page.route("**/admin/commentaires**", (route) =>
@@ -650,11 +611,11 @@ test.describe("Commentaires sans compte", () => {
     await admin.page
       .locator("li")
       .filter({ hasText: guest.content })
-      .getByRole("button", { name: "Approuver" })
+      .getByRole("button", { name: "Masquer" })
       .click();
     await expect.poll(async () => (await actions()).length).toBe(1);
-    const [approval] = await actions();
-    expect(await status()).toBe("PENDING");
+    const [hide] = await actions();
+    expect(await status()).toBe("APPROVED");
 
     for (const role of ["user", "author"] as const) {
       const user = await createUser(request, role);
@@ -662,67 +623,154 @@ test.describe("Commentaires sans compte", () => {
       const page = await context.newPage();
       await login(page, user);
       await page.goto("/admin/commentaires");
-      const html = await page.content();
-      expect(html, role).not.toContain(guest.email);
-      expect(html, role).not.toContain(guest.content);
-      await replay(page.request, approval);
-      expect(await status(), role).toBe("PENDING");
+      // Le texte est public, l'e-mail non
+      expect(await page.content(), role).not.toContain(guest.email);
+      await replay(page.request, hide);
+      expect(await status(), role).toBe("APPROVED");
       await context.close();
     }
 
     // Sans session : le proxy renvoie vers la connexion, rien n'est exécuté
     const anonymous = await apiClient(playwright);
-    await replay(anonymous, approval);
-    expect(await status()).toBe("PENDING");
+    await replay(anonymous, hide);
+    expect(await status()).toBe("APPROVED");
     await anonymous.dispose();
 
     // Contre-épreuve : la même requête aboutit avec la session de l'admin
-    await replay(admin.page.request, approval);
-    await expect.poll(status).toBe("APPROVED");
+    await replay(admin.page.request, hide);
+    await expect.poll(status).toBe("HIDDEN");
     await admin.close();
-
-    // Case non cochée : l'approbation n'abonne personne
-    expect(await db.newsletterSubscriber.count({ where: { email: guest.email } })).toBe(0);
   });
 
-  test("modération : supprimer un commentaire, puis vider la file sans toucher aux publiés", async ({
-    browser,
-    request,
-  }) => {
+  test("après publication : masquer, réafficher, supprimer", async ({ browser, page, request }) => {
     test.setTimeout(120_000);
     const article = await publishedArticle();
-    const [first, second, published] = [newGuest(), newGuest(), newGuest()];
-    const inQueue = (guest: Guest) => ({
-      content: guest.content,
-      articleId: article.id,
-      guestName: guest.name,
-      guestEmail: guest.email,
+    const guest = newGuest();
+    const comment = await db.comment.create({
+      data: {
+        content: guest.content,
+        status: "APPROVED",
+        articleId: article.id,
+        guestName: guest.name,
+        guestEmail: guest.email,
+      },
     });
-    await db.comment.createMany({
-      data: [
-        inQueue(first),
-        inQueue(second),
-        { content: published.content, articleId: article.id, guestName: published.name, status: "APPROVED" },
-      ],
-    });
+    const status = async () =>
+      (await db.comment.findUniqueOrThrow({ where: { id: comment.id } })).status;
+    await openArticle(page);
+    await expect(page.getByText(guest.content)).toBeVisible();
 
     const admin = await openAdmin(browser, request);
     admin.page.on("dialog", (dialog) => void dialog.accept());
     await admin.page.goto("/admin/commentaires");
+    const published = admin.page.locator("li").filter({ hasText: guest.content });
+    await expect(published).toContainText(guest.email);
+    await expect(published.getByRole("button", { name: "Réafficher" })).toHaveCount(0);
 
-    const firstRow = admin.page.locator("li").filter({ hasText: first.content });
-    await firstRow.getByRole("button", { name: "Supprimer" }).click();
-    await expect(firstRow).toBeHidden();
-    expect(await db.comment.count({ where: { content: first.content } })).toBe(0);
+    // Masqué : retiré du site, conservé en administration
+    await published.getByRole("button", { name: "Masquer" }).click();
+    await expect(published).toBeHidden();
+    expect(await status()).toBe("HIDDEN");
+    await page.reload();
+    await expect(page.getByText(guest.content)).toBeHidden();
 
-    await admin.page.getByRole("button", { name: "Tout supprimer" }).click();
-    await expect(admin.page.locator("li").filter({ hasText: second.content })).toBeHidden();
-    expect(await db.comment.count({ where: { status: "PENDING" } })).toBe(0);
+    // Réaffiché : de retour sur le site
+    await admin.page.getByRole("link", { name: /Masqués/ }).click();
+    const hidden = admin.page.locator("li").filter({ hasText: guest.content });
+    await hidden.getByRole("button", { name: "Réafficher" }).click();
+    await expect(hidden).toBeHidden();
+    expect(await status()).toBe("APPROVED");
+    await page.reload();
+    await expect(page.getByText(guest.content)).toBeVisible();
 
+    for (const action of ["commentaire.masquage", "commentaire.reaffichage"]) {
+      expect(await db.auditLog.count({ where: { action, targetId: comment.id } }), action).toBe(1);
+    }
+
+    // Supprimé : plus rien en base, l'e-mail part avec le commentaire
     await admin.page.getByRole("link", { name: /Publiés/ }).click();
-    const publishedRow = admin.page.locator("li").filter({ hasText: published.content });
-    await expect(publishedRow).toBeVisible();
-    await expect(publishedRow.getByRole("button", { name: "Approuver" })).toHaveCount(0);
+    const again = admin.page.locator("li").filter({ hasText: guest.content });
+    await again.getByRole("button", { name: "Supprimer" }).click();
+    await expect(again).toBeHidden();
+    expect(await db.comment.count({ where: { guestEmail: guest.email } })).toBe(0);
+    await admin.close();
+  });
+
+  test("suppression groupée : réservée aux admins, seule la sélection disparaît", async ({
+    browser,
+    request,
+  }) => {
+    test.setTimeout(180_000);
+    const article = await publishedArticle();
+    const [first, second, kept] = [newGuest(), newGuest(), newGuest()];
+    const emails = [first.email, second.email, kept.email];
+    for (const guest of [first, second, kept]) {
+      await db.comment.create({
+        data: {
+          content: guest.content,
+          status: "APPROVED",
+          articleId: article.id,
+          guestName: guest.name,
+          guestEmail: guest.email,
+        },
+      });
+    }
+    const remaining = () => db.comment.count({ where: { guestEmail: { in: emails } } });
+
+    const admin = await openAdmin(browser, request);
+    admin.page.on("dialog", (dialog) => void dialog.accept());
+    const actions = captureActions(admin.page);
+    const open = async () => {
+      await admin.page.goto("/admin/commentaires");
+      await admin.page.waitForLoadState("networkidle");
+    };
+    const checkbox = (guest: Guest) =>
+      admin.page.getByRole("checkbox", { name: `Sélectionner le commentaire de ${guest.name}` });
+    const deleteSelection = admin.page.getByRole("button", { name: /^Supprimer la sélection/ });
+
+    // La vraie requête, interceptée puis rejouée par un membre : rien ne disparaît
+    await admin.page.route("**/admin/commentaires**", (route) =>
+      route.request().method() === "POST" ? route.abort() : route.continue(),
+    );
+    await open();
+    await expect(deleteSelection).toBeDisabled();
+    await checkbox(first).check();
+    await deleteSelection.click();
+    await expect.poll(async () => (await actions()).length).toBe(1);
+    const [bulk] = await actions();
+    const member = await createUser(request, "user");
+    const memberContext = await newClient(browser);
+    const memberPage = await memberContext.newPage();
+    await login(memberPage, member);
+    await replay(memberPage.request, bulk);
+    expect(await remaining()).toBe(3);
+    await memberContext.close();
+    await admin.page.unroute("**/admin/commentaires**");
+
+    // « Tout sélectionner » coche et décoche toute la page
+    await open();
+    const selectAll = admin.page.getByLabel("Tout sélectionner sur cette page");
+    await selectAll.check();
+    await expect(checkbox(kept)).toBeChecked();
+    await selectAll.uncheck();
+    await expect(checkbox(kept)).not.toBeChecked();
+    await expect(deleteSelection).toHaveText("Supprimer la sélection (0)");
+
+    await checkbox(first).check();
+    await checkbox(second).check();
+    await expect(deleteSelection).toHaveText("Supprimer la sélection (2)");
+    await deleteSelection.click();
+    await expect(admin.page.getByText(first.content)).toBeHidden();
+    await expect(admin.page.getByText(second.content)).toBeHidden();
+    await expect(admin.page.getByText(kept.content)).toBeVisible();
+    await expect(deleteSelection).toHaveText("Supprimer la sélection (0)");
+    expect(await remaining()).toBe(1);
+    expect(await db.comment.count({ where: { guestEmail: kept.email } })).toBe(1);
+    expect(
+      await db.auditLog.count({
+        where: { action: "commentaire.suppression_groupee", detail: "2 commentaire(s) supprimé(s)" },
+      }),
+    ).toBeGreaterThan(0);
     await admin.close();
   });
 });

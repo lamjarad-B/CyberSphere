@@ -2,14 +2,13 @@ import { createHash } from "node:crypto";
 import { db } from "./db";
 import {
   adminNotificationEmail,
-  commentPublishedEmail,
   securityAlertEmail,
   sendEmail,
   type SecurityAlertKind,
 } from "./email";
 import { formatDateTime } from "./format";
 import { localeHref, type Locale } from "./i18n";
-import { subscribeApprovedCommenter } from "./newsletter";
+import { rateLimit } from "./rate-limit";
 import { SITE_URL } from "./site";
 import { describeUserAgent } from "./user-agent";
 
@@ -93,46 +92,30 @@ export async function sendSecurityAlert(input: {
   }
 }
 
+/** Plafond horaire : un afflux de commentaires ne noie pas la boîte mail des admins. */
+const NEW_COMMENT_EMAILS_PER_HOUR = 20;
+
 /**
- * Prévient un invité que son commentaire est publié et, s'il a coché la case,
- * l'abonne à la newsletter. Conçu pour `after()` ; ne lève jamais.
+ * Prévient les administrateurs d'un nouveau commentaire, déjà en ligne. Conçu
+ * pour `after()` ; ne lève jamais.
  */
-export async function notifyCommentPublished(input: {
-  email: string;
-  locale: Locale;
+export async function notifyNewComment(input: {
   articleTitle: string;
-  articleSlug: string;
-  subscribe: boolean;
+  authorName: string;
+  content: string;
 }): Promise<void> {
-  const { email, locale } = input;
-  try {
-    const token = input.subscribe ? await subscribeApprovedCommenter(email, locale) : null;
-    const { html, text } = commentPublishedEmail({
-      articleTitle: input.articleTitle,
-      url: `${SITE_URL}${localeHref(locale, `/articles/${input.articleSlug}`)}`,
-      unsubscribeUrl: token
-        ? `${SITE_URL}${localeHref(locale, `/newsletter/desinscription?jeton=${token}`)}`
-        : undefined,
-      locale,
-    });
-    await sendEmail({
-      to: email,
-      subject:
-        locale === "en"
-          ? "Your comment is online — CyberSphere"
-          : "Votre commentaire est en ligne — CyberSphere",
-      html,
-      text,
-      headers: token
-        ? {
-            "List-Unsubscribe": `<${SITE_URL}/api/newsletter/desinscription?jeton=${token}>`,
-            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-          }
-        : undefined,
-    });
-  } catch (error) {
-    console.error("[commentaires] notification de publication impossible :", error);
-  }
+  if (!rateLimit("comment-notification", NEW_COMMENT_EMAILS_PER_HOUR, 3600_000)) return;
+  await notifyAdmins({
+    subject: "Nouveau commentaire",
+    title: "Nouveau commentaire",
+    intro: "Il est déjà en ligne. Vous pouvez le masquer ou le supprimer depuis l'administration.",
+    path: "/admin/commentaires",
+    details: [
+      ["Article", input.articleTitle],
+      ["Auteur", input.authorName],
+      ["Commentaire", input.content.slice(0, 200)],
+    ],
+  });
 }
 
 /**

@@ -11,13 +11,12 @@ export default async function AdminDashboardPage() {
   // Les auteurs n'ont pas de tableau de bord : direction leurs articles
   if (!(await getAdminSession())) redirect("/admin/articles");
 
-  const [articleCount, publishedCount, submittedCount, commentCount, pendingComments, memberCount, pendingReports, viewsAgg, latestComments, latestArticles] =
+  const [articleCount, publishedCount, submittedCount, commentCount, memberCount, pendingReports, viewsAgg, latestComments, latestArticles] =
     await Promise.all([
       db.article.count(),
       db.article.count({ where: { status: "PUBLISHED" } }),
       db.article.count({ where: { status: "SUBMITTED" } }),
       db.comment.count({ where: { status: "APPROVED" } }),
-      db.comment.count({ where: { status: "PENDING" } }),
       db.user.count(),
       db.commentReport.count({ where: { resolvedAt: null } }),
       db.article.aggregate({ _sum: { views: true } }),
@@ -44,13 +43,7 @@ export default async function AdminDashboardPage() {
       hint: "articles soumis par les auteurs",
       href: "/admin/articles",
     },
-    { label: "Commentaires", value: commentCount },
-    {
-      label: "À modérer",
-      value: pendingComments,
-      hint: "commentaires d'invités",
-      href: "/admin/commentaires",
-    },
+    { label: "Commentaires", value: commentCount, href: "/admin/commentaires" },
     {
       label: "Signalements",
       value: pendingReports,
@@ -118,7 +111,7 @@ export default async function AdminDashboardPage() {
                       {comment.article.title}
                     </Link>{" "}
                     · {formatDateTime(comment.createdAt)}
-                    {comment.status === "PENDING" && " · en attente"}
+                    {comment.status === "HIDDEN" && " · masqué"}
                   </p>
                   <p className="line-clamp-2 text-sm">{comment.content}</p>
                 </li>

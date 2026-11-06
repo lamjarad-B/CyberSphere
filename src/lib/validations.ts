@@ -181,6 +181,9 @@ export const guestCommentSchema = z.object({
   newsletter: z.boolean().default(false),
 });
 
+/** Suppression groupée : des identifiants et rien d'autre, une page d'administration au plus. */
+export const commentIdsSchema = z.array(z.string().min(1).max(64)).min(1).max(100);
+
 export const profileSchema = z.object({
   name: z
     .string()

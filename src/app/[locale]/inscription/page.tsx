@@ -8,11 +8,11 @@ import { cardClass } from "@/components/ui";
 const copy = {
   fr: {
     title: "Inscription",
-    intro: "Créez votre compte pour rejoindre la communauté et publier vos commentaires sans attente de relecture.",
+    intro: "Créez votre compte pour rejoindre la communauté, commenter sous votre nom et garder vos signets.",
   },
   en: {
     title: "Sign up",
-    intro: "Create your account to join the community and post comments without waiting for review.",
+    intro: "Create your account to join the community, comment under your name and keep your bookmarks.",
   },
 };
 

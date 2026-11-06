@@ -1,14 +1,18 @@
 import { db } from "./db";
 import { logAudit } from "./audit";
-import { dispatchArticleToSubscribers } from "./newsletter";
+import { toLocale } from "./i18n";
+import { dispatchArticleToSubscribers, subscribeCommenter } from "./newsletter";
 
 const DAY_MS = 24 * 3600 * 1000;
 
 /** Délai de confirmation d'une inscription newsletter avant purge (double opt-in). */
 const UNCONFIRMED_NEWSLETTER_DAYS = 7;
 
-/** Commentaire d'invité jamais modéré : supprimé avec l'e-mail et l'empreinte d'IP qu'il porte. */
-const UNMODERATED_COMMENT_DAYS = 30;
+/** Empreinte d'IP d'un invité : utile aux quotas et à la modération, pas au-delà. */
+const GUEST_IP_HASH_DAYS = 30;
+
+/** Délai avant d'abonner un invité : de quoi retirer un commentaire abusif. */
+const COMMENT_SUBSCRIBE_DELAY_MS = DAY_MS;
 
 /** Durée de conservation du journal d'audit (jours), réglable par AUDIT_RETENTION_DAYS. */
 function auditRetentionDays(): number {
@@ -49,13 +53,47 @@ export async function publishDueArticles(now = new Date()): Promise<number> {
 }
 
 /**
+ * Abonne les invités qui ont coché la newsletter et dont le commentaire est
+ * resté en ligne 24 h. L'adresse saisie n'est pas vérifiée et peut être celle
+ * d'un tiers : supprimer ou masquer le commentaire à temps annule l'inscription.
+ */
+export async function subscribeCommenters(now = new Date()): Promise<number> {
+  const due = await db.comment.findMany({
+    where: {
+      status: "APPROVED",
+      newsletterOptIn: true,
+      guestEmail: { not: null },
+      createdAt: { lt: new Date(now.getTime() - COMMENT_SUBSCRIBE_DELAY_MS) },
+    },
+    select: { id: true, guestEmail: true, guestLocale: true },
+  });
+
+  let subscribed = 0;
+  for (const comment of due) {
+    if (!comment.guestEmail) continue;
+    try {
+      await subscribeCommenter(comment.guestEmail, toLocale(comment.guestLocale ?? ""));
+      await db.comment.update({
+        where: { id: comment.id },
+        data: { newsletterOptIn: false, guestLocale: null },
+      });
+      subscribed++;
+    } catch (error) {
+      console.error(`[commentaires] abonnement impossible (commentaire ${comment.id}) :`, error);
+    }
+  }
+  return subscribed;
+}
+
+/**
  * Purge des données devenues inutiles (minimisation RGPD) : sessions et
- * jetons expirés, inscriptions newsletter jamais confirmées, commentaires
- * d'invités jamais modérés, défis ALTCHA expirés, entrées anciennes du journal
- * d'audit.
+ * jetons expirés, inscriptions newsletter jamais confirmées, empreintes d'IP
+ * anciennes, défis ALTCHA expirés, entrées anciennes du journal d'audit. Traite
+ * aussi les abonnements différés.
  */
 export async function purgeStaleData(now = new Date()) {
-  const [sessions, verifications, newsletter, pendingComments, captchaChallenges, audit] = await Promise.all([
+  const commenters = await subscribeCommenters(now);
+  const [sessions, verifications, newsletter, ipHashes, captchaChallenges, audit] = await Promise.all([
     db.session.deleteMany({ where: { expiresAt: { lt: now } } }),
     db.verification.deleteMany({ where: { expiresAt: { lt: now } } }),
     db.newsletterSubscriber.deleteMany({
@@ -64,11 +102,12 @@ export async function purgeStaleData(now = new Date()) {
         createdAt: { lt: new Date(now.getTime() - UNCONFIRMED_NEWSLETTER_DAYS * DAY_MS) },
       },
     }),
-    db.comment.deleteMany({
+    db.comment.updateMany({
       where: {
-        status: "PENDING",
-        createdAt: { lt: new Date(now.getTime() - UNMODERATED_COMMENT_DAYS * DAY_MS) },
+        guestIpHash: { not: null },
+        createdAt: { lt: new Date(now.getTime() - GUEST_IP_HASH_DAYS * DAY_MS) },
       },
+      data: { guestIpHash: null },
     }),
     db.usedCaptchaChallenge.deleteMany({ where: { expiresAt: { lt: now } } }),
     db.auditLog.deleteMany({
@@ -79,7 +118,8 @@ export async function purgeStaleData(now = new Date()) {
     sessions: sessions.count,
     verifications: verifications.count,
     newsletter: newsletter.count,
-    pendingComments: pendingComments.count,
+    commenters,
+    ipHashes: ipHashes.count,
     captchaChallenges: captchaChallenges.count,
     audit: audit.count,
   };

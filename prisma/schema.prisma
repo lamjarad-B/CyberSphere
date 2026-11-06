@@ -232,17 +232,18 @@ model Tag {
   articles Article[]
 }
 
-// Un commentaire d'invité attend la relecture d'un admin. PENDING par défaut :
-// un oubli dans le code ne publie jamais rien.
+// HIDDEN par défaut : un oubli dans le code ne publie jamais rien. Chaque
+// parcours de création choisit APPROVED ; un admin peut ensuite masquer un
+// commentaire, qui reste en base pour pouvoir revenir.
 enum CommentStatus {
-  PENDING
+  HIDDEN
   APPROVED
 }
 
 model Comment {
   id              String          @id @default(cuid())
   content         String
-  status          CommentStatus   @default(PENDING)
+  status          CommentStatus   @default(HIDDEN)
   articleId       String
   article         Article         @relation(fields: [articleId], references: [id], onDelete: Cascade)
   // Membre connecté, ou null pour un invité : guestName est alors renseigné
@@ -252,9 +253,10 @@ model Comment {
   guestName       String?
   // E-mail d'un invité : jamais public, réservé aux admins, supprimé avec le commentaire
   guestEmail      String?
-  // HMAC de l'adresse IP, jamais l'IP en clair : effacé à l'approbation
+  // HMAC de l'adresse IP, jamais l'IP en clair : effacé après 30 jours
   guestIpHash     String?
-  // Inscription newsletter demandée : traitée seulement à l'approbation
+  // Inscription newsletter demandée : traitée après 24 h en ligne
+  // (src/lib/maintenance.ts)
   newsletterOptIn Boolean         @default(false)
   guestLocale     String?
   parentId        String?

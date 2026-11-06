@@ -8,11 +8,10 @@ import { logAudit, requestIp } from "@/lib/audit";
 import { actionLocale } from "@/lib/action-locale";
 import { verifyAltcha } from "@/lib/altcha";
 import { hashCommentIp } from "@/lib/comments";
-import { toLocale } from "@/lib/i18n";
-import { notifyAdmins, notifyCommentPublished } from "@/lib/notifications";
+import { notifyNewComment } from "@/lib/notifications";
 import { ipBucket, rateLimit } from "@/lib/rate-limit";
 import { getAdminSession, getSession } from "@/lib/session";
-import { commentSchema, guestCommentSchema } from "@/lib/validations";
+import { commentIdsSchema, commentSchema, guestCommentSchema } from "@/lib/validations";
 
 export type ActionResult = { ok: boolean; error?: string };
 
@@ -23,10 +22,12 @@ const SPAM_MAX_COMMENTS = 3;
 /** Tentatives d'un invité par IP : le limiteur en mémoire, avant tout accès à la base. */
 const GUEST_ATTEMPTS_MAX = 5;
 const GUEST_ATTEMPTS_WINDOW_MS = 10 * 60_000;
-/** Commentaires en attente par origine (IP ou e-mail) : survit à un redémarrage. */
-const GUEST_PENDING_MAX = 3;
-/** Taille maximale de la file : borne la base et le travail de modération. */
-const PENDING_QUEUE_MAX = 200;
+/** Commentaires par origine (IP ou e-mail) sur 24 h : survit à un redémarrage. */
+const GUEST_DAILY_MAX = 5;
+const DAY_MS = 24 * 3600_000;
+/** Commentaires d'invités par heure, toutes origines : borne un afflux réparti sur plusieurs IP. */
+const GUEST_HOURLY_TOTAL_MAX = 30;
+const HOUR_MS = 3600_000;
 
 const messages = {
   fr: {
@@ -47,8 +48,8 @@ const messages = {
     guestEmail: "Adresse e-mail invalide.",
     rateLimited: "Trop de tentatives. Réessayez dans quelques minutes.",
     captcha: "Vérification anti-robot échouée. Réessayez.",
-    pendingLimit: "Vos commentaires précédents attendent encore leur relecture. Réessayez plus tard.",
-    queueFull: "Les commentaires sont momentanément suspendus. Réessayez plus tard.",
+    dailyLimit: "Vous avez déjà laissé plusieurs commentaires aujourd'hui. Réessayez demain.",
+    suspended: "Les commentaires sont momentanément suspendus. Réessayez plus tard.",
   },
   en: {
     loginToComment: "Sign in to comment.",
@@ -68,8 +69,8 @@ const messages = {
     guestEmail: "Invalid email address.",
     rateLimited: "Too many attempts. Please try again in a few minutes.",
     captcha: "Anti-bot check failed. Please try again.",
-    pendingLimit: "Your previous comments are still awaiting review. Please try again later.",
-    queueFull: "Comments are temporarily suspended. Please try again later.",
+    dailyLimit: "You've already left several comments today. Please try again tomorrow.",
+    suspended: "Comments are temporarily suspended. Please try again later.",
   },
 };
 
@@ -150,7 +151,7 @@ export async function addComment(input: {
 
   const article = await db.article.findUnique({
     where: { id: parsed.data.articleId },
-    select: { id: true, slug: true, status: true },
+    select: { id: true, slug: true, title: true, status: true },
   });
   if (!article || article.status !== "PUBLISHED") {
     return { ok: false, error: t.articleNotFound };
@@ -170,15 +171,26 @@ export async function addComment(input: {
     },
   });
 
+  // Un admin n'a pas besoin d'être prévenu de ses propres commentaires
+  if (session.user.role !== "admin") {
+    after(() =>
+      notifyNewComment({
+        articleTitle: article.title,
+        authorName: session.user.name,
+        content: parsed.data.content,
+      }),
+    );
+  }
+
   revalidatePath(`/articles/${article.slug}`);
   return { ok: true };
 }
 
 /**
- * Commentaire sans compte. Rien n'est publié : il attend la relecture d'un
- * admin. Aucun e-mail ne part vers l'adresse saisie, encore invérifiée.
- * Pas de revalidatePath : rien de public ne change, et chaque rendu d'une page
- * d'article compterait une vue.
+ * Commentaire sans compte, publié aussitôt : un admin peut ensuite le masquer ou
+ * le supprimer. Aucun e-mail ne part vers l'adresse saisie, encore invérifiée :
+ * l'abonnement newsletter attend 24 h (subscribeCommenters), le temps de pouvoir
+ * retirer un commentaire abusif.
  */
 export async function addGuestComment(input: {
   articleId: string;
@@ -212,7 +224,7 @@ export async function addGuestComment(input: {
 
   const article = await db.article.findUnique({
     where: { id: parsed.data.articleId },
-    select: { id: true, title: true, status: true },
+    select: { id: true, slug: true, title: true, status: true },
   });
   if (!article || article.status !== "PUBLISHED") {
     return { ok: false, error: t.articleNotFound };
@@ -221,31 +233,36 @@ export async function addGuestComment(input: {
   const parentId = await resolveParentId(parsed.data.parentId, article.id);
   if (parentId === undefined) return { ok: false, error: t.parentNotFound };
 
-  // Double envoi : le commentaire est déjà dans la file
+  const dayAgo = new Date(Date.now() - DAY_MS);
+
+  // Double envoi : le commentaire est déjà enregistré
   const duplicate = await db.comment.findFirst({
-    where: { articleId: article.id, status: "PENDING", content },
+    where: { articleId: article.id, authorId: null, content, createdAt: { gt: dayAgo } },
     select: { id: true },
   });
   if (duplicate) return { ok: true };
 
   const guestIpHash = hashCommentIp(ip);
-  const [fromSameOrigin, queueSize] = await Promise.all([
+  const [fromSameOrigin, lastHour] = await Promise.all([
     db.comment.count({
       where: {
-        status: "PENDING",
+        authorId: null,
+        createdAt: { gt: dayAgo },
         OR: [{ guestEmail: email }, ...(guestIpHash ? [{ guestIpHash }] : [])],
       },
     }),
-    db.comment.count({ where: { status: "PENDING" } }),
+    db.comment.count({
+      where: { authorId: null, createdAt: { gt: new Date(Date.now() - HOUR_MS) } },
+    }),
   ]);
   // Même message pour l'IP et l'e-mail : rien n'indique si une adresse est connue
-  if (fromSameOrigin >= GUEST_PENDING_MAX) return { ok: false, error: t.pendingLimit };
-  if (queueSize >= PENDING_QUEUE_MAX) return { ok: false, error: t.queueFull };
+  if (fromSameOrigin >= GUEST_DAILY_MAX) return { ok: false, error: t.dailyLimit };
+  if (lastHour >= GUEST_HOURLY_TOTAL_MAX) return { ok: false, error: t.suspended };
 
   await db.comment.create({
     data: {
       content,
-      status: "PENDING",
+      status: "APPROVED",
       articleId: article.id,
       parentId,
       guestName: name,
@@ -256,110 +273,81 @@ export async function addGuestComment(input: {
     },
   });
 
-  // File jusque-là vide : les administrateurs sont prévenus une seule fois
-  // (un afflux de commentaires ne devient pas un afflux d'e-mails)
-  if (queueSize === 0) {
-    after(() =>
-      notifyAdmins({
-        subject: "Commentaire à modérer",
-        title: "Un commentaire attend votre relecture",
-        intro: "Un visiteur sans compte a laissé un commentaire. Il reste invisible tant qu'il n'est pas approuvé.",
-        path: "/admin/commentaires",
-        details: [
-          ["Article", article.title],
-          ["Auteur", name],
-          ["Commentaire", content.slice(0, 200)],
-        ],
-      }),
-    );
-  }
+  after(() =>
+    notifyNewComment({
+      articleTitle: article.title,
+      authorName: `${name} (invité)`,
+      content,
+    }),
+  );
 
+  revalidatePath(`/articles/${article.slug}`);
   return { ok: true };
 }
 
-/**
- * Publie un commentaire en attente. L'empreinte d'IP de l'invité est effacée ;
- * son e-mail reste, réservé aux admins, jusqu'à la suppression du commentaire.
- * L'invité est prévenu et, s'il a coché la case, abonné seulement maintenant :
- * tant qu'aucun humain n'a validé le commentaire, le formulaire public ne peut
- * faire envoyer aucun e-mail à un tiers.
- */
-export async function approveComment(id: string): Promise<ActionResult> {
+/** Change la visibilité d'un commentaire : session admin complète, audité. */
+async function setCommentStatus(
+  id: string,
+  status: "APPROVED" | "HIDDEN",
+  action: string,
+): Promise<ActionResult> {
   const session = await getAdminSession();
   if (!session) return { ok: false, error: "Accès refusé." };
   if (typeof id !== "string") return { ok: false, error: "Commentaire introuvable." };
 
   const comment = await db.comment.findUnique({
     where: { id },
-    select: {
-      guestEmail: true,
-      guestLocale: true,
-      newsletterOptIn: true,
-      article: {
-        select: {
-          slug: true,
-          title: true,
-          translations: { where: { locale: "en" }, select: { title: true } },
-        },
-      },
-    },
+    select: { article: { select: { slug: true } } },
   });
   if (!comment) return { ok: false, error: "Commentaire introuvable." };
 
-  // Conditionnelle : deux approbations simultanées ne préviennent qu'une fois
   const { count } = await db.comment.updateMany({
-    where: { id, status: "PENDING" },
-    data: {
-      status: "APPROVED",
-      guestIpHash: null,
-      guestLocale: null,
-      newsletterOptIn: false,
-    },
+    where: { id, status: { not: status } },
+    data: { status },
   });
   if (count !== 1) return { ok: true };
 
-  const { article, guestEmail, guestLocale, newsletterOptIn } = comment;
-  if (guestEmail) {
-    const locale = toLocale(guestLocale ?? "");
-    after(() =>
-      notifyCommentPublished({
-        email: guestEmail,
-        locale,
-        articleTitle: locale === "en" ? (article.translations[0]?.title ?? article.title) : article.title,
-        articleSlug: article.slug,
-        subscribe: newsletterOptIn,
-      }),
-    );
-  }
-
-  await logAudit({
-    action: "commentaire.approbation",
-    actorId: session.user.id,
-    targetType: "comment",
-    targetId: id,
-  });
+  await logAudit({ action, actorId: session.user.id, targetType: "comment", targetId: id });
 
   revalidatePath(`/articles/${comment.article.slug}`);
   revalidatePath("/admin/commentaires");
   return { ok: true };
 }
 
-/**
- * Vide la file d'attente en cas d'attaque : le plafond de la file fermerait
- * sinon le formulaire à tout le monde jusqu'à une suppression une par une.
- */
-export async function deletePendingComments(): Promise<ActionResult> {
+/** Retire un commentaire du site sans le supprimer : il peut revenir. */
+export async function hideComment(id: string): Promise<ActionResult> {
+  return setCommentStatus(id, "HIDDEN", "commentaire.masquage");
+}
+
+/** Remet en ligne un commentaire masqué. */
+export async function showComment(id: string): Promise<ActionResult> {
+  return setCommentStatus(id, "APPROVED", "commentaire.reaffichage");
+}
+
+/** Supprime d'un coup les commentaires cochés, réponses comprises (vague de spam). */
+export async function deleteComments(ids: string[]): Promise<ActionResult> {
   const session = await getAdminSession();
   if (!session) return { ok: false, error: "Accès refusé." };
 
-  const { count } = await db.comment.deleteMany({ where: { status: "PENDING" } });
+  const parsed = commentIdsSchema.safeParse(ids);
+  if (!parsed.success) return { ok: false, error: "Sélection invalide." };
+
+  const comments = await db.comment.findMany({
+    where: { id: { in: parsed.data } },
+    select: { article: { select: { slug: true } } },
+  });
+  const { count } = await db.comment.deleteMany({ where: { id: { in: parsed.data } } });
+
   await logAudit({
-    action: "commentaire.purge_file",
+    action: "commentaire.suppression_groupee",
     actorId: session.user.id,
     targetType: "comment",
-    detail: `${count} commentaire(s) en attente supprimé(s)`,
+    detail: `${count} commentaire(s) supprimé(s)`,
   });
 
+  for (const slug of new Set(comments.map((comment) => comment.article.slug))) {
+    revalidatePath(`/articles/${slug}`);
+  }
   revalidatePath("/admin/commentaires");
   return { ok: true };
 }
