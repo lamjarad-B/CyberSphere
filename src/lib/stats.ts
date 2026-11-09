@@ -52,10 +52,9 @@ export async function recordArticleView(
   const day = today();
 
   const jobs: Promise<unknown>[] = [
-    db.article.update({
-      where: { id: articleId },
-      data: { views: { increment: 1 } },
-    }),
+    // En SQL brut : via le client Prisma, @updatedAt ferait de chaque vue une
+    // modification de l'article (lastmod du sitemap, dateModified du JSON-LD)
+    db.$executeRaw`UPDATE "Article" SET "views" = "views" + 1 WHERE "id" = ${articleId}`,
     db.articleDailyView.upsert({
       where: { articleId_day: { articleId, day } },
       create: { articleId, day, views: 1 },

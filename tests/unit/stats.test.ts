@@ -8,9 +8,9 @@ vi.mock("@/lib/db", () => {
   const bump = (key: string) => counts.set(key, (counts.get(key) ?? 0) + 1);
   return {
     db: {
-      article: {
-        update: async ({ where }: { where: { id: string } }) => bump(`total:${where.id}`),
-      },
+      // Gabarit SQL : l'identifiant de l'article est la seule valeur interpolée
+      $executeRaw: async (_sql: TemplateStringsArray, articleId: string) =>
+        bump(`total:${articleId}`),
       articleDailyView: {
         upsert: async ({ where }: { where: { articleId_day: { articleId: string } } }) =>
           bump(`jour:${where.articleId_day.articleId}`),
