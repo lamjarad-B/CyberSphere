@@ -1,5 +1,7 @@
 # CyberSphere
 
+**Le blog : [cyber-sphere.net](https://cyber-sphere.net)**
+
 Blog d'**analyse** de la cybersécurité, **bilingue (français/anglais)** : menaces,
 géopolitique, régulation et stratégie, avec une rubrique technique pour les
 articles pratiques occasionnels. Articles en Markdown typés (analyse,
