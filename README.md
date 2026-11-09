@@ -173,6 +173,23 @@ connexion (origine non approuvée).
   interroge un index full-text **anglais** dédié ; RSS, e-mails et sitemap
   (hreflang) sont déclinés dans les deux langues. L'administration reste en
   français.
+- Référencement : un article non traduit n'a qu'une URL indexable, la
+  française — sa version `/en` la désigne comme canonique et le sitemap ne
+  liste pas d'URL anglaise pour lui. Traduire un article ajoute
+  automatiquement sa version anglaise au sitemap et aux balises `hreflang`.
+- Catégories et bios d'auteurs ont un champ anglais optionnel ; sans lui, la
+  version française est servie (bio) ou un texte générique (catégorie).
+
+## Référencement
+
+- Search Console et Bing Webmaster Tools : validez la propriété par DNS, ou
+  renseignez `GOOGLE_SITE_VERIFICATION` / `BING_SITE_VERIFICATION` (balises
+  meta), puis soumettez `https://<domaine>/sitemap.xml`.
+- IndexNow fonctionne sans réglage en production (clé dérivée de
+  `BETTER_AUTH_SECRET`, `/indexnow.txt`).
+- Chaque membre de l'équipe qui publie complète sa page auteur depuis
+  `/membre` (bio, profils publics) : nom, bio et profils alimentent les
+  données structurées des articles.
 
 ## Vérification d'e-mail & e-mails
 

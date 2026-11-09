@@ -1,6 +1,12 @@
 # Reverse proxy CyberSphere : TLS automatique (Let's Encrypt) + HSTS.
 # SITE_DOMAIN est injecté par docker-compose.prod.yml.
 
+# www : redirection permanente vers le domaine nu, URL conservée (une seule
+# version indexée). Exige un enregistrement DNS www pointant vers ce serveur.
+www.{$SITE_DOMAIN} {
+	redir https://{$SITE_DOMAIN}{uri} permanent
+}
+
 {$SITE_DOMAIN} {
 	encode gzip zstd
 

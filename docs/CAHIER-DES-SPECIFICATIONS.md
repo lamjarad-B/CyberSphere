@@ -105,7 +105,39 @@ objectif de premier rang : chaque choix d'implémentation est documenté au §5.
 #### Flux et référencement
 - **RSS 2.0** (`/rss.xml`) : 20 derniers articles publiés, valeurs échappées XML, cache public 1 h.
 - **Sitemap** (`sitemap.ts`) et **robots.txt** (`robots.ts`) générés dynamiquement.
-- `generateMetadata` par page (title, description, Open Graph) ; page 404 personnalisée.
+  Le sitemap ne liste que les pages publiées et indexables : une entrée par
+  langue avec alternates `hreflang` (fr, en, x-default), l'URL anglaise d'un
+  article seulement s'il est traduit, ni catégorie sans article ni tag de moins
+  de deux articles. `lastmod` vient de dates réelles : `contentUpdatedAt` de
+  l'article (posé seulement quand titre, extrait, texte, points clés ou
+  couverture changent), date de sa traduction, dernier article publié pour
+  une liste ; jamais `updatedAt`, que touche toute écriture. La même date
+  alimente `dateModified` et la mention « Mis à jour le » (affichée si elle
+  tombe un autre jour que la publication).
+- **IndexNow** (`lib/indexnow.ts`) : publication, modification du texte et
+  suppression d'un article publié sont signalées à Bing (dont dépendent
+  Copilot et la recherche de ChatGPT), Yandex, Seznam et Naver. Clé dérivée de
+  `BETTER_AUTH_SECRET`, servie sur `/indexnow.txt` ; actif seulement en
+  production sur un domaine https.
+- **Pages auteurs** (`/auteurs/[slug]`) : bio FR/EN et profils publics saisis
+  par l'auteur depuis son profil, articles publiés, données `ProfilePage` /
+  `Person` (`sameAs`). Slug figé, attribué à la première publication.
+- **Pages institutionnelles** : À propos (ligne et méthode éditoriales,
+  transparence sur l'assistant IA), mentions légales, politique de
+  confidentialité.
+- Couverture SVG : aperçu PNG 1200 px (`x.svg.png`) rendu à la demande par la
+  route `/uploads`, utilisé pour Open Graph et les données structurées.
+- `generateMetadata` par page via `lib/seo.ts` : title, description, URL
+  canonique (paramètres parasites retirés, `page=1` omis), `hreflang`, flux RSS,
+  Open Graph et carte Twitter, image de partage par défaut
+  (`public/images/og-default.png`). Un article non traduit lu sur `/en` désigne
+  l'original français comme canonique. Recherche, pages de compte, catégories
+  vides et tags isolés sont en `noindex, follow` ; une page de liste au-delà de
+  la dernière répond 404.
+- **Données structurées** JSON-LD : `Organization` et `WebSite` sur l'accueil,
+  `BlogPosting` et `BreadcrumbList` sur les articles, `BreadcrumbList` sur les
+  catégories, tags et séries — uniquement des informations réellement connues.
+- Page 404 personnalisée, avec liens vers l'accueil, les articles et la recherche.
 
 ### 2.2 Authentification et espace membre
 
