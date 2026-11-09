@@ -1,4 +1,4 @@
-import { rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { APIRequestContext } from "@playwright/test";
 import { db, expect, test, uid } from "./helpers";
@@ -168,6 +168,8 @@ test.describe("Auteurs, pages institutionnelles et moteurs", () => {
   test("couverture SVG : aperçu PNG pour les partages", async ({ request }) => {
     const name = `${Date.now()}-${uid().replace(/[^a-z0-9]/gi, "")}.svg`;
     const file = path.join(process.cwd(), "uploads", name);
+    // Dossier absent d'une copie neuve du dépôt (CI) : créé au premier téléversement
+    await mkdir(path.dirname(file), { recursive: true });
     await writeFile(
       file,
       '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="315"><rect width="600" height="315" fill="#0f1622"/></svg>',
