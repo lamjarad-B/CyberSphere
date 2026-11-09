@@ -87,7 +87,7 @@ objectif de premier rang : chaque choix d'implémentation est documenté au §5.
 
 #### Page article (`/articles/[slug]`)
 - Rendu serveur du Markdown : titres ancrés, tableaux GFM, **coloration syntaxique Shiki** (thème `github-dark-default`) — essentielle pour les extraits de code d'un blog cybersec.
-- Métadonnées : catégorie, tags, auteur, date, **compteur de vues** (incrémenté à chaque affichage, en tâche de fond non bloquante).
+- Métadonnées : catégorie, tags, auteur, date, **compteur de vues** (incrémenté en tâche de fond non bloquante ; une vue par visiteur et par article sur 24 h, sans compter les robots ni les admins et auteurs connectés).
 - Section commentaires (cf. §2.4).
 - Un article en brouillon (`DRAFT`) renvoie une 404 pour le public.
 
@@ -379,7 +379,7 @@ Objectif : faire du blog une **vitrine de bonnes pratiques de sécurité** (cré
 - **Newsletter (3.1)** : double opt-in (jeton aléatoire, e-mail de confirmation, anti-harcèlement d'adresses tierces), envoi automatique aux abonnés confirmés à la **première publication** d'un article (via `after()`, hors du chemin de réponse), lien de désinscription dans chaque e-mail.
 - **Réactions & signets (3.2)** : boutons « Utile » (compteur public) et « Ajouter aux signets » sur les articles publiés (état optimiste) ; liste des signets dans `/membre`. *Écart au cahier initial : réactions sur les articles uniquement, pas sur les commentaires — le signalement (3.3) couvre le besoin de retour sur les commentaires.*
 - **Signalements (3.3)** : bouton « Signaler » (motif facultatif, 1 signalement par membre et par commentaire) → file `/admin/signalements` (supprimer / classer sans suite), compteur sur le tableau de bord.
-- **Statistiques (3.4)** : agrégats quotidiens `ArticleDailyView` + référents externes `ReferrerStat` (compteurs anonymes — ni IP, ni cookie, ni identifiant) ; page `/admin/statistiques` : vues 30 j, top articles, référents, abonnés, réactions.
+- **Statistiques (3.4)** : agrégats quotidiens `ArticleDailyView` + référents externes `ReferrerStat` (compteurs anonymes — ni IP, ni cookie, ni identifiant ; le dédoublonnage des vues sur 24 h, par IP ou préfixe IPv6 /64, se fait dans le limiteur en mémoire, jamais en base) ; page `/admin/statistiques` : vues 30 j, top articles, référents, abonnés, réactions.
 - **Rôle auteur (3.5)** : statut `SUBMITTED` ajouté au cycle de vie des articles. L'auteur rédige et **soumet** (jamais de publication directe), ne voit et ne modifie que ses articles non publiés ; l'admin valide et publie. Promotion/rétrogradation depuis `/admin/membres` (auditée).
 - **Divulgation responsable (3.6)** : `/.well-known/security.txt` (RFC 9116, expiration glissante 6 mois, contact `SECURITY_CONTACT`) + page `/securite` (règles d'engagement).
 

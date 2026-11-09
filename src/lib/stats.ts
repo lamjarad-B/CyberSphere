@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { db } from "./db";
-import { rateLimit } from "./rate-limit";
+import { ipBucket, rateLimit } from "./rate-limit";
 import { SITE_URL } from "./site";
 
 const DAY_MS = 24 * 3600 * 1000;
@@ -17,6 +17,13 @@ const MAX_NEW_HOSTS_PER_VISITOR = 5;
 /** Nom d'hôte DNS ou IPv4, port éventuel — rien d'autre n'est enregistré. */
 const HOST_PATTERN = /^[a-z0-9-]+(\.[a-z0-9-]+)*(:\d{1,5})?$/;
 
+/**
+ * Robots d'indexation, aperçus de liens et clients HTTP : ils rendent la page
+ * sans que personne ne la lise. « bot » hors « Cubot », marque de téléphones.
+ */
+const BOT_PATTERN =
+  /(?<!cu)bot|crawl|spider|slurp|scrape|preview|fetch|headless|lighthouse|facebookexternalhit|whatsapp|embedly|iframely|curl|wget|python|httpclient|axios|okhttp|go-http|java\//i;
+
 /** Jour courant en UTC (borne des agrégats quotidiens). */
 function today(): Date {
   const now = new Date();
@@ -25,9 +32,11 @@ function today(): Date {
 
 /**
  * Comptabilise une vue d'article : compteur global + agrégat quotidien +
- * référent externe éventuel. Aucune donnée personnelle enregistrée : ni IP,
- * ni cookie, ni identifiant de visiteur — uniquement des compteurs. L'IP
- * (`visitor`) ne sert qu'au limiteur en mémoire des référents.
+ * référent externe éventuel. Une vue par visiteur et par article sur 24 h :
+ * actualiser la page ou y revenir ne la compte pas de nouveau. Aucune donnée
+ * personnelle enregistrée : ni IP, ni cookie, ni identifiant de visiteur —
+ * uniquement des compteurs. L'IP (`visitor`) ne sert qu'aux limiteurs en
+ * mémoire (vues déjà comptées, référents), oubliés au redémarrage.
  * Référent et IP sont passés en paramètre : conçu pour tourner dans
  * `after()`, où les API de requête (headers) ne sont plus accessibles.
  */
@@ -36,6 +45,10 @@ export async function recordArticleView(
   referrerHost: string | null,
   visitor: string | null,
 ): Promise<void> {
+  // IPv6 ramenée au /64 : une même box change d'adresse dans son préfixe.
+  // IP inconnue : la vue compte, sinon ces visiteurs n'en feraient qu'une.
+  if (visitor && !rateLimit(`vue:${articleId}:${ipBucket(visitor)}`, 1, DAY_MS)) return;
+
   const day = today();
 
   const jobs: Promise<unknown>[] = [
@@ -101,4 +114,14 @@ export function referrerHostFrom(referer: string | null, ownHost: string): strin
 export async function externalReferrerHost(): Promise<string | null> {
   const referer = (await headers()).get("referer");
   return referrerHostFrom(referer, new URL(SITE_URL).host.toLowerCase());
+}
+
+/** Vrai pour un robot ou un script : sans user-agent, ce n'est pas un navigateur. */
+export function isBotUserAgent(userAgent: string | null): boolean {
+  return !userAgent || BOT_PATTERN.test(userAgent);
+}
+
+/** Vrai si la requête vient d'un robot. À appeler pendant le rendu. */
+export async function isBotRequest(): Promise<boolean> {
+  return isBotUserAgent((await headers()).get("user-agent"));
 }

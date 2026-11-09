@@ -22,7 +22,7 @@ export const getSession = cache(async () => {
 
 type AppSession = NonNullable<Awaited<ReturnType<typeof getSession>>>;
 
-function isStaffAccount(session: AppSession | null): session is AppSession {
+export function isStaffAccount(session: AppSession | null): session is AppSession {
   return Boolean(
     session &&
       STAFF_ROLES.includes(session.user.role ?? "") &&

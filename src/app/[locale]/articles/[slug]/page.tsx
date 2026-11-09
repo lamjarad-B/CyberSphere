@@ -4,9 +4,9 @@ import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { db } from "@/lib/db";
 import { requestIp } from "@/lib/audit";
-import { getSession, getStaffSession } from "@/lib/session";
+import { getSession, getStaffSession, isStaffAccount } from "@/lib/session";
 import { extractToc, readingTimeMinutes, renderMarkdown } from "@/lib/markdown";
-import { externalReferrerHost, recordArticleView } from "@/lib/stats";
+import { externalReferrerHost, isBotRequest, recordArticleView } from "@/lib/stats";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { localeHref, toLocale, type Locale } from "@/lib/i18n";
 import { articleCardSelect, categoryLabel, kindLabel, localizeCard } from "@/lib/articles";
@@ -205,17 +205,21 @@ export default async function ArticlePage({ params }: Props) {
     }
   }
 
-  if (article.status === "PUBLISHED") {
-    // Référent et IP se lisent pendant le rendu ; l'écriture part dans after()
-    const [referrerHost, visitor] = await Promise.all([
+  // Les relectures de l'équipe (admins, auteurs) ne sont pas des lectures
+  if (article.status === "PUBLISHED" && !isStaffAccount(session)) {
+    // Référent, IP et user-agent se lisent pendant le rendu ; l'écriture part dans after()
+    const [referrerHost, visitor, bot] = await Promise.all([
       externalReferrerHost().catch(() => null),
       requestIp(),
+      isBotRequest(),
     ]);
-    after(async () => {
-      await recordArticleView(article.id, referrerHost, visitor).catch((error) => {
-        console.error("[stats] vue non comptabilisée :", error);
+    if (!bot) {
+      after(async () => {
+        await recordArticleView(article.id, referrerHost, visitor).catch((error) => {
+          console.error("[stats] vue non comptabilisée :", error);
+        });
       });
-    });
+    }
   }
 
   // Version affichée : traduction anglaise si demandée et disponible,
