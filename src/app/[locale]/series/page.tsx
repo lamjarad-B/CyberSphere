@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { localeHref, toLocale } from "@/lib/i18n";
+import { pageMetadata } from "@/lib/seo";
 import { cardClass } from "@/components/ui";
 
 const copy = {
@@ -24,8 +25,9 @@ const copy = {
 type Props = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const t = copy[toLocale((await params).locale)];
-  return { title: t.title, description: t.description };
+  const locale = toLocale((await params).locale);
+  const t = copy[locale];
+  return pageMetadata({ locale, path: "/series", title: t.title, description: t.description });
 }
 
 export default async function SeriesPage({ params }: Props) {

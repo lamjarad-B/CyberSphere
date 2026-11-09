@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { localeHref, toLocale } from "@/lib/i18n";
+import { NOINDEX } from "@/lib/seo";
 import { RegisterForm } from "@/components/auth/register-form";
 import { cardClass } from "@/components/ui";
 
@@ -19,7 +20,7 @@ const copy = {
 type Props = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  return { title: copy[toLocale((await params).locale)].title };
+  return { title: copy[toLocale((await params).locale)].title, robots: NOINDEX };
 }
 
 export default async function InscriptionPage({ params }: Props) {

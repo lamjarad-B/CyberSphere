@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getSession } from "@/lib/session";
 import { localeHref, toLocale } from "@/lib/i18n";
+import { pageMetadata } from "@/lib/seo";
 import { ContactForm } from "@/components/contact-form";
 import { cardClass } from "@/components/ui";
 
@@ -27,8 +28,9 @@ const copy = {
 type Props = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const t = copy[toLocale((await params).locale)];
-  return { title: t.title, description: t.metaDescription };
+  const locale = toLocale((await params).locale);
+  const t = copy[locale];
+  return pageMetadata({ locale, path: "/contact", title: t.title, description: t.metaDescription });
 }
 
 export default async function ContactPage({ params }: Props) {

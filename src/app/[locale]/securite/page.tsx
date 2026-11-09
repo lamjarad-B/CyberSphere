@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { toLocale } from "@/lib/i18n";
+import { pageMetadata } from "@/lib/seo";
 import { cardClass } from "@/components/ui";
 
 const CONTACT = process.env.SECURITY_CONTACT ?? "lamjarad@gmail.com";
@@ -54,8 +55,14 @@ const copy = {
 type Props = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const t = copy[toLocale((await params).locale)];
-  return { title: t.metaTitle, description: t.metaDescription };
+  const locale = toLocale((await params).locale);
+  const t = copy[locale];
+  return pageMetadata({
+    locale,
+    path: "/securite",
+    title: t.metaTitle,
+    description: t.metaDescription,
+  });
 }
 
 export default async function SecuritePage({ params }: Props) {

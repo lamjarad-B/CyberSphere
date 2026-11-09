@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { localeHref, toLocale } from "@/lib/i18n";
+import { NOINDEX } from "@/lib/seo";
 import { LoginForm } from "@/components/auth/login-form";
 import { cardClass } from "@/components/ui";
 
@@ -24,7 +25,7 @@ type Props = {
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  return { title: copy[toLocale((await params).locale)].title };
+  return { title: copy[toLocale((await params).locale)].title, robots: NOINDEX };
 }
 
 export default async function ConnexionPage({ params, searchParams }: Props) {

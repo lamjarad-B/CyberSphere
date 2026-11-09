@@ -1,13 +1,25 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { localeHref, toLocale } from "@/lib/i18n";
 import { PAGE_SIZE, articleCardSelect, localizeCard, pageNumber } from "@/lib/articles";
+import {
+  NOINDEX,
+  TAG_INDEX_MIN_ARTICLES,
+  breadcrumbJsonLd,
+  pageMetadata,
+  pagedTitle,
+  withQuery,
+} from "@/lib/seo";
 import { ArticleCard } from "@/components/article-card";
+import { JsonLd } from "@/components/json-ld";
 import { Pagination } from "@/components/pagination";
 
 const copy = {
   fr: {
+    home: "Accueil",
+    breadcrumbAria: "Fil d'Ariane",
     title: (name: string) => `Tag : ${name}`,
     description: (name: string) => `Articles portant le tag ${name}.`,
     heading: "Tag :",
@@ -15,6 +27,8 @@ const copy = {
     empty: "Aucun article avec ce tag pour le moment.",
   },
   en: {
+    home: "Home",
+    breadcrumbAria: "Breadcrumb",
     title: (name: string) => `Tag: ${name}`,
     description: (name: string) => `Articles tagged ${name}.`,
     heading: "Tag:",
@@ -28,12 +42,28 @@ type Props = {
   searchParams: Promise<{ page?: string }>;
 };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { locale: rawLocale, slug } = await params;
-  const t = copy[toLocale(rawLocale)];
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+  const [{ locale: rawLocale, slug }, { page: pageParam }] = await Promise.all([
+    params,
+    searchParams,
+  ]);
+  const locale = toLocale(rawLocale);
+  const t = copy[locale];
+  const page = pageNumber(pageParam);
   const tag = await db.tag.findUnique({ where: { slug } });
   if (!tag) return {};
-  return { title: t.title(tag.name), description: t.description(tag.name) };
+  const published = await db.article.count({
+    where: { status: "PUBLISHED", tags: { some: { id: tag.id } } },
+  });
+  return pageMetadata({
+    locale,
+    path: withQuery(`/tags/${slug}`, { page }),
+    title: pagedTitle(t.title(tag.name), page),
+    description: t.description(tag.name),
+    // Trop peu d'articles : la page ne ferait que répéter leurs cartes
+    robots: published < TAG_INDEX_MIN_ARTICLES ? NOINDEX : undefined,
+    feed: { path: `/tags/${slug}/rss.xml`, title: `CyberSphere — #${tag.name}` },
+  });
 }
 
 export default async function TagPage({ params, searchParams }: Props) {
@@ -65,14 +95,37 @@ export default async function TagPage({ params, searchParams }: Props) {
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // Page au-delà de la dernière : vraie 404 plutôt qu'une liste vide en 200
+  if (page > totalPages) notFound();
 
   return (
     <div className="space-y-8">
-      <header>
-        <h1 className="text-3xl font-bold">
-          {t.heading} <span className="font-mono text-accent">#{tag.name}</span>
-        </h1>
-        <p className="mt-2 text-muted">{t.count(total)}</p>
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: t.home, path: localeHref(locale, "/") },
+          { name: `#${tag.name}` },
+        ])}
+      />
+      <header className="space-y-3">
+        <nav aria-label={t.breadcrumbAria}>
+          <ol className="font-mono text-sm text-muted [&>li]:inline">
+            <li>
+              <Link href={localeHref(locale, "/")} className="hover:text-accent">
+                {t.home}
+              </Link>
+              <span aria-hidden>{" / "}</span>
+            </li>
+            <li aria-current="page" className="text-foreground">
+              #{tag.name}
+            </li>
+          </ol>
+        </nav>
+        <div>
+          <h1 className="text-3xl font-bold">
+            {t.heading} <span className="font-mono text-accent">#{tag.name}</span>
+          </h1>
+          <p className="mt-2 text-muted">{t.count(total)}</p>
+        </div>
       </header>
 
       {articles.length === 0 ? (

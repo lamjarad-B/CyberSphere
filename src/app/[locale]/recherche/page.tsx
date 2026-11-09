@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { PAGE_SIZE, pageNumber } from "@/lib/articles";
 import { formatDate } from "@/lib/format";
 import { localeHref, toLocale, type Locale } from "@/lib/i18n";
+import { NOINDEX, pageMetadata } from "@/lib/seo";
 import { Pagination } from "@/components/pagination";
 import { buttonClass, cardClass, inputClass } from "@/components/ui";
 
@@ -46,9 +47,18 @@ type Props = {
   searchParams: Promise<{ q?: string; page?: string }>;
 };
 
+// Résultats de recherche interne : hors index (consigne Google), liens suivis.
+// La canonique ignore la requête : une seule page « Recherche » par langue.
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const t = copy[toLocale((await params).locale)];
-  return { title: t.title, description: t.description };
+  const locale = toLocale((await params).locale);
+  const t = copy[locale];
+  return pageMetadata({
+    locale,
+    path: "/recherche",
+    title: t.title,
+    description: t.description,
+    robots: NOINDEX,
+  });
 }
 
 type SearchRow = {
@@ -228,9 +238,14 @@ export default async function RecherchePage({ params, searchParams }: Props) {
                 >
                   {result.categoryName}
                 </Link>
-                {result.publishedAt
-                  ? ` · ${formatDate(result.publishedAt, locale)}`
-                  : null}
+                {result.publishedAt && (
+                  <>
+                    {" · "}
+                    <time dateTime={result.publishedAt.toISOString()}>
+                      {formatDate(result.publishedAt, locale)}
+                    </time>
+                  </>
+                )}
                 {` · ${result.authorName}`}
               </p>
               <h2 className="text-lg font-bold">

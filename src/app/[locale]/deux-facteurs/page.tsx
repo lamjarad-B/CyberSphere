@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { toLocale } from "@/lib/i18n";
+import { NOINDEX } from "@/lib/seo";
 import { TwoFactorForm } from "@/components/auth/two-factor-form";
 import { cardClass } from "@/components/ui";
 
@@ -22,7 +23,7 @@ type Props = {
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  return { title: copy[toLocale((await params).locale)].title };
+  return { title: copy[toLocale((await params).locale)].title, robots: NOINDEX };
 }
 
 export default async function DeuxFacteursPage({ params, searchParams }: Props) {

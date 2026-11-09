@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { localeHref, toLocale } from "@/lib/i18n";
+import { pageMetadata, pagedTitle, withQuery } from "@/lib/seo";
 import {
   ARTICLE_KINDS,
   PAGE_SIZE,
@@ -18,6 +20,7 @@ const copy = {
   fr: {
     title: "Articles",
     description: "Tous les articles de CyberSphere : analyses, décryptages et points de vue.",
+    kindDescription: (label: string) => `Articles CyberSphere de type « ${label} ».`,
     count: (n: number) => `${n} article${n > 1 ? "s" : ""} publié${n > 1 ? "s" : ""}`,
     empty: "Aucun article publié pour le moment.",
     all: "Tous",
@@ -26,6 +29,7 @@ const copy = {
   en: {
     title: "Articles",
     description: "All CyberSphere articles: analyses, explainers and opinions.",
+    kindDescription: (label: string) => `CyberSphere articles of type “${label}”.`,
     count: (n: number) => `${n} published article${n === 1 ? "" : "s"}`,
     empty: "No articles published yet.",
     all: "All",
@@ -38,9 +42,23 @@ type Props = {
   searchParams: Promise<{ page?: string; type?: string }>;
 };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const t = copy[toLocale((await params).locale)];
-  return { title: t.title, description: t.description };
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+  const [{ locale: rawLocale }, { page: pageParam, type: typeParam }] = await Promise.all([
+    params,
+    searchParams,
+  ]);
+  const locale = toLocale(rawLocale);
+  const t = copy[locale];
+  const page = pageNumber(pageParam);
+  const kind = parseKindParam(typeParam);
+  const label = kind ? kindLabel(kind, locale) : undefined;
+  // Filtre et page valides seulement : ?utm_…, ?type=xyz ou ?page=1 → /articles
+  return pageMetadata({
+    locale,
+    path: withQuery("/articles", { type: kind?.toLowerCase(), page }),
+    title: pagedTitle(label ? `${label} — ${t.title}` : t.title, page),
+    description: label ? t.kindDescription(label) : t.description,
+  });
 }
 
 export default async function ArticlesPage({ params, searchParams }: Props) {
@@ -67,6 +85,8 @@ export default async function ArticlesPage({ params, searchParams }: Props) {
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // Page au-delà de la dernière : vraie 404 plutôt qu'une liste vide en 200
+  if (page > totalPages) notFound();
   const typeQuery = kind ? `type=${kind.toLowerCase()}&` : "";
 
   const chip = (active: boolean) =>
