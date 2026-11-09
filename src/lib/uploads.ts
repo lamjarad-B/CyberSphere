@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import { sanitizeSvg } from "./svg";
@@ -138,9 +138,44 @@ export function uploadUrlsIn(markdown: string | null | undefined): string[] {
 export async function deleteUpload(url: string | null | undefined): Promise<void> {
   const fileName = uploadFileName(url);
   if (!fileName) return;
+  // Un SVG emporte son aperçu PNG éventuel (svgPreview)
+  const files = fileName.endsWith(".svg") ? [fileName, `${fileName}.png`] : [fileName];
+  for (const file of files) {
+    try {
+      await unlink(path.join(UPLOAD_DIR, file));
+    } catch {
+      // déjà absent : rien à faire
+    }
+  }
+}
+
+/** Largeur des aperçus PNG : le minimum que Google Discover recommande. */
+const PREVIEW_WIDTH = 1200;
+
+/**
+ * Aperçu PNG d'un SVG téléversé (`x.svg` → `x.svg.png`), pour les usages qui
+ * refusent le vectoriel : aperçus de liens des réseaux sociaux, image des
+ * données structurées. Rendu à la première demande puis conservé à côté du
+ * SVG (deleteUpload supprime les deux). null si le SVG n'existe pas.
+ */
+export async function svgPreview(previewName: string): Promise<Buffer | null> {
+  const svgName = previewName.replace(/\.png$/i, "");
+  if (!/^[\w-]+\.svg$/i.test(svgName)) return null;
   try {
-    await unlink(path.join(UPLOAD_DIR, fileName));
+    const source = await readFile(path.join(UPLOAD_DIR, svgName));
+    const { width } = await sharp(source).metadata();
+    const density = Math.min(
+      Math.max((SVG_BASE_DENSITY * PREVIEW_WIDTH) / (width || PREVIEW_WIDTH), 1),
+      100_000,
+    );
+    const png = await sharp(source, { density, limitInputPixels: MAX_INPUT_PIXELS })
+      .timeout({ seconds: 10 })
+      .resize({ width: PREVIEW_WIDTH })
+      .png()
+      .toBuffer();
+    await writeFile(path.join(UPLOAD_DIR, `${svgName}.png`), png);
+    return png;
   } catch {
-    // déjà absent : rien à faire
+    return null;
   }
 }

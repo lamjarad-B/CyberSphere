@@ -14,6 +14,13 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // Pas d'en-tête « X-Powered-By: Next.js » : inutile d'annoncer la pile
   poweredByHeader: false,
+  // Métadonnées toujours dans le <head>, pour tous les clients. Par défaut,
+  // Next les diffuse après coup aux navigateurs, à Googlebot et aux robots
+  // d'IA : quand la page se rend plus vite que generateMetadata, title,
+  // canonical, hreflang et robots arrivent dans le <body>, où Google ignore
+  // canonical et hreflang. Les pages étant entièrement rendues avant l'envoi
+  // (pas de Suspense autour du contenu), l'attente supplémentaire est infime.
+  htmlLimitedBots: /.*/,
   experimental: {
     serverActions: {
       // Les Server Actions plafonnent le corps à 1 Mo par défaut : une

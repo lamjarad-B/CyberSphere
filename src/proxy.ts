@@ -13,7 +13,7 @@ const isDev = process.env.NODE_ENV === "development";
 const turnstileEnabled = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
 
 // Chemins servis hors du segment [locale] : jamais réécrits ni redirigés.
-const NON_LOCALIZED = ["/admin", "/.well-known", "/robots.txt", "/sitemap.xml"];
+const NON_LOCALIZED = ["/admin", "/.well-known", "/robots.txt", "/sitemap.xml", "/indexnow.txt"];
 
 /**
  * CSP stricte par requête : chaque script légitime porte un nonce à usage

@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { UPLOAD_DIR } from "@/lib/uploads";
+import { UPLOAD_DIR, svgPreview } from "@/lib/uploads";
 
 const CONTENT_TYPES: Record<string, string> = {
   ".png": "image/png",
@@ -27,7 +27,14 @@ export async function GET(
   if (!type) return new Response("Introuvable", { status: 404 });
 
   try {
-    const data = await readFile(filePath);
+    // Aperçu PNG d'un SVG (x.svg.png) : rendu à la première demande
+    const data = await readFile(filePath).catch(async (error) => {
+      const preview = filePath.endsWith(".svg.png")
+        ? await svgPreview(path.basename(filePath))
+        : null;
+      if (!preview) throw error;
+      return preview;
+    });
     return new Response(new Uint8Array(data), {
       headers: {
         "Content-Type": type,

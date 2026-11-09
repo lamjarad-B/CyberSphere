@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SITE_URL } from "@/lib/site";
+import { DEFAULT_OG_IMAGE, OG_LOCALES, SITE_NAME } from "@/lib/seo";
 import "./globals.css";
 
 // La CSP à nonce exige un rendu dynamique : le nonce est généré par requête
@@ -32,6 +33,23 @@ export async function generateMetadata(): Promise<Metadata> {
     description: english
       ? "CyberSphere: cybersecurity analysis and explainers — threats, geopolitics, regulation and strategy, with technical deep dives now and then."
       : "CyberSphere : analyses et décryptages de la cybersécurité — menaces, géopolitique, régulation et stratégie, avec à l'occasion des articles techniques.",
+    // Pages qui ne définissent pas les leurs (les pages publiques passent par
+    // lib/seo, dont l'Open Graph remplace entièrement celui-ci)
+    openGraph: {
+      type: "website",
+      siteName: SITE_NAME,
+      locale: OG_LOCALES[english ? "en" : "fr"],
+      images: [DEFAULT_OG_IMAGE],
+    },
+    twitter: { card: "summary_large_image" },
+    // Validation de propriété Search Console / Bing Webmaster Tools par balise
+    // (facultatif : la validation DNS dispense de ces variables)
+    verification: {
+      google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+      other: process.env.BING_SITE_VERIFICATION
+        ? { "msvalidate.01": process.env.BING_SITE_VERIFICATION }
+        : undefined,
+    },
     icons: {
       icon: [
         { url: "/images/Logo/cybersphere-favicon-64.png", type: "image/png", sizes: "64x64" },
