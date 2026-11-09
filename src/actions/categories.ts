@@ -10,7 +10,13 @@ import type { ActionResult } from "./comments";
 
 export async function saveCategory(
   id: string | null,
-  input: { name: string; nameEn: string; description: string; parentId: string },
+  input: {
+    name: string;
+    nameEn: string;
+    description: string;
+    descriptionEn: string;
+    parentId: string;
+  },
 ): Promise<ActionResult> {
   const session = await getAdminSession();
   if (!session) return { ok: false, error: "Accès refusé." };
@@ -54,6 +60,7 @@ export async function saveCategory(
           name: data.name,
           nameEn: data.nameEn || null,
           description: data.description || null,
+          descriptionEn: data.descriptionEn || null,
           parentId,
         },
       });
@@ -71,6 +78,7 @@ export async function saveCategory(
           nameEn: data.nameEn || null,
           slug,
           description: data.description || null,
+          descriptionEn: data.descriptionEn || null,
           parentId,
         },
       });

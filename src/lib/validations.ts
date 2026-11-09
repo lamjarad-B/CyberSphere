@@ -118,6 +118,11 @@ export const categorySchema = z.object({
     .max(60, "Le nom anglais est limité à 60 caractères")
     .default(""),
   description: z.string().trim().max(300, "La description est limitée à 300 caractères").default(""),
+  descriptionEn: z
+    .string()
+    .trim()
+    .max(300, "La description anglaise est limitée à 300 caractères")
+    .default(""),
   parentId: z.string().trim().default(""),
 });
 
@@ -190,6 +195,25 @@ export const profileSchema = z.object({
     .trim()
     .min(2, "Le nom doit contenir au moins 2 caractères")
     .max(50, "Le nom est limité à 50 caractères"),
+});
+
+/**
+ * Page auteur publique (membres de l'équipe) : bio facultative dans chaque
+ * langue, profils publics en https, un par ligne. Les lignes vides sont
+ * ignorées ; le texte stocké est la liste nettoyée, jointe par « \n ».
+ */
+export const authorProfileSchema = z.object({
+  bio: z.string().trim().max(600),
+  bioEn: z.string().trim().max(600),
+  links: z
+    .string()
+    .transform((raw) =>
+      raw
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean),
+    )
+    .pipe(z.array(z.url({ protocol: /^https$/ }).max(300)).max(5)),
 });
 
 /** Extrait le premier message d'erreur d'un résultat Zod. */

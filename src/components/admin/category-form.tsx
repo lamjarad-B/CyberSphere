@@ -17,6 +17,7 @@ type CategoryFormProps = {
     name: string;
     nameEn: string;
     description: string;
+    descriptionEn: string;
     parentId: string;
   };
   parents: { id: string; name: string }[];
@@ -37,6 +38,7 @@ export function CategoryForm({ category, parents }: CategoryFormProps) {
         name: String(data.get("name") ?? ""),
         nameEn: String(data.get("nameEn") ?? ""),
         description: String(data.get("description") ?? ""),
+        descriptionEn: String(data.get("descriptionEn") ?? ""),
         parentId: String(data.get("parentId") ?? ""),
       });
       if (!result.ok) {
@@ -112,6 +114,22 @@ export function CategoryForm({ category, parents }: CategoryFormProps) {
           name="description"
           maxLength={300}
           defaultValue={category?.description}
+          className={`${inputClass} min-h-20 resize-y`}
+        />
+      </div>
+
+      <div>
+        <label htmlFor="descriptionEn" className={labelClass}>
+          Description anglaise{" "}
+          <span className="font-normal text-muted">
+            (optionnelle — affichée sur le site en anglais et reprise par les moteurs de recherche)
+          </span>
+        </label>
+        <textarea
+          id="descriptionEn"
+          name="descriptionEn"
+          maxLength={300}
+          defaultValue={category?.descriptionEn}
           className={`${inputClass} min-h-20 resize-y`}
         />
       </div>

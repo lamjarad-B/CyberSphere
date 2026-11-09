@@ -117,6 +117,7 @@ export default async function AdminCategoriesPage({
                     name: editing.name,
                     nameEn: editing.nameEn ?? "",
                     description: editing.description ?? "",
+                    descriptionEn: editing.descriptionEn ?? "",
                     parentId: editing.parentId ?? "",
                   }
                 : undefined
