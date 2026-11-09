@@ -23,7 +23,10 @@ const AltchaWidget = dynamic(() => import("./altcha-widget"), { ssr: false });
 export type CommentView = {
   id: string;
   content: string;
+  /** Date affichée, déjà formatée dans la langue de la page. */
   createdAt: string;
+  /** Même date au format ISO, pour l'attribut datetime de <time>. */
+  createdAtIso: string;
   /** `id` null : commentaire d'un invité, sans compte. */
   author: { id: string | null; name: string; image: string | null };
   replies: CommentView[];
@@ -372,7 +375,9 @@ function CommentItem({
               {t.comments.guest}
             </span>
           )}
-          <span className="text-xs text-muted">· {comment.createdAt}</span>
+          <span className="text-xs text-muted">
+            · <time dateTime={comment.createdAtIso}>{comment.createdAt}</time>
+          </span>
         </div>
 
         {error && <p className={errorClass} role="alert">{error}</p>}

@@ -1,14 +1,21 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { db } from "@/lib/db";
 import { formatDate } from "@/lib/format";
 import { localeHref, toLocale } from "@/lib/i18n";
 import { articleCardSelect, localizeCard } from "@/lib/articles";
-import { ArticleCard } from "@/components/article-card";
+import { organizationJsonLd, pageMetadata, websiteJsonLd } from "@/lib/seo";
+import { ArticleCard, AuthorName } from "@/components/article-card";
+import { CoverFill } from "@/components/cover-image";
+import { JsonLd } from "@/components/json-ld";
 import { buttonClass, buttonGhostClass, cardClass } from "@/components/ui";
 
 const copy = {
   fr: {
+    metaTitle: "CyberSphere — Blog cybersécurité",
+    metaDescription:
+      "CyberSphere : analyses et décryptages de la cybersécurité — menaces, géopolitique, régulation et stratégie, avec à l'occasion des articles techniques.",
     tagline:
       "Analyses et décryptages de la cybersécurité : menaces, géopolitique, régulation et stratégie — et, à l'occasion, de la technique.",
     featured: "À la une",
@@ -19,6 +26,9 @@ const copy = {
     allArticles: "Tous les articles →",
   },
   en: {
+    metaTitle: "CyberSphere — Cybersecurity blog",
+    metaDescription:
+      "CyberSphere: cybersecurity analysis and explainers — threats, geopolitics, regulation and strategy, with technical deep dives now and then.",
     tagline:
       "Cybersecurity analysis and explainers: threats, geopolitics, regulation and strategy — with the occasional technical deep dive.",
     featured: "Featured",
@@ -30,11 +40,22 @@ const copy = {
   },
 };
 
-export default async function HomePage({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
+type Props = { params: Promise<{ locale: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const locale = toLocale((await params).locale);
+  const t = copy[locale];
+  const metadata = pageMetadata({
+    locale,
+    path: "/",
+    title: t.metaTitle,
+    description: t.metaDescription,
+  });
+  // Titre complet : le gabarit « %s — CyberSphere » du layout le doublerait
+  return { ...metadata, title: { absolute: t.metaTitle } };
+}
+
+export default async function HomePage({ params }: Props) {
   const locale = toLocale((await params).locale);
   const t = copy[locale];
 
@@ -60,6 +81,7 @@ export default async function HomePage({
 
   return (
     <div className="space-y-14">
+      <JsonLd data={[organizationJsonLd(), websiteJsonLd(locale, t.metaDescription)]} />
       <section className="pt-4 text-center">
         <p className="font-mono text-sm text-accent">$ whoami --blog</p>
         <h1 className="mx-auto mt-3 max-w-2xl text-4xl font-bold tracking-tight sm:text-5xl">
@@ -75,24 +97,31 @@ export default async function HomePage({
           >
             <Link
               href={localeHref(locale, `/articles/${featured.slug}`)}
-              className="block"
+              // Avec couverture, le lien porte les proportions de l'image :
+              // 1200/630 sur téléphone, hauteur de la carte à partir de md
+              className={
+                featured.coverImage
+                  ? "relative block aspect-[1200/630] w-full md:aspect-auto md:h-full md:min-h-56"
+                  : "block"
+              }
               tabIndex={-1}
               aria-hidden
             >
               {featured.coverImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                // Image principale de l'accueil : préchargée (LCP)
+                <CoverFill
                   src={featured.coverImage}
-                  alt=""
-                  className="aspect-[1200/630] w-full object-cover md:aspect-auto md:h-full md:min-h-56"
+                  sizes="(min-width: 768px) 576px, 100vw"
+                  preload
                 />
               ) : (
                 <div className="flex aspect-video h-full items-center md:aspect-auto md:min-h-56 justify-center bg-gradient-to-br from-accent/20 via-surface to-surface">
+                  {/* Dimensions d'affichage : le srcset de next/image en découle */}
                   <Image
                     src="/images/Logo/cybersphere-icone.png"
                     alt=""
-                    width={1024}
-                    height={1024}
+                    width={96}
+                    height={96}
                     className="h-24 w-24 opacity-40"
                     aria-hidden
                   />
@@ -125,7 +154,10 @@ export default async function HomePage({
               <p className="line-clamp-4 text-muted">{featured.excerpt}</p>
               <div className="mt-auto flex items-center justify-between pt-2">
                 <span className="text-xs text-muted">
-                  {formatDate(featured.publishedAt, locale)} · {featured.author.name}
+                  <time dateTime={featured.publishedAt?.toISOString()}>
+                    {formatDate(featured.publishedAt, locale)}
+                  </time>{" "}
+                  · <AuthorName author={featured.author} locale={locale} />
                 </span>
                 <Link
                   href={localeHref(locale, `/articles/${featured.slug}`)}

@@ -1,5 +1,7 @@
 import { db } from "./db";
 import { logAudit } from "./audit";
+import { ensureAuthorSlug } from "./authors";
+import { articlePaths, notifyIndexNow } from "./indexnow";
 import { toLocale } from "./i18n";
 import { dispatchArticleToSubscribers, subscribeCommenter } from "./newsletter";
 
@@ -28,7 +30,13 @@ function auditRetentionDays(): number {
 export async function publishDueArticles(now = new Date()): Promise<number> {
   const due = await db.article.findMany({
     where: { status: "SCHEDULED", publishedAt: { lte: now } },
-    select: { id: true, title: true },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      authorId: true,
+      translations: { where: { locale: "en" }, select: { id: true } },
+    },
   });
 
   let published = 0;
@@ -48,6 +56,12 @@ export async function publishDueArticles(now = new Date()): Promise<number> {
     await dispatchArticleToSubscribers(article.id).catch((error) => {
       console.error("[programmation] newsletter non envoyée :", error);
     });
+    // Article en ligne : son auteur a désormais une page publique
+    await ensureAuthorSlug(article.authorId).catch((error) => {
+      console.error("[programmation] slug d'auteur non attribué :", error);
+    });
+    // Ne lève jamais (voir lib/indexnow)
+    await notifyIndexNow(articlePaths(article.slug, article.translations.length > 0));
   }
   return published;
 }

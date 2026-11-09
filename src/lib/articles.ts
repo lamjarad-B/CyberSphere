@@ -57,7 +57,7 @@ export const articleCardSelect = {
   coverImage: true,
   publishedAt: true,
   category: { select: { name: true, nameEn: true, slug: true } },
-  author: { select: { name: true } },
+  author: { select: { name: true, slug: true } },
   translations: {
     where: { locale: "en" },
     select: { title: true, excerpt: true },
@@ -72,7 +72,7 @@ type ArticleCardRow = {
   coverImage: string | null;
   publishedAt: Date | null;
   category: { name: string; nameEn: string | null; slug: string };
-  author: { name: string };
+  author: { name: string; slug: string | null };
   translations: { title: string; excerpt: string }[];
 };
 
@@ -95,7 +95,7 @@ export function localizeCard(row: ArticleCardRow, locale: Locale): ArticleCardDa
     coverImage: row.coverImage,
     publishedAt: row.publishedAt,
     category: { name: categoryLabel(row.category, locale), slug: row.category.slug },
-    author: { name: row.author.name },
+    author: { name: row.author.name, slug: row.author.slug },
   };
 }
 

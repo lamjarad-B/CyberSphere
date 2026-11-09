@@ -7,6 +7,7 @@ import rehypePrettyCode from "rehype-pretty-code";
 import rehypeStringify from "rehype-stringify";
 import GithubSlugger from "github-slugger";
 import type { Locale } from "./i18n";
+import { localImageSize } from "./images";
 
 type HastNode = {
   type: string;
@@ -70,6 +71,37 @@ function rehypeImageLinks() {
   return (tree: HastNode) => linkImages(tree);
 }
 
+function collectImages(node: HastNode, images: HastNode[]): void {
+  if (node.tagName === "img") images.push(node);
+  node.children?.forEach((child) => collectImages(child, images));
+}
+
+/**
+ * Plugin rehype : les images du texte se chargent à l'approche de la zone
+ * visible, et celles servies par le site reçoivent leurs dimensions, qui
+ * réservent leur place avant chargement (pas de décalage de mise en page ;
+ * le CSS garde `height: auto`). À placer après rehypeSafeUrls.
+ */
+function rehypeImageAttributes() {
+  return async (tree: HastNode) => {
+    const images: HastNode[] = [];
+    collectImages(tree, images);
+    await Promise.all(
+      images.map(async (image) => {
+        const properties = (image.properties ??= {});
+        properties.loading = "lazy";
+        properties.decoding = "async";
+        if (typeof properties.src !== "string") return;
+        const size = await localImageSize(properties.src);
+        if (size) {
+          properties.width = size.width;
+          properties.height = size.height;
+        }
+      }),
+    );
+  };
+}
+
 // Les notes de bas de page GFM (`[^1]`) servent à citer les sources : la
 // section générée en fin d'article porte un libellé propre à chaque langue.
 // Chaque lien de retour a son propre nom, qui reprend le numéro affiché quand
@@ -110,6 +142,7 @@ function createProcessor(locale: Locale) {
     })
     .use(rehypeImageLinks)
     .use(rehypeSafeUrls)
+    .use(rehypeImageAttributes)
     .use(rehypeStringify);
 }
 
@@ -164,8 +197,12 @@ export function extractToc(markdown: string): TocEntry[] {
   return entries;
 }
 
+/** Nombre de mots du texte (Markdown brut : approximation). */
+export function wordCount(markdown: string): number {
+  return markdown.split(/\s+/).filter(Boolean).length;
+}
+
 /** Temps de lecture estimé, en minutes (220 mots/min, minimum 1). */
 export function readingTimeMinutes(markdown: string): number {
-  const words = markdown.split(/\s+/).filter(Boolean).length;
-  return Math.max(1, Math.round(words / 220));
+  return Math.max(1, Math.round(wordCount(markdown) / 220));
 }

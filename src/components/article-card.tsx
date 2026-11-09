@@ -2,7 +2,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { formatDate } from "@/lib/format";
 import { localeHref, type Locale } from "@/lib/i18n";
+import { authorHref } from "@/lib/authors";
 import { cardClass } from "./ui";
+import { CoverFill } from "./cover-image";
 
 export type ArticleCardData = {
   slug: string;
@@ -13,8 +15,25 @@ export type ArticleCardData = {
   coverImage: string | null;
   publishedAt: Date | null;
   category: { name: string; slug: string };
-  author: { name: string };
+  /** `slug` : page auteur publique, absente tant que l'auteur n'a rien publié. */
+  author: { name: string; slug?: string | null };
 };
+
+/** Nom de l'auteur, lié à sa page quand elle existe. */
+export function AuthorName({
+  author,
+  locale,
+}: {
+  author: ArticleCardData["author"];
+  locale: Locale;
+}) {
+  if (!author.slug) return <>{author.name}</>;
+  return (
+    <Link href={authorHref(author.slug, locale)} className="transition-colors hover:text-accent">
+      {author.name}
+    </Link>
+  );
+}
 
 export function ArticleCard({
   article,
@@ -40,20 +59,20 @@ export function ArticleCard({
         aria-hidden
       >
         {article.coverImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={article.coverImage}
-            alt=""
-            loading="lazy"
-            className="aspect-video w-full object-cover"
-          />
+          <div className="relative aspect-video w-full">
+            <CoverFill
+              src={article.coverImage}
+              sizes="(min-width: 1024px) 352px, (min-width: 640px) 50vw, 100vw"
+            />
+          </div>
         ) : (
           <div className="flex aspect-video w-full items-center justify-center bg-gradient-to-br from-accent/15 via-surface to-surface">
+            {/* Dimensions d'affichage : le srcset de next/image en découle */}
             <Image
               src="/images/Logo/cybersphere-icone.png"
               alt=""
-              width={1024}
-              height={1024}
+              width={64}
+              height={64}
               className="h-16 w-16 opacity-40"
               aria-hidden
             />
@@ -83,7 +102,10 @@ export function ArticleCard({
         <p className="line-clamp-3 text-sm text-muted">{article.excerpt}</p>
         <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2">
           <p className="text-xs text-muted">
-            {formatDate(article.publishedAt, locale)} · {article.author.name}
+            <time dateTime={article.publishedAt?.toISOString()}>
+              {formatDate(article.publishedAt, locale)}
+            </time>{" "}
+            · <AuthorName author={article.author} locale={locale} />
           </p>
           {/* Doublon du lien du titre : masqué au clavier et aux lecteurs d’écran */}
           <Link

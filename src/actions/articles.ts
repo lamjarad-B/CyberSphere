@@ -8,6 +8,8 @@ import { getStaffSession } from "@/lib/session";
 import { deleteUpload, saveImage, uploadUrlsIn } from "@/lib/uploads";
 import { renderMarkdown } from "@/lib/markdown";
 import { slugify, uniqueSlug } from "@/lib/slug";
+import { ensureAuthorSlug } from "@/lib/authors";
+import { articlePaths, notifyIndexNow } from "@/lib/indexnow";
 import { createPreviewToken } from "@/lib/draft-preview";
 import { rateLimit } from "@/lib/rate-limit";
 import { SITE_URL } from "@/lib/site";
@@ -25,6 +27,17 @@ function parseTags(raw: string): string[] {
         .filter((t) => t.length >= 2 && t.length <= 40),
     ),
   ].slice(0, 10);
+}
+
+type ContentFields = Record<string, string | null>;
+
+/**
+ * Vrai si un champ de contenu diffère de la valeur enregistrée (vide et
+ * absent équivalents). Seul un vrai changement de texte date une mise à jour :
+ * statut, catégorie, tags ou épinglage n'en sont pas une.
+ */
+function contentChanged(stored: ContentFields, submitted: ContentFields): boolean {
+  return Object.keys(submitted).some((key) => (stored[key] ?? "") !== (submitted[key] ?? ""));
 }
 
 /** URL /uploads/… du corps d'un article, français et traductions. */
@@ -159,12 +172,26 @@ export async function saveArticle(
     ? await db.article.findUnique({
         where: { id },
         select: {
+          slug: true,
           publishedAt: true,
           status: true,
           authorId: true,
           coverImage: true,
+          title: true,
+          excerpt: true,
           content: true,
-          translations: { select: { content: true } },
+          keyPoints: true,
+          coverAlt: true,
+          translations: {
+            select: {
+              locale: true,
+              title: true,
+              excerpt: true,
+              content: true,
+              keyPoints: true,
+              coverAlt: true,
+            },
+          },
         },
       })
     : null;
@@ -216,6 +243,9 @@ export async function saveArticle(
 
   let justPublished = false;
   let articleId = id;
+  let articleSlug = existing?.slug;
+  // Texte (français ou anglais) réellement modifié : à signaler aux moteurs
+  let textChanged = false;
   let replacedCover: string | null = null;
 
   try {
@@ -231,6 +261,27 @@ export async function saveArticle(
         existing.status === "SCHEDULED" &&
         data.status !== "SCHEDULED" &&
         data.status !== "PUBLISHED";
+      // Date de mise à jour (sitemap, données structurées, « Mis à jour le ») :
+      // seulement si le texte ou la couverture changent réellement
+      const contentEdited =
+        Boolean(coverImage) ||
+        contentChanged(
+          {
+            title: existing.title,
+            excerpt: existing.excerpt,
+            content: existing.content,
+            keyPoints: existing.keyPoints,
+            coverAlt: existing.coverAlt,
+          },
+          {
+            title: data.title,
+            excerpt: data.excerpt,
+            content: data.content,
+            keyPoints: data.keyPoints || null,
+            coverAlt: data.coverAlt || null,
+          },
+        );
+      textChanged = contentEdited;
 
       await db.article.update({
         where: { id },
@@ -251,6 +302,7 @@ export async function saveArticle(
           ...(scheduledAt && { publishedAt: scheduledAt }),
           ...(cancelledSchedule && { publishedAt: null }),
           ...(isAdmin && { featuredUntil }),
+          ...(contentEdited && { contentUpdatedAt: new Date() }),
           tags: { set: [], ...tagOps },
         },
       });
@@ -280,6 +332,7 @@ export async function saveArticle(
           coverImage: coverImage ?? null,
           coverAlt: data.coverAlt || null,
           publishedAt: justPublished ? new Date() : scheduledAt,
+          contentUpdatedAt: new Date(),
           featuredUntil: isAdmin ? featuredUntil : null,
           authorId: session.user.id,
           tags: tagOps,
@@ -287,34 +340,35 @@ export async function saveArticle(
         select: { id: true },
       });
       articleId = created.id;
+      articleSlug = slug;
     }
 
-    // Traduction anglaise : créée/mise à jour si fournie, supprimée sinon
+    // Traduction anglaise : créée/mise à jour si fournie, supprimée sinon.
+    // Réécrite seulement si elle change : son updatedAt date alors la
+    // dernière modification du texte anglais.
     if (articleId) {
+      const translation = {
+        title: data.titleEn,
+        excerpt: data.excerptEn,
+        content: data.contentEn,
+        keyPoints: data.keyPointsEn || null,
+        coverAlt: data.coverAltEn || null,
+      };
+      const storedTranslation = existing?.translations.find((t) => t.locale === "en");
       if (hasTranslation) {
-        await db.articleTranslation.upsert({
-          where: { articleId_locale: { articleId, locale: "en" } },
-          create: {
-            articleId,
-            locale: "en",
-            title: data.titleEn,
-            excerpt: data.excerptEn,
-            content: data.contentEn,
-            keyPoints: data.keyPointsEn || null,
-            coverAlt: data.coverAltEn || null,
-          },
-          update: {
-            title: data.titleEn,
-            excerpt: data.excerptEn,
-            content: data.contentEn,
-            keyPoints: data.keyPointsEn || null,
-            coverAlt: data.coverAltEn || null,
-          },
-        });
+        if (!storedTranslation || contentChanged(storedTranslation, translation)) {
+          await db.articleTranslation.upsert({
+            where: { articleId_locale: { articleId, locale: "en" } },
+            create: { articleId, locale: "en", ...translation },
+            update: translation,
+          });
+          textChanged = true;
+        }
       } else {
         await db.articleTranslation.deleteMany({
           where: { articleId, locale: "en" },
         });
+        if (storedTranslation) textChanged = true;
       }
     }
   } catch {
@@ -370,6 +424,20 @@ export async function saveArticle(
     after(() => dispatchArticleToSubscribers(publishedId));
   }
 
+  // Article en ligne : son auteur a désormais une page publique
+  if (data.status === "PUBLISHED") {
+    await ensureAuthorSlug(existing?.authorId ?? session.user.id).catch((error) => {
+      console.error("[auteurs] slug non attribué :", error);
+    });
+  }
+
+  // Mise en ligne ou texte modifié d'un article publié : Bing et les autres
+  // moteurs IndexNow sont prévenus sans attendre leur prochain passage
+  if (data.status === "PUBLISHED" && articleSlug && (justPublished || textChanged)) {
+    const paths = articlePaths(articleSlug, hasTranslation);
+    after(() => notifyIndexNow(paths));
+  }
+
   revalidatePath("/", "layout");
   return { ok: true };
 }
@@ -382,6 +450,7 @@ export async function deleteArticle(id: string): Promise<ActionResult> {
   const article = await db.article.findUnique({
     where: { id },
     select: {
+      slug: true,
       authorId: true,
       status: true,
       title: true,
@@ -422,6 +491,12 @@ export async function deleteArticle(id: string): Promise<ActionResult> {
     targetId: id,
     detail: article.title,
   });
+
+  // Page retirée : les moteurs constatent la 404 sans attendre leur passage
+  if (article.status === "PUBLISHED") {
+    const paths = articlePaths(article.slug, article.translations.length > 0);
+    after(() => notifyIndexNow(paths));
+  }
 
   revalidatePath("/", "layout");
   return { ok: true };
