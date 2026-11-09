@@ -20,6 +20,13 @@ model User {
   banReason        String?
   banExpires       DateTime?
   twoFactorEnabled Boolean   @default(false)
+  // Page auteur publique (/auteurs/[slug]) des membres de l'équipe qui
+  // publient : slug figé à sa création, bio et liens saisis par l'auteur
+  slug             String?   @unique
+  bio              String?
+  bioEn            String?
+  // Profils publics (un lien https par ligne) : sameAs des données structurées
+  links            String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -133,54 +140,60 @@ enum ArticleKind {
 }
 
 model Category {
-  id          String     @id @default(cuid())
-  name        String
+  id            String     @id @default(cuid())
+  name          String
   // Traduction anglaise optionnelle (repli : valeur française)
-  nameEn      String?
-  slug        String     @unique
-  description String?
-  position    Int        @default(0)
-  parentId    String?
-  parent      Category?  @relation("SubCategories", fields: [parentId], references: [id], onDelete: Cascade)
-  children    Category[] @relation("SubCategories")
-  articles    Article[]
-  createdAt   DateTime   @default(now())
+  nameEn        String?
+  slug          String     @unique
+  description   String?
+  // Traduction anglaise de la description (repli : texte générique)
+  descriptionEn String?
+  position      Int        @default(0)
+  parentId      String?
+  parent        Category?  @relation("SubCategories", fields: [parentId], references: [id], onDelete: Cascade)
+  children      Category[] @relation("SubCategories")
+  articles      Article[]
+  createdAt     DateTime   @default(now())
 }
 
 model Article {
-  id             String                @id @default(cuid())
-  title          String
-  slug           String                @unique
-  excerpt        String
-  content        String
-  kind           ArticleKind           @default(ANALYSIS)
+  id               String                   @id @default(cuid())
+  title            String
+  slug             String                   @unique
+  excerpt          String
+  content          String
+  kind             ArticleKind              @default(ANALYSIS)
   // Encadré « Points clés » : un point par ligne, texte brut
-  keyPoints      String?
-  coverImage     String?
+  keyPoints        String?
+  coverImage       String?
   // Texte alternatif de la couverture (accessibilité)
-  coverAlt       String?
-  status         ArticleStatus         @default(DRAFT)
-  publishedAt    DateTime?
-  views          Int                   @default(0)
+  coverAlt         String?
+  status           ArticleStatus            @default(DRAFT)
+  publishedAt      DateTime?
+  views            Int                      @default(0)
   // Épinglé « À la une » de l'accueil jusqu'à cette date (null : non épinglé)
-  featuredUntil  DateTime?
-  authorId       String
-  author         User                  @relation(fields: [authorId], references: [id])
-  categoryId     String
-  category       Category              @relation(fields: [categoryId], references: [id])
-  seriesId       String?
-  series         Series?               @relation(fields: [seriesId], references: [id], onDelete: SetNull)
-  seriesPosition Int?
+  featuredUntil    DateTime?
+  // Dernière modification du contenu (titre, extrait, texte, points clés,
+  // couverture). updatedAt bouge à chaque écriture, même sans changement de
+  // contenu : seule cette date alimente lastmod, dateModified et « Mis à jour ».
+  contentUpdatedAt DateTime?
+  authorId         String
+  author           User                     @relation(fields: [authorId], references: [id])
+  categoryId       String
+  category         Category                 @relation(fields: [categoryId], references: [id])
+  seriesId         String?
+  series           Series?                  @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+  seriesPosition   Int?
   // Colonne générée en base (migration SQL) : vecteur de recherche français
-  search         Unsupported("tsvector")?
-  translations   ArticleTranslation[]
-  tags           Tag[]
-  comments       Comment[]
-  reactions      Reaction[]
-  bookmarks      Bookmark[]
-  dailyViews     ArticleDailyView[]
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  search           Unsupported("tsvector")?
+  translations     ArticleTranslation[]
+  tags             Tag[]
+  comments         Comment[]
+  reactions        Reaction[]
+  bookmarks        Bookmark[]
+  dailyViews       ArticleDailyView[]
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
 
   @@index([status, publishedAt])
   @@index([featuredUntil])
