@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { updateProfile } from "@/actions/profile";
@@ -13,16 +14,54 @@ import {
   successClass,
 } from "@/components/ui";
 
+// Champs de la page auteur, réservés à l'équipe
+const authorCopy = {
+  fr: {
+    heading: "Page auteur publique",
+    intro:
+      "Affichée sous vos articles et dans les données structurées. Laissez vide ce que vous ne souhaitez pas publier.",
+    bio: "Bio",
+    bioEn: "Bio en anglais",
+    optional: "(facultatif, 600 caractères max)",
+    links: "Profils publics",
+    linksHint: "(une adresse https par ligne, 5 max : LinkedIn, GitHub, site…)",
+    view: "Voir ma page auteur",
+  },
+  en: {
+    heading: "Public author page",
+    intro:
+      "Shown with your articles and in structured data. Leave empty anything you don't want to publish.",
+    bio: "Bio (French)",
+    bioEn: "Bio in English",
+    optional: "(optional, 600 characters max)",
+    links: "Public profiles",
+    linksHint: "(one https address per line, 5 max: LinkedIn, GitHub, website…)",
+    view: "View my author page",
+  },
+};
+
+export type AuthorProfile = {
+  bio: string | null;
+  bioEn: string | null;
+  links: string | null;
+  /** Page publique, une fois le slug attribué */
+  href: string | null;
+};
+
 export function ProfileForm({
   name,
   image,
+  author,
 }: {
   name: string;
   image: string | null;
+  /** Membres de l'équipe uniquement */
+  author?: AuthorProfile;
 }) {
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const labels = t.member.profile;
+  const authorLabels = authorCopy[locale];
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -91,6 +130,64 @@ export function ProfileForm({
           className={inputClass}
         />
       </div>
+
+      {author && (
+        <fieldset className="space-y-4 border-t border-border pt-4">
+          <legend className="pt-4 text-sm font-semibold">{authorLabels.heading}</legend>
+          <p className="text-sm text-muted">{authorLabels.intro}</p>
+          <div>
+            <label htmlFor="bio" className={labelClass}>
+              {authorLabels.bio}{" "}
+              <span className="font-normal text-muted">{authorLabels.optional}</span>
+            </label>
+            <textarea
+              id="bio"
+              name="bio"
+              rows={4}
+              maxLength={600}
+              lang="fr"
+              defaultValue={author.bio ?? ""}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="bioEn" className={labelClass}>
+              {authorLabels.bioEn}{" "}
+              <span className="font-normal text-muted">{authorLabels.optional}</span>
+            </label>
+            <textarea
+              id="bioEn"
+              name="bioEn"
+              rows={4}
+              maxLength={600}
+              lang="en"
+              defaultValue={author.bioEn ?? ""}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="links" className={labelClass}>
+              {authorLabels.links}{" "}
+              <span className="font-normal text-muted">{authorLabels.linksHint}</span>
+            </label>
+            <textarea
+              id="links"
+              name="links"
+              rows={3}
+              spellCheck={false}
+              defaultValue={author.links ?? ""}
+              className={`${inputClass} font-mono text-sm`}
+            />
+          </div>
+          {author.href && (
+            <p className="text-sm">
+              <Link href={author.href} className="text-accent underline">
+                {authorLabels.view}
+              </Link>
+            </p>
+          )}
+        </fieldset>
+      )}
 
       <button type="submit" disabled={pending} className={buttonClass}>
         {pending ? labels.saving : labels.save}

@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/session";
+import { isStaffAccount, requireUser } from "@/lib/session";
+import { authorHref } from "@/lib/authors";
 import { formatDateTime } from "@/lib/format";
 import { localeHref, toLocale } from "@/lib/i18n";
+import { NOINDEX } from "@/lib/seo";
 import { articleCardSelect, localizeCard } from "@/lib/articles";
 import { ProfileForm } from "@/components/membre/profile-form";
 import { PasswordForm } from "@/components/membre/password-form";
@@ -50,7 +52,7 @@ const copy = {
 type Props = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  return { title: copy[toLocale((await params).locale)].title };
+  return { title: copy[toLocale((await params).locale)].title, robots: NOINDEX };
 }
 
 export default async function MembrePage({ params }: Props) {
@@ -61,7 +63,8 @@ export default async function MembrePage({ params }: Props) {
   const [user, passkeys, sessions, bookmarks, comments] = await Promise.all([
     db.user.findUnique({
       where: { id: session.user.id },
-      select: { twoFactorEnabled: true },
+      // Champs de la page auteur : transmis au formulaire pour l'équipe seulement
+      select: { twoFactorEnabled: true, slug: true, bio: true, bioEn: true, links: true },
     }),
     db.passkey.findMany({
       where: { userId: session.user.id },
@@ -100,6 +103,16 @@ export default async function MembrePage({ params }: Props) {
           <ProfileForm
             name={session.user.name}
             image={session.user.image ?? null}
+            author={
+              isStaffAccount(session) && user
+                ? {
+                    bio: user.bio,
+                    bioEn: user.bioEn,
+                    links: user.links,
+                    href: user.slug ? authorHref(user.slug, locale) : null,
+                  }
+                : undefined
+            }
           />
         </section>
 
