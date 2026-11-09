@@ -11,6 +11,7 @@ import {
   parseProfileLinks,
   personJsonLd,
   profilePageJsonLd,
+  websiteJsonLd,
   withQuery,
 } from "@/lib/seo";
 import { shareableImage } from "@/components/cover-image";
@@ -81,6 +82,14 @@ describe("Données structurées", () => {
     expect(json).not.toContain("<");
     expect(JSON.parse(json).name).toBe("</script><script>alert(1)</script>");
     expect(JSON.parse(json)["@context"]).toBe("https://schema.org");
+  });
+
+  it("site : nom et autres graphies du nom", () => {
+    expect(websiteJsonLd("fr", "Blog")).toMatchObject({
+      "@type": "WebSite",
+      name: "CyberSphere",
+      alternateName: ["Cyber Sphere", "cyber-sphere.net"],
+    });
   });
 
   it("regroupe plusieurs nœuds dans un @graph", () => {

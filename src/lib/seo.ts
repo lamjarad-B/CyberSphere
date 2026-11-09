@@ -13,6 +13,9 @@ import { SITE_URL } from "./site";
 
 export const SITE_NAME = "CyberSphere";
 
+/** Graphies sous lesquelles le site est cherché (nom de site dans Google). */
+export const SITE_ALTERNATE_NAMES = ["Cyber Sphere", "cyber-sphere.net"];
+
 /** Image de partage des pages sans couverture exploitable (1200 × 630). */
 export const DEFAULT_OG_IMAGE = {
   url: "/images/og-default.png",
@@ -184,6 +187,8 @@ export function websiteJsonLd(locale: Locale, description: string): JsonLdNode {
     "@id": `${url}#website`,
     url,
     name: SITE_NAME,
+    // Autres graphies du nom, pour que Google relie ces requêtes au site
+    alternateName: SITE_ALTERNATE_NAMES,
     description,
     inLanguage: locale,
     publisher: { "@id": ORGANIZATION_ID },
