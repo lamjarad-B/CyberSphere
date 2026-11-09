@@ -74,6 +74,10 @@ RUN chmod +x docker-entrypoint.sh
 # Répertoire des fichiers téléversés (monté en volume)
 RUN mkdir -p /app/uploads && chown -R nextjs:nodejs /app/uploads /app/prisma
 
+# Cache de l'optimiseur d'images (next/image) : sans droit d'écriture, chaque
+# vignette serait ré-encodée par sharp à chaque requête
+RUN mkdir -p /app/.next/cache && chown -R nextjs:nodejs /app/.next/cache
+
 USER nextjs
 EXPOSE 3000
 

@@ -10,8 +10,7 @@ import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { TopicsMenu } from "./topics-menu";
 import { IDLE_TIMEOUT_SECONDS, SESSION_REFRESH_SECONDS } from "@/lib/session-timeout";
-import { IdleLogout } from "./idle-logout";
-import { UserMenu } from "./user-menu";
+import { IdleLogout, UserMenu } from "./session-controls";
 import { buttonClass, buttonGhostClass } from "./ui";
 import { CloseOnNavigate } from "./close-on-navigate";
 
@@ -34,20 +33,21 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
       <div className="relative mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-3 px-4 sm:gap-4">
         <div className="flex items-center gap-8">
           <Link href={href("/")} className="flex shrink-0 items-center" aria-label="CyberSphere">
+            {/* Trois variantes dont une seule est affichée (thème, largeur) :
+                sans préchargement, le navigateur ne télécharge que la visible
+                — une image masquée en chargement différé n'est jamais demandée */}
             <Image
               src="/images/Logo/cybersphere-lockup-sombre.png"
               alt="CyberSphere"
-              width={1384}
-              height={320}
-              priority
+              width={139}
+              height={32}
               className="hidden h-8 w-auto sm:dark:block"
             />
             <Image
               src="/images/Logo/cybersphere-lockup-clair.png"
               alt="CyberSphere"
-              width={1384}
-              height={320}
-              priority
+              width={139}
+              height={32}
               className="hidden h-8 w-auto sm:block sm:dark:hidden"
             />
             {/* Téléphone : icône seule, le logo complet ne laisse pas la place
@@ -55,9 +55,8 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
             <Image
               src="/images/Logo/cybersphere-icone.png"
               alt="CyberSphere"
-              width={1024}
-              height={1024}
-              priority
+              width={36}
+              height={36}
               className="h-9 w-9 sm:hidden"
             />
           </Link>
