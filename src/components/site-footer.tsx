@@ -17,8 +17,8 @@ export function SiteFooter({ locale }: { locale: Locale }) {
               <Image
                 src="/images/Logo/cybersphere-icone.png"
                 alt=""
-                width={1024}
-                height={1024}
+                width={20}
+                height={20}
                 className="h-5 w-5"
                 aria-hidden
               />
@@ -34,6 +34,9 @@ export function SiteFooter({ locale }: { locale: Locale }) {
               </Link>
               <Link href={href("/series")} className="transition-colors hover:text-accent">
                 {t.series}
+              </Link>
+              <Link href={href("/a-propos")} className="transition-colors hover:text-accent">
+                {t.about}
               </Link>
               <Link href={href("/recherche")} className="transition-colors hover:text-accent">
                 {t.search}
@@ -51,7 +54,17 @@ export function SiteFooter({ locale }: { locale: Locale }) {
           </div>
           <NewsletterForm />
         </div>
-        <p className="text-sm text-muted">© {new Date().getFullYear()} CyberSphere</p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted">
+          <p>© {new Date().getFullYear()} CyberSphere</p>
+          <nav className="flex flex-wrap items-center gap-4" aria-label={t.legalAria}>
+            <Link href={href("/mentions-legales")} className="transition-colors hover:text-accent">
+              {t.legal}
+            </Link>
+            <Link href={href("/confidentialite")} className="transition-colors hover:text-accent">
+              {t.privacy}
+            </Link>
+          </nav>
+        </div>
       </div>
     </footer>
   );

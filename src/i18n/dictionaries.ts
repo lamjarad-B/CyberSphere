@@ -28,6 +28,10 @@ const fr = {
     search: "Recherche",
     reportVuln: "Signaler une faille",
     contact: "Contact",
+    about: "À propos",
+    legalAria: "Informations légales",
+    legal: "Mentions légales",
+    privacy: "Confidentialité",
   },
   contact: {
     name: "Nom",
@@ -315,6 +319,10 @@ const en: Dictionary = {
     search: "Search",
     reportVuln: "Report a vulnerability",
     contact: "Contact",
+    about: "About",
+    legalAria: "Legal information",
+    legal: "Legal notice",
+    privacy: "Privacy",
   },
   contact: {
     name: "Name",
