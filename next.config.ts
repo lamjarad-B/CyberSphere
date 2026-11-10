@@ -12,6 +12,9 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Sortie autonome pour une image Docker minimale (.next/standalone)
   output: "standalone",
+  // Base GeoIP (~127 Mo) lue par lib/geoip : le traçage la copierait dans
+  // .next/standalone ; l'image Docker la reçoit par sa propre étape.
+  outputFileTracingExcludes: { "*": ["geoip/**"] },
   // Pas d'en-tête « X-Powered-By: Next.js » : inutile d'annoncer la pile
   poweredByHeader: false,
   // Métadonnées toujours dans le <head>, pour tous les clients. Par défaut,

@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { db } from "./db";
+import { locateIp } from "./geoip";
 import { ipBucket, rateLimit } from "./rate-limit";
 import { SITE_URL } from "./site";
 
@@ -13,6 +14,12 @@ const DAY_MS = 24 * 3600 * 1000;
 const MAX_REFERRER_HOSTS_PER_DAY = 500;
 /** Hôtes inédits qu'un même visiteur peut introduire par jour. */
 const MAX_NEW_HOSTS_PER_VISITOR = 5;
+
+/**
+ * Lieux distincts par jour : au-delà, une visite ne compte plus que pour son
+ * pays. Borne les lignes créées par un réseau de machines aux IP variées.
+ */
+const MAX_LOCATIONS_PER_DAY = 1000;
 
 /** Nom d'hôte DNS ou IPv4, port éventuel — rien d'autre n'est enregistré. */
 const HOST_PATTERN = /^[a-z0-9-]+(\.[a-z0-9-]+)*(:\d{1,5})?$/;
@@ -85,6 +92,40 @@ async function recordReferrer(host: string, day: Date, visitor: string | null): 
   await db.referrerStat.upsert({
     where: { host_day: { host, day } },
     create: { host, day, count: 1 },
+    update: { count: { increment: 1 } },
+  });
+}
+
+/**
+ * Comptabilise un visiteur du jour (UTC) par pays, région et ville, une seule
+ * fois par visiteur et par jour. L'IP n'est lue qu'en mémoire, dans la base
+ * de géolocalisation locale (lib/geoip) : ni écrite ni transmise. Rien n'est
+ * compté sans IP ou sans base ; une IP absente de la base (réseau privé)
+ * compte comme lieu inconnu. Comme recordArticleView, conçu pour `after()`.
+ */
+export async function recordVisit(visitor: string | null): Promise<void> {
+  if (!visitor) return;
+  const day = today();
+  // Jour dans la clé : un visiteur de 23 h revenu le lendemain compte deux fois
+  if (!rateLimit(`visite:${day.toISOString()}:${ipBucket(visitor)}`, 1, DAY_MS)) return;
+
+  const location = await locateIp(visitor);
+  if (!location) return;
+
+  const { count } = await db.visitorLocationStat.updateMany({
+    where: { day, ...location },
+    data: { count: { increment: 1 } },
+  });
+  if (count > 0) return;
+
+  const place =
+    (await db.visitorLocationStat.count({ where: { day } })) < MAX_LOCATIONS_PER_DAY
+      ? location
+      : { country: location.country, region: "", city: "" };
+  // upsert : deux premiers visiteurs simultanés depuis le même lieu
+  await db.visitorLocationStat.upsert({
+    where: { day_country_region_city: { day, ...place } },
+    create: { day, ...place, count: 1 },
     update: { count: { increment: 1 } },
   });
 }

@@ -1,13 +1,53 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetRateLimits } from "@/lib/rate-limit";
-import { isBotUserAgent, recordArticleView } from "@/lib/stats";
+import { isBotUserAgent, recordArticleView, recordVisit } from "@/lib/stats";
+
+type Place = { day: Date; country: string; region: string; city: string };
 
 // Base en mémoire : compteurs incrémentés (vues totales, du jour, référents)
 const counts = vi.hoisted(() => new Map<string, number>());
+// Provenance : compteur par « jour|pays|région|ville »
+const places = vi.hoisted(() => new Map<string, number>());
+// Base de géolocalisation simulée : IP connues, présence de la base, lignes du jour
+const geo = vi.hoisted(() => ({
+  available: true,
+  rowsToday: null as number | null,
+  locations: {
+    "203.0.113.7": { country: "FR", region: "Auvergne-Rhône-Alpes", city: "Lyon" },
+    "203.0.113.8": { country: "FR", region: "Auvergne-Rhône-Alpes", city: "Lyon" },
+    "198.51.100.1": { country: "BE", region: "Brussels Capital", city: "Brussels" },
+  } as Record<string, { country: string; region: string; city: string }>,
+}));
+
+vi.mock("@/lib/geoip", () => ({
+  locateIp: async (ip: string) =>
+    geo.available ? (geo.locations[ip] ?? { country: "", region: "", city: "" }) : null,
+}));
+
+function placeKey({ day, country, region, city }: Place): string {
+  return [day.toISOString().slice(0, 10), country, region, city].join("|");
+}
+
 vi.mock("@/lib/db", () => {
   const bump = (key: string) => counts.set(key, (counts.get(key) ?? 0) + 1);
   return {
     db: {
+      visitorLocationStat: {
+        updateMany: async ({ where }: { where: Place }) => {
+          const key = placeKey(where);
+          if (!places.has(key)) return { count: 0 };
+          places.set(key, places.get(key)! + 1);
+          return { count: 1 };
+        },
+        count: async ({ where }: { where: { day: Date } }) => {
+          const prefix = `${where.day.toISOString().slice(0, 10)}|`;
+          return geo.rowsToday ?? [...places.keys()].filter((k) => k.startsWith(prefix)).length;
+        },
+        upsert: async ({ where }: { where: { day_country_region_city: Place } }) => {
+          const key = placeKey(where.day_country_region_city);
+          places.set(key, (places.get(key) ?? 0) + 1);
+        },
+      },
       // Gabarit SQL : l'identifiant de l'article est la seule valeur interpolée
       $executeRaw: async (_sql: TemplateStringsArray, articleId: string) =>
         bump(`total:${articleId}`),
@@ -77,6 +117,67 @@ describe("Statistiques : une vue par visiteur", () => {
     await recordArticleView("a", "www.google.com", "203.0.113.7");
     await recordArticleView("a", "www.google.com", "203.0.113.7");
     expect(counts.get("referent:www.google.com")).toBe(1);
+  });
+});
+
+describe("Statistiques : provenance des visiteurs", () => {
+  beforeEach(() => {
+    places.clear();
+    resetRateLimits();
+    geo.available = true;
+    geo.rowsToday = null;
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-10T12:00:00Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("compte un visiteur une fois par jour, par lieu", async () => {
+    await recordVisit("203.0.113.7");
+    await recordVisit("203.0.113.7");
+    await recordVisit("203.0.113.8");
+    await recordVisit("198.51.100.1");
+    expect(Object.fromEntries(places)).toEqual({
+      "2026-11-10|FR|Auvergne-Rhône-Alpes|Lyon": 2,
+      "2026-11-10|BE|Brussels Capital|Brussels": 1,
+    });
+  });
+
+  it("recompte le même visiteur le jour suivant (UTC)", async () => {
+    vi.setSystemTime(new Date("2026-11-10T23:30:00Z"));
+    await recordVisit("203.0.113.7");
+    vi.setSystemTime(new Date("2026-11-11T00:30:00Z"));
+    await recordVisit("203.0.113.7");
+    expect(Object.fromEntries(places)).toEqual({
+      "2026-11-10|FR|Auvergne-Rhône-Alpes|Lyon": 1,
+      "2026-11-11|FR|Auvergne-Rhône-Alpes|Lyon": 1,
+    });
+  });
+
+  it("regroupe les adresses IPv6 d'un même /64", async () => {
+    await recordVisit("2001:db8:1:2::1");
+    await recordVisit("2001:db8:1:2:aaaa::ff");
+    expect(places.get("2026-11-10|||")).toBe(1);
+  });
+
+  it("compte une IP absente de la base comme lieu inconnu", async () => {
+    await recordVisit("10.0.0.1");
+    expect(Object.fromEntries(places)).toEqual({ "2026-11-10|||": 1 });
+  });
+
+  it("ne compte rien sans IP ni sans base", async () => {
+    await recordVisit(null);
+    geo.available = false;
+    await recordVisit("203.0.113.7");
+    expect(places.size).toBe(0);
+  });
+
+  it("au-delà du plafond de lieux du jour, ne garde que le pays", async () => {
+    geo.rowsToday = 1000;
+    await recordVisit("198.51.100.1");
+    expect(Object.fromEntries(places)).toEqual({ "2026-11-10|BE||": 1 });
   });
 });
 

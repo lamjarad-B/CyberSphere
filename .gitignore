@@ -42,6 +42,9 @@ yarn-error.log*
 /uploads/*
 !/uploads/.gitkeep
 
+# base de géolocalisation IP (npm run geoip)
+/geoip/
+
 # vercel
 .vercel
 

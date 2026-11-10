@@ -12,6 +12,7 @@ README.md
 !.env.example
 uploads/*
 !uploads/.gitkeep
+geoip
 .vscode
 *.tsbuildinfo
 test-results

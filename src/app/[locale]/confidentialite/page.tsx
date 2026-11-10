@@ -28,7 +28,7 @@ const copy = {
     title: "Politique de confidentialité",
     metaDescription:
       "Données personnelles traitées par CyberSphere, finalités, durées de conservation, cookies et exercice de vos droits.",
-    updated: "Dernière mise à jour : 9 novembre 2026",
+    updated: "Dernière mise à jour : 10 novembre 2026",
     intro:
       "Cette page décrit les données personnelles que CyberSphere traite, pourquoi, combien de temps, et comment exercer vos droits. Elle suit le fonctionnement réel du site.",
     controllerTitle: "Responsable du traitement",
@@ -42,7 +42,8 @@ const copy = {
     notDone: [
       "Aucune publicité, aucun outil de mesure d'audience tiers, aucun pixel de réseau social.",
       "Aucune donnée n'est vendue ni cédée.",
-      "Les statistiques de lecture sont de simples compteurs (vues par article et par jour, sites d'où viennent les visites) : aucune adresse IP, aucun cookie ni identifiant de visiteur n'y est enregistré.",
+      "Les statistiques de lecture sont de simples compteurs (vues par article et par jour, sites d'où viennent les visites, pays et ville des visiteurs) : aucune adresse IP, aucun cookie ni identifiant de visiteur n'y est enregistré.",
+      "Le pays et la ville sont déduits de l'adresse IP sur le serveur même, dans une base de géolocalisation locale (DB-IP) : l'adresse n'est transmise à aucun service, la localisation ne va pas au-delà de la ville et l'adresse est oubliée aussitôt.",
     ],
     processingTitle: "Données traitées",
     labels: {
@@ -150,7 +151,7 @@ const copy = {
     title: "Privacy policy",
     metaDescription:
       "Personal data processed by CyberSphere, purposes, retention periods, cookies and how to exercise your rights.",
-    updated: "Last updated: 9 November 2026",
+    updated: "Last updated: 10 November 2026",
     intro:
       "This page describes the personal data CyberSphere processes, why, for how long, and how to exercise your rights. It reflects how the site actually works.",
     controllerTitle: "Data controller",
@@ -164,7 +165,8 @@ const copy = {
     notDone: [
       "No advertising, no third-party analytics, no social media pixels.",
       "No data is sold or shared for commercial purposes.",
-      "Reading statistics are plain counters (views per article and per day, sites that send visitors): no IP address, cookie or visitor identifier is stored for them.",
+      "Reading statistics are plain counters (views per article and per day, sites that send visitors, visitors' country and city): no IP address, cookie or visitor identifier is stored for them.",
+      "Country and city are derived from the IP address on the server itself, using a local geolocation database (DB-IP): the address is sent to no service, location goes no finer than the city, and the address is forgotten right away.",
     ],
     processingTitle: "Data processed",
     labels: {

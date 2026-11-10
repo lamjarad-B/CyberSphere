@@ -158,6 +158,35 @@ test.describe("Administration", () => {
     await anonymous.close();
   });
 
+  test("statistiques : provenance des visiteurs du jour", async ({ page }) => {
+    // Sans base GeoIP (CI), aucune visite n'est localisée : compteur posé en base
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const city = `Ville ${uid()}`;
+    const place = await db.visitorLocationStat.create({
+      data: { day: today, country: "FR", region: "Bretagne", city, count: 3 },
+    });
+
+    const admin = await createUser(page.request, "admin");
+    await login(page, admin);
+    await enableTwoFactor(page, admin);
+    await page.goto("/admin/statistiques");
+    await expect(page.getByRole("heading", { name: "Provenance des visiteurs" })).toBeVisible();
+    const row = page.getByRole("row").filter({ hasText: city });
+    await expect(row).toContainText("Bretagne · France");
+    await expect(row).toContainText("3");
+    await expect(page.getByRole("link", { name: "DB-IP" })).toHaveAttribute("href", "https://db-ip.com");
+
+    // La veille : la ville du jour n'y figure pas, retour possible au lendemain
+    await page.getByRole("link", { name: "← Veille" }).click();
+    await expect(page).toHaveURL(/jour=\d{4}-\d{2}-\d{2}/);
+    await expect(page.getByRole("row").filter({ hasText: city })).toHaveCount(0);
+    await page.getByRole("link", { name: "Lendemain →" }).click();
+    await expect(page.getByRole("row").filter({ hasText: city })).toBeVisible();
+
+    await db.visitorLocationStat.delete({ where: { id: place.id } });
+  });
+
   test("API admin refusée sans session", async ({ request }) => {
     const response = await request.get("/api/auth/admin/list-users", {
       headers: { Origin: BASE_URL },

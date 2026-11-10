@@ -378,6 +378,21 @@ model ReferrerStat {
   @@unique([host, day])
 }
 
+// Provenance des visiteurs : un compteur par jour et par lieu. L'IP n'est lue
+// qu'en mémoire pour trouver le lieu (lib/geoip), jamais enregistrée. Lieu
+// inconnu : chaîne vide, NULL rendrait la clé unique inopérante.
+model VisitorLocationStat {
+  id      String   @id @default(cuid())
+  day     DateTime @db.Date
+  // Code ISO 3166-1 alpha-2
+  country String
+  region  String
+  city    String
+  count   Int      @default(0)
+
+  @@unique([day, country, region, city])
+}
+
 // Appareils (navigateurs) déjà vus pour un compte : une connexion depuis un
 // appareil inconnu déclenche une alerte de sécurité par e-mail. Seule une
 // empreinte SHA-256 du user-agent est conservée.

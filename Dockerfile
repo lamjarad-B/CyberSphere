@@ -37,7 +37,17 @@ RUN V=$(node -p "require('/tmp/package-lock.json').packages['node_modules/prisma
   && npm init -y >/dev/null \
   && npm install --no-audit --no-fund prisma@$V
 
-# ---------- Étape 4 : exécution ----------
+# ---------- Étape 4 : base de géolocalisation IP ----------
+# DB-IP City Lite, publiée chaque mois. GEOIP_MONTH (AAAA-MM, fourni par la
+# CI) change chaque mois : la couche en cache est alors retéléchargée, sinon
+# la base resterait figée à son premier téléchargement.
+FROM node:22-bookworm-slim AS geoip
+WORKDIR /geoip
+ARG GEOIP_MONTH=""
+COPY scripts/download-geoip.mjs ./
+RUN node download-geoip.mjs /geoip/dbip-city-lite.mmdb
+
+# ---------- Étape 5 : exécution ----------
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 # Polices pour librsvg (sharp) : sans elles, le texte d'un SVG téléversé est
@@ -67,6 +77,9 @@ COPY --from=builder /app/prisma ./prisma
 
 # CLI Prisma complet, isolé, pour appliquer les migrations au démarrage
 COPY --from=prisma-cli /prisma-cli/node_modules /prisma-cli/node_modules
+
+# Provenance des visiteurs (src/lib/geoip.ts)
+COPY --from=geoip /geoip/dbip-city-lite.mmdb ./geoip/dbip-city-lite.mmdb
 
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x docker-entrypoint.sh

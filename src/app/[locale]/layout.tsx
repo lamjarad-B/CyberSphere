@@ -5,6 +5,7 @@ import { I18nProvider } from "@/components/i18n-provider";
 import { MAIN_CONTENT_ID, SkipLink } from "@/components/skip-link";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { VisitCounter } from "@/components/visit-counter";
 
 export default async function PublicLayout({
   children,
@@ -22,6 +23,7 @@ export default async function PublicLayout({
         {children}
       </main>
       <SiteFooter locale={locale} />
+      <VisitCounter />
     </I18nProvider>
   );
 }

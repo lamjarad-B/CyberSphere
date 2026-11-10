@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { formatDate } from "@/lib/format";
+import { geoipAvailable } from "@/lib/geoip";
 import { requireAdmin } from "@/lib/session";
 import { cardClass } from "@/components/ui";
 
@@ -9,24 +10,69 @@ export const metadata: Metadata = { title: "Statistiques" };
 
 const PERIODS = [7, 30, 90, 365] as const;
 const DEFAULT_PERIOD = 30;
+const DAY_MS = 24 * 3600 * 1000;
+
+const countryNames = new Intl.DisplayNames(["fr"], { type: "region" });
+
+/** Nom français d'un code pays ISO, le code lui-même s'il est inconnu. */
+function countryName(code: string): string {
+  try {
+    return countryNames.of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+/** Jour au format de l'URL (?jour=2026-11-10). */
+function dayParam(day: Date): string {
+  return day.toISOString().slice(0, 10);
+}
+
+/** Lien vers la page en gardant les réglages non par défaut. */
+function statsHref(windowDays: number, day: string, today: string): string {
+  const params = new URLSearchParams();
+  if (windowDays !== DEFAULT_PERIOD) params.set("periode", String(windowDays));
+  if (day !== today) params.set("jour", day);
+  const query = params.toString();
+  return query ? `/admin/statistiques?${query}` : "/admin/statistiques";
+}
 
 export default async function AdminStatistiquesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ periode?: string }>;
+  searchParams: Promise<{ periode?: string; jour?: string }>;
 }) {
   await requireAdmin();
-  const requested = Number((await searchParams).periode);
+  const { periode, jour } = await searchParams;
+  const requested = Number(periode);
   const windowDays = PERIODS.find((days) => days === requested) ?? DEFAULT_PERIOD;
 
   // Borne en UTC, comme les agrégats quotidiens (lib/stats)
   const now = new Date();
-  const since = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - windowDays + 1),
-  );
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const since = new Date(today.getTime() - (windowDays - 1) * DAY_MS);
 
-  const [dailyTotals, topArticles, referrers, subscriberCount, reactionCount] =
-    await Promise.all([
+  // Jour affiché dans « Provenance » : aujourd'hui sauf date passée valide
+  const requestedDay = /^\d{4}-\d{2}-\d{2}$/.test(jour ?? "") ? new Date(`${jour}T00:00:00Z`) : null;
+  const day =
+    requestedDay && !Number.isNaN(requestedDay.getTime()) && requestedDay < today
+      ? requestedDay
+      : today;
+  const todayParam = dayParam(today);
+  const previousDay = dayParam(new Date(day.getTime() - DAY_MS));
+  const nextDay = day < today ? dayParam(new Date(day.getTime() + DAY_MS)) : null;
+
+  const [
+    dailyTotals,
+    topArticles,
+    referrers,
+    subscriberCount,
+    reactionCount,
+    places,
+    countries,
+    todayVisitors,
+    geoip,
+  ] = await Promise.all([
       db.articleDailyView.groupBy({
         by: ["day"],
         where: { day: { gte: since } },
@@ -49,12 +95,28 @@ export default async function AdminStatistiquesPage({
       }),
       db.newsletterSubscriber.count({ where: { confirmed: true } }),
       db.reaction.count(),
+      db.visitorLocationStat.findMany({
+        where: { day },
+        orderBy: [{ count: "desc" }, { country: "asc" }, { city: "asc" }],
+      }),
+      db.visitorLocationStat.groupBy({
+        by: ["country"],
+        where: { day: { gte: since } },
+        _sum: { count: true },
+        orderBy: { _sum: { count: "desc" } },
+        take: 15,
+      }),
+      db.visitorLocationStat.aggregate({ where: { day: today }, _sum: { count: true } }),
+      geoipAvailable(),
     ]);
 
   const totalViews = dailyTotals.reduce(
     (sum, day) => sum + (day._sum.views ?? 0),
     0,
   );
+  const dayVisitors = places.reduce((sum, place) => sum + place.count, 0);
+  const dayNavClass =
+    "rounded-md border border-border px-2.5 py-1 font-mono text-xs text-muted transition-colors hover:border-accent hover:text-accent";
 
   const articles = await db.article.findMany({
     where: { id: { in: topArticles.map((item) => item.articleId) } },
@@ -74,7 +136,7 @@ export default async function AdminStatistiquesPage({
           {PERIODS.map((days) => (
             <Link
               key={days}
-              href={`/admin/statistiques?periode=${days}`}
+              href={statsHref(days, dayParam(day), todayParam)}
               aria-current={days === windowDays ? "page" : undefined}
               className={`rounded-md border px-3 py-1 font-mono text-xs transition-colors ${
                 days === windowDays
@@ -88,8 +150,9 @@ export default async function AdminStatistiquesPage({
         </nav>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
+          { label: "Visiteurs aujourd'hui", value: todayVisitors._sum.count ?? 0 },
           { label: `Vues (${windowDays} j)`, value: totalViews },
           { label: "Abonnés newsletter", value: subscriberCount },
           { label: "Réactions « utile »", value: reactionCount },
@@ -164,6 +227,121 @@ export default async function AdminStatistiquesPage({
             </tbody>
           </table>
         </section>
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-lg font-bold">Provenance des visiteurs</h2>
+        {!geoip && (
+          <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
+            Base de géolocalisation absente : la provenance n&apos;est pas
+            comptée. En local, la télécharger avec{" "}
+            <code className="font-mono text-xs">npm run geoip</code> puis
+            redémarrer le serveur.
+          </p>
+        )}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <section className={`${cardClass} overflow-x-auto`}>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+              <h3 className="text-sm font-bold">
+                {day.getTime() === today.getTime() ? "Aujourd'hui" : formatDate(day)}
+                <span className="ml-2 font-mono font-normal text-accent">
+                  {dayVisitors} visiteur{dayVisitors > 1 ? "s" : ""}
+                </span>
+              </h3>
+              <nav className="flex gap-2" aria-label="Jour affiché">
+                <Link href={statsHref(windowDays, previousDay, todayParam)} className={dayNavClass}>
+                  ← Veille
+                </Link>
+                {nextDay && (
+                  <Link href={statsHref(windowDays, nextDay, todayParam)} className={dayNavClass}>
+                    Lendemain →
+                  </Link>
+                )}
+                {nextDay && nextDay !== todayParam && (
+                  <Link href={statsHref(windowDays, todayParam, todayParam)} className={dayNavClass}>
+                    Aujourd&apos;hui
+                  </Link>
+                )}
+              </nav>
+            </div>
+            <table className="w-full text-sm">
+              <tbody className="divide-y divide-border">
+                {places.length === 0 && (
+                  <tr>
+                    <td className="px-4 py-6 text-center text-muted">
+                      Aucun visiteur ce jour-là.
+                    </td>
+                  </tr>
+                )}
+                {places.map((place) => (
+                  <tr key={place.id}>
+                    <td className="px-4 py-2.5">
+                      {place.country ? (
+                        <>
+                          <span className="font-medium">{place.city || "Ville inconnue"}</span>
+                          <span className="block text-xs text-muted">
+                            {[place.region, countryName(place.country)]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-muted">Lieu inconnu</span>
+                      )}
+                    </td>
+                    <td className="w-20 px-4 py-2.5 text-right font-mono text-accent">
+                      {place.count}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+
+          <section className={`${cardClass} overflow-x-auto`}>
+            <h3 className="border-b border-border px-4 py-3 text-sm font-bold">
+              Pays ({windowDays} j)
+            </h3>
+            <table className="w-full text-sm">
+              <tbody className="divide-y divide-border">
+                {countries.length === 0 && (
+                  <tr>
+                    <td className="px-4 py-6 text-center text-muted">
+                      Aucun visiteur sur la période.
+                    </td>
+                  </tr>
+                )}
+                {countries.map((item) => (
+                  <tr key={item.country}>
+                    <td className="px-4 py-2.5">
+                      {item.country ? countryName(item.country) : (
+                        <span className="text-muted">Lieu inconnu</span>
+                      )}
+                    </td>
+                    <td className="w-20 px-4 py-2.5 text-right font-mono text-accent">
+                      {item._sum.count ?? 0}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        </div>
+        <p className="text-xs text-muted">
+          Un visiteur compte une fois par jour (UTC). L&apos;adresse IP est
+          seulement lue en mémoire pour trouver la ville, puis oubliée. La
+          ville est indicative : les opérateurs mobiles et les VPN placent
+          souvent leurs abonnés dans une grande ville. Géolocalisation IP :{" "}
+          <a
+            href="https://db-ip.com"
+            className="underline hover:text-accent"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            DB-IP
+          </a>{" "}
+          (licence CC BY 4.0).
+        </p>
       </div>
 
       <section className={`${cardClass} overflow-x-auto`}>
