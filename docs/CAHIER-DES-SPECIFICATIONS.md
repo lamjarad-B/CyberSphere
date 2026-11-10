@@ -52,6 +52,13 @@
 >
 > **Note v2.12** — Couverture propre à la version anglaise d'un article
 > (`ArticleTranslation.coverImage?`), avec repli sur la couverture française.
+>
+> **Note v2.13** — Message newsletter par article (`Article.newsletter?`,
+> `newsletterEn?`, repli : extrait ; l'anglais exige la traduction). Langue
+> des e-mails déduite de la page où l'on s'abonne (champ newsletter ou case
+> sous un commentaire), sans choix à faire. Abonné anglophone d'un article
+> non traduit : e-mail en anglais signalant que l'article n'existe qu'en
+> français. Répartition FR/EN des abonnés dans l'éditeur et les statistiques.
 
 ---
 

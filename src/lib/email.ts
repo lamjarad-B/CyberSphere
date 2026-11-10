@@ -231,16 +231,22 @@ Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : aucune n
 /** E-mail « nouvel article publié » envoyé aux abonnés confirmés. */
 export function newArticleEmail(input: {
   title: string;
-  excerpt: string;
+  /** Message newsletter de l'article, à défaut son extrait. */
+  message: string;
+  /** Abonné anglophone, article non traduit : l'e-mail le signale. */
+  frenchOnly?: boolean;
   url: string;
   unsubscribeUrl: string;
   locale?: Locale;
 }): EmailContent {
   if (input.locale === "en") {
+    const intro = input.frenchOnly
+      ? `${input.message}\n\nThis article is only available in French for now.`
+      : input.message;
     return {
       text: `New article on CyberSphere: ${input.title}
 
-${input.excerpt}
+${intro}
 
 Read the article: ${input.url}
 
@@ -248,17 +254,17 @@ Unsubscribe: ${input.unsubscribeUrl}`,
       html: layout(
         "en",
         input.title,
-        input.excerpt,
+        intro,
         "Read the article",
         input.url,
-        `You're receiving this email because you subscribed to the CyberSphere newsletter. <a href="${input.unsubscribeUrl}" style="color:#8b98a9">Unsubscribe</a>`,
+        `You're receiving this email because you subscribed to the CyberSphere newsletter. <a href="${escapeHtml(input.unsubscribeUrl)}" style="color:#8b98a9">Unsubscribe</a>`,
       ),
     };
   }
   return {
     text: `Nouvel article sur CyberSphere : ${input.title}
 
-${input.excerpt}
+${input.message}
 
 Lire l'article : ${input.url}
 
@@ -266,10 +272,10 @@ Se désabonner : ${input.unsubscribeUrl}`,
     html: layout(
       "fr",
       input.title,
-      input.excerpt,
+      input.message,
       "Lire l'article",
       input.url,
-      `Vous recevez cet e-mail car vous êtes abonné à la newsletter CyberSphere. <a href="${input.unsubscribeUrl}" style="color:#8b98a9">Se désabonner</a>`,
+      `Vous recevez cet e-mail car vous êtes abonné à la newsletter CyberSphere. <a href="${escapeHtml(input.unsubscribeUrl)}" style="color:#8b98a9">Se désabonner</a>`,
     ),
   };
 }

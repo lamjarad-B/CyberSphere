@@ -100,6 +100,8 @@ export async function saveArticle(
     featuredUntil: formData.get("featuredUntil") ?? "",
     coverAlt: formData.get("coverAlt") ?? "",
     coverAltEn: formData.get("coverAltEn") ?? "",
+    newsletter: formData.get("newsletter") ?? "",
+    newsletterEn: formData.get("newsletterEn") ?? "",
   });
   if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
   const data = parsed.data;
@@ -113,6 +115,15 @@ export async function saveArticle(
       ok: false,
       error:
         "Traduction anglaise incomplète : remplissez titre, extrait et contenu — ou laissez les trois vides.",
+    };
+  }
+
+  // Les abonnés anglophones ne reçoivent le message anglais qu'avec la
+  // traduction : sans elle, l'e-mail renvoie à l'article français
+  if (data.newsletterEn && !hasTranslation) {
+    return {
+      ok: false,
+      error: "Newsletter (EN) : remplissez aussi la traduction anglaise (titre, extrait et contenu).",
     };
   }
 
@@ -313,6 +324,8 @@ export async function saveArticle(
           seriesPosition: seriesId ? (data.seriesPosition ?? null) : null,
           ...(coverImage && { coverImage }),
           coverAlt: data.coverAlt || null,
+          newsletter: data.newsletter || null,
+          newsletterEn: data.newsletterEn || null,
           // premier passage en "publié" : on fige la date de publication
           ...(justPublished && { publishedAt: new Date() }),
           ...(scheduledAt && { publishedAt: scheduledAt }),
@@ -347,6 +360,8 @@ export async function saveArticle(
           seriesPosition: seriesId ? (data.seriesPosition ?? null) : null,
           coverImage: coverImage ?? null,
           coverAlt: data.coverAlt || null,
+          newsletter: data.newsletter || null,
+          newsletterEn: data.newsletterEn || null,
           publishedAt: justPublished ? new Date() : scheduledAt,
           contentUpdatedAt: new Date(),
           featuredUntil: isAdmin ? featuredUntil : null,

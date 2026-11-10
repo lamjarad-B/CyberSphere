@@ -98,10 +98,25 @@ export async function unsubscribeNewsletter(token: unknown): Promise<boolean> {
   return count > 0;
 }
 
+/** Abonnés confirmés par langue d'envoi (administration). */
+export async function subscriberCountsByLocale(): Promise<Record<Locale, number>> {
+  const groups = await db.newsletterSubscriber.groupBy({
+    by: ["locale"],
+    where: { confirmed: true },
+    _count: true,
+  });
+  const counts: Record<Locale, number> = { fr: 0, en: 0 };
+  for (const group of groups) counts[group.locale === "en" ? "en" : "fr"] += group._count;
+  return counts;
+}
+
 /**
  * Envoie l'e-mail « nouvel article » à tous les abonnés confirmés, chacun
- * dans sa langue (celle du site au moment de son inscription). Les abonnés
- * anglophones reçoivent la traduction si elle existe, sinon l'original.
+ * dans sa langue : celle de la page où il s'est abonné (champ newsletter ou
+ * case cochée sous un commentaire).
+ * Message : le texte newsletter de la langue, à défaut l'extrait. Un abonné
+ * anglophone reçoit la traduction si elle existe ; sinon un e-mail anglais
+ * qui présente l'original et précise qu'il n'est disponible qu'en français.
  * Conçu pour être appelé via `after()` (hors du chemin de réponse) :
  * les échecs individuels sont journalisés sans interrompre l'envoi.
  */
@@ -111,6 +126,8 @@ export async function dispatchArticleToSubscribers(articleId: string): Promise<v
     select: {
       title: true,
       excerpt: true,
+      newsletter: true,
+      newsletterEn: true,
       slug: true,
       status: true,
       translations: {
@@ -131,11 +148,15 @@ export async function dispatchArticleToSubscribers(articleId: string): Promise<v
 
   for (const subscriber of subscribers) {
     const locale: Locale = subscriber.locale === "en" ? "en" : "fr";
-    const title = locale === "en" && en ? en.title : article.title;
-    const excerpt = locale === "en" && en ? en.excerpt : article.excerpt;
+    const translated = locale === "en" && en;
+    const title = translated ? en.title : article.title;
+    const message = translated
+      ? article.newsletterEn || en.excerpt
+      : article.newsletter || article.excerpt;
     const { html, text } = newArticleEmail({
       title,
-      excerpt,
+      message,
+      frenchOnly: locale === "en" && !en,
       url: `${BASE_URL}${localeHref(locale, `/articles/${article.slug}`)}`,
       unsubscribeUrl: `${BASE_URL}${localeHref(
         locale,

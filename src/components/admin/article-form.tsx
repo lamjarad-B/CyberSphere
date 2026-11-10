@@ -41,6 +41,10 @@ export type ArticleFormData = {
   featuredUntil: string | null;
   coverAlt: string;
   coverAltEn: string;
+  newsletter: string;
+  newsletterEn: string;
+  /** Déjà publié une fois : la newsletter est partie, ses messages ne servent plus */
+  newsletterSent: boolean;
   tags: string;
   seriesId: string;
   seriesPosition: number | null;
@@ -55,6 +59,8 @@ type ArticleFormProps = {
   article?: ArticleFormData;
   /** Les auteurs ne peuvent pas publier : ils soumettent à validation. */
   canPublish: boolean;
+  /** Abonnés confirmés par langue d'envoi */
+  subscribers: { fr: number; en: number };
 };
 
 const toolbar: { label: string; title: string; before: string; after: string }[] = [
@@ -87,7 +93,13 @@ function toLocalInput(iso: string | null | undefined): string | undefined {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }
 
-export function ArticleForm({ categories, series, article, canPublish }: ArticleFormProps) {
+export function ArticleForm({
+  categories,
+  series,
+  article,
+  canPublish,
+  subscribers,
+}: ArticleFormProps) {
   const router = useRouter();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -478,6 +490,63 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                   placeholder={"## Introduction\n\nYour article in **Markdown**…"}
                 />
               </div>
+            </div>
+          </details>
+
+          {/* Message de l'e-mail envoyé aux abonnés à la première publication,
+              chacun dans sa langue ; vide, l'extrait en tient lieu */}
+          <details
+            className={`${cardClass} p-5`}
+            open={Boolean(article?.newsletter || article?.newsletterEn)}
+          >
+            <summary className="cursor-pointer text-sm font-semibold">
+              Newsletter{" "}
+              <span className="font-normal text-muted">
+                (facultatif — sinon l&apos;extrait est envoyé)
+              </span>
+            </summary>
+            <div className="mt-4 space-y-4">
+              <p className="text-xs text-muted">
+                {article?.newsletterSent
+                  ? "Newsletter déjà envoyée à la première publication de cet article : ces messages ne seront plus utilisés."
+                  : "Envoyée une seule fois, à la première publication."}{" "}
+                Abonnés confirmés : {subscribers.fr} en français, {subscribers.en} en
+                anglais (langue de la page où ils se sont abonnés). Les anglophones
+                reçoivent le message anglais avec un lien vers la traduction ; sans
+                traduction, un e-mail en anglais qui présente l&apos;article en
+                français.
+              </p>
+              <div>
+                <label htmlFor="newsletter" className={labelClass}>
+                  Message (FR)
+                </label>
+                <textarea
+                  id="newsletter"
+                  name="newsletter"
+                  maxLength={3000}
+                  defaultValue={article?.newsletter}
+                  placeholder="Quelques lignes pour donner envie de lire l'article…"
+                  className={`${inputClass} min-h-28 resize-y`}
+                />
+              </div>
+              <div>
+                <label htmlFor="newsletterEn" className={labelClass}>
+                  Message (EN){" "}
+                  <span className="font-normal text-muted">(avec la traduction anglaise)</span>
+                </label>
+                <textarea
+                  id="newsletterEn"
+                  name="newsletterEn"
+                  maxLength={3000}
+                  defaultValue={article?.newsletterEn}
+                  placeholder="A few lines to make subscribers want to read…"
+                  className={`${inputClass} min-h-28 resize-y`}
+                />
+              </div>
+              <p className="text-xs text-muted">
+                Texte brut : les retours à la ligne sont conservés, le Markdown
+                n&apos;est pas interprété.
+              </p>
             </div>
           </details>
         </div>

@@ -46,6 +46,17 @@ export const articleSchema = z.object({
   // Pas de longueur maximale : un schéma peut demander une longue description
   coverAlt: z.string().trim().default(""),
   coverAltEn: z.string().trim().default(""),
+  // Message de l'e-mail newsletter (facultatif, repli : extrait)
+  newsletter: z
+    .string()
+    .trim()
+    .max(3_000, "Le message newsletter est limité à 3 000 caractères")
+    .default(""),
+  newsletterEn: z
+    .string()
+    .trim()
+    .max(3_000, "Le message newsletter anglais est limité à 3 000 caractères")
+    .default(""),
   seriesId: z.string().trim().default(""),
   seriesPosition: z.coerce
     .number()

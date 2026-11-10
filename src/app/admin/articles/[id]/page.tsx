@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { categoryOptions } from "@/lib/categories";
 import { requireStaff } from "@/lib/session";
+import { subscriberCountsByLocale } from "@/lib/newsletter";
 import { ArticleForm } from "@/components/admin/article-form";
 
 export const metadata: Metadata = { title: "Modifier l'article" };
@@ -16,7 +17,7 @@ export default async function ModifierArticlePage({
   const session = await requireStaff();
   const isAdmin = session.user.role === "admin";
 
-  const [article, categories, seriesList] = await Promise.all([
+  const [article, categories, seriesList, subscribers] = await Promise.all([
     db.article.findUnique({
       where: { id },
       include: {
@@ -26,6 +27,7 @@ export default async function ModifierArticlePage({
     }),
     categoryOptions(),
     db.series.findMany({ orderBy: { title: "asc" }, select: { id: true, title: true } }),
+    subscriberCountsByLocale(),
   ]);
   if (!article) notFound();
   // Un auteur n'ouvre que ses propres articles
@@ -38,6 +40,7 @@ export default async function ModifierArticlePage({
         categories={categories}
         series={seriesList.map((item) => ({ id: item.id, label: item.title }))}
         canPublish={isAdmin}
+        subscribers={subscribers}
         article={{
           id: article.id,
           title: article.title,
@@ -54,6 +57,11 @@ export default async function ModifierArticlePage({
           featuredUntil: article.featuredUntil?.toISOString() ?? null,
           coverAlt: article.coverAlt ?? "",
           coverAltEn: article.translations[0]?.coverAlt ?? "",
+          newsletter: article.newsletter ?? "",
+          newsletterEn: article.newsletterEn ?? "",
+          // La newsletter part à la première publication, et une seule fois :
+          // publishedAt reste posé si l'article repasse en brouillon
+          newsletterSent: article.publishedAt !== null && article.status !== "SCHEDULED",
           tags: article.tags.map((t) => t.name).join(", "),
           seriesId: article.seriesId ?? "",
           seriesPosition: article.seriesPosition,

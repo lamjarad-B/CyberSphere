@@ -168,6 +168,10 @@ model Article {
   coverImage       String?
   // Texte alternatif de la couverture (accessibilité)
   coverAlt         String?
+  // Message de l'e-mail newsletter envoyé à la publication (repli : extrait).
+  // Hors traduction : le modifier ne date pas une mise à jour de l'article.
+  newsletter       String?
+  newsletterEn     String?
   status           ArticleStatus            @default(DRAFT)
   publishedAt      DateTime?
   views            Int                      @default(0)
