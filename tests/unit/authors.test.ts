@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { profilePlatform } from "@/lib/profile-platforms";
 import { authorProfileSchema } from "@/lib/validations";
 
 describe("Profil auteur public", () => {
@@ -26,5 +27,29 @@ describe("Profil auteur public", () => {
     ).toBe(false);
     const six = Array.from({ length: 6 }, (_, i) => `https://exemple.fr/${i}`).join("\n");
     expect(authorProfileSchema.safeParse({ bio: "", bioEn: "", links: six }).success).toBe(false);
+  });
+});
+
+describe("Icônes des profils publics", () => {
+  it.each([
+    ["https://github.com/lamjarad-B", "github"],
+    ["https://linkedin.com/in/brahim-lamjarad/", "linkedin"],
+    ["https://fr.linkedin.com/in/x", "linkedin"],
+    ["https://www.youtube.com/@x", "youtube"],
+    ["https://twitter.com/x", "x"],
+    ["https://x.com/x", "x"],
+    ["https://bsky.app/profile/x.bsky.social", "bluesky"],
+    ["https://infosec.exchange/@x", "mastodon"],
+    ["https://mastodon.xyz/@x", "mastodon"],
+    ["https://x.medium.com/", "medium"],
+  ])("%s → %s", (url, platform) => {
+    expect(profilePlatform(url)).toBe(platform);
+  });
+
+  it("garde le globe pour un site, même hébergé chez une plateforme", () => {
+    expect(profilePlatform("https://lamjarad-b.github.io/Portfolio/")).toBe("website");
+    expect(profilePlatform("https://notgithub.com/x")).toBe("website");
+    expect(profilePlatform("https://exemple.fr")).toBe("website");
+    expect(profilePlatform("pas une url")).toBe("website");
   });
 });

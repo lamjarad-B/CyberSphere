@@ -21,6 +21,7 @@ import {
 import { ArticleCard } from "@/components/article-card";
 import { JsonLd } from "@/components/json-ld";
 import { Pagination } from "@/components/pagination";
+import { ProfileLinkIcon } from "@/components/profile-link-icon";
 
 const copy = {
   fr: {
@@ -189,8 +190,9 @@ export default async function AuthorPage({ params, searchParams }: Props) {
                 <a
                   href={url}
                   rel="me noopener"
-                  className="inline-block rounded-full border border-border px-3 py-1 font-mono text-xs text-muted transition-colors hover:border-accent hover:text-accent"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 font-mono text-xs text-muted transition-colors hover:border-accent hover:text-accent"
                 >
+                  <ProfileLinkIcon url={url} />
                   {linkLabel(url)}
                 </a>
               </li>

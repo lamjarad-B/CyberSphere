@@ -124,7 +124,8 @@ objectif de premier rang : chaque choix d'implémentation est documenté au §5.
   `BETTER_AUTH_SECRET`, servie sur `/indexnow.txt` ; actif seulement en
   production sur un domaine https.
 - **Pages auteurs** (`/auteurs/[slug]`) : bio FR/EN et profils publics saisis
-  par l'auteur depuis son profil, articles publiés, données `ProfilePage` /
+  par l'auteur depuis son profil (icône de la plateforme reconnue d'après
+  l'hôte, globe pour un site), articles publiés, données `ProfilePage` /
   `Person` (`sameAs`). Slug figé, attribué à la première publication.
 - **Pages institutionnelles** : À propos (ligne et méthode éditoriales,
   transparence sur l'assistant IA), mentions légales, politique de
