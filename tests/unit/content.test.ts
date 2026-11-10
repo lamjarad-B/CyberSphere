@@ -22,6 +22,15 @@ describe("Slugs", () => {
     expect(slugify("a".repeat(200))).toHaveLength(80);
   });
 
+  it("tronque à 80 caractères sans couper un mot", () => {
+    const title = "Comprendre la sécurité des applications web modernes face aux attaques par injection";
+    const slug = slugify(title);
+    expect(slug.length).toBeLessThanOrEqual(80);
+    expect(slug).toBe("comprendre-la-securite-des-applications-web-modernes-face-aux-attaques-par");
+    // tiret pile à la limite : le mot précédent est gardé entier
+    expect(slugify(`${"a".repeat(80)} suite`)).toBe("a".repeat(80));
+  });
+
   it("suffixe -2, -3… en cas de collision", async () => {
     const taken = new Set(["owasp", "owasp-2"]);
     expect(await uniqueSlug("owasp", async (slug) => taken.has(slug))).toBe("owasp-3");
