@@ -1,6 +1,6 @@
 # CyberSphere — Cahier des spécifications techniques et fonctionnelles
 
-**Version du document :** 2.8 · **Date :** 5 novembre 2026 · **État du projet :** **v2.8 livrée** (v1 : commit `402fb40`)
+**Version du document :** 2.11 · **Date :** 10 novembre 2026 · **État du projet :** **v2.11 livrée** (v1 : commit `402fb40`)
 
 > **Note v2** — La montée de version proposée au §7 a été **entièrement
 > implémentée** le 10 juillet 2026 : les trois paliers (durcissement sécurité,
@@ -45,6 +45,10 @@
 > **Note v2.9** — Commentaires d'invités publiés aussitôt, sans approbation : les
 > admins sont prévenus par e-mail et peuvent les masquer ou les supprimer.
 > Détails au §15.3.
+>
+> **Note v2.11** — Provenance des visiteurs (pays, région, ville) dans les
+> statistiques, sans stocker d'IP : géolocalisation par une base DB-IP locale,
+> l'adresse ne quitte jamais le serveur. Détails au §16.
 
 ---
 
@@ -195,6 +199,7 @@ objectif de premier rang : chaque choix d'implémentation est documenté au §5.
 | Validation | Zod | 4.4.3 |
 | Rendu Markdown | unified : remark-parse, remark-gfm, remark-rehype, rehype-slug, rehype-pretty-code (Shiki), rehype-stringify | — |
 | E-mail | nodemailer (SMTP) | 9.0.3 |
+| Géolocalisation IP (v2.11) | maxmind : lecture de la base locale DB-IP « IP to City Lite » (`.mmdb`) | 5.x |
 | Thème | next-themes | 0.4.6 |
 | Runtime conteneur | Node.js | 22 (bookworm-slim) |
 
@@ -267,15 +272,15 @@ src/
 
 ### 4.1 Développement
 - `docker-compose.yml` : PostgreSQL 17-alpine sur le port **5433** (5432 occupé par un autre projet sur la machine), publié sur `127.0.0.1` uniquement (§13), volume `db-data`, healthcheck `pg_isready`.
-- `.env` : `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_NAME` (seed), variables `SMTP_*` optionnelles. Modèles fournis : `.env.example`, `.env.production.example`.
+- `.env` : `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_NAME` (seed), variables `SMTP_*` optionnelles, `GEOIP_DB_PATH` optionnelle (base GeoIP, `geoip/dbip-city-lite.mmdb` par défaut, téléchargée par `npm run geoip` — §16). Modèles fournis : `.env.example`, `.env.production.example`.
 - Seed (`prisma/seed.ts`) : crée l'admin depuis les variables d'environnement **via l'API better-auth** (hachage correct), marque son e-mail vérifié — et refuse de promouvoir un compte existant non vérifié (§13) ; catégories/sous-catégories, tags, articles et commentaires de démonstration. Idempotent (upserts). Les **comptes de démonstration** (membre `membre@cybersphere.test`, auteur `auteur@cybersphere.test` — mots de passe en clair dans le dépôt) ne sont créés **que pour une instance locale** (`NEXT_PUBLIC_APP_URL` en `http://localhost…`/`127.0.0.1`, hors `NODE_ENV=production`) ; forçage possible sur base jetable via `SEED_DEMO=1` (cf. §10, §13).
 
 ### 4.2 Production (Docker)
-- **Dockerfile multi-étapes** (deps → build → runner) sur `node:22-bookworm-slim` : sortie autonome Next.js (`output: "standalone"`), image finale minimale.
+- **Dockerfile multi-étapes** (deps → build → runner) sur `node:22-bookworm-slim` : sortie autonome Next.js (`output: "standalone"`), image finale minimale. Depuis la v2.11, une étape dédiée télécharge la base GeoIP embarquée dans l'image (§16.2).
 - Exécution sous **utilisateur non-root** (`nextjs`, uid 1001).
 - `docker-entrypoint.sh` : applique `prisma migrate deploy` au démarrage puis lance le serveur.
 - `docker-compose.prod.yml` : app + PostgreSQL + Caddy + sauvegardes chiffrées (image dérivée de `postgres:17-alpine` avec l'outil `openssl`), volumes persistants `db-data` et `uploads` ; variables indispensables exigées (`${VAR:?…}`).
-- `NEXT_PUBLIC_APP_URL` injectée en build-arg ; télémétrie Next désactivée.
+- `NEXT_PUBLIC_APP_URL` injectée en build-arg, ainsi que `GEOIP_MONTH` (v2.11), qui renouvelle la base GeoIP chaque mois ; télémétrie Next désactivée.
 
 ---
 
@@ -411,7 +416,7 @@ Objectif : faire du blog une **vitrine de bonnes pratiques de sécurité** (cré
 - **Newsletter (3.1)** : double opt-in (jeton aléatoire, e-mail de confirmation, anti-harcèlement d'adresses tierces), envoi automatique aux abonnés confirmés à la **première publication** d'un article (via `after()`, hors du chemin de réponse), lien de désinscription dans chaque e-mail.
 - **Réactions & signets (3.2)** : boutons « Utile » (compteur public) et « Ajouter aux signets » sur les articles publiés (état optimiste) ; liste des signets dans `/membre`. *Écart au cahier initial : réactions sur les articles uniquement, pas sur les commentaires — le signalement (3.3) couvre le besoin de retour sur les commentaires.*
 - **Signalements (3.3)** : bouton « Signaler » (motif facultatif, 1 signalement par membre et par commentaire) → file `/admin/signalements` (supprimer / classer sans suite), compteur sur le tableau de bord.
-- **Statistiques (3.4)** : agrégats quotidiens `ArticleDailyView` + référents externes `ReferrerStat` (compteurs anonymes — ni IP, ni cookie, ni identifiant ; le dédoublonnage des vues sur 24 h, par IP ou préfixe IPv6 /64, se fait dans le limiteur en mémoire, jamais en base) ; page `/admin/statistiques` : vues 30 j, top articles, référents, abonnés, réactions.
+- **Statistiques (3.4)** : agrégats quotidiens `ArticleDailyView` + référents externes `ReferrerStat` (compteurs anonymes — ni IP, ni cookie, ni identifiant ; le dédoublonnage des vues sur 24 h, par IP ou préfixe IPv6 /64, se fait dans le limiteur en mémoire, jamais en base) ; page `/admin/statistiques` : vues 30 j, top articles, référents, abonnés, réactions. Depuis la v2.11, la page indique aussi la provenance des visiteurs (pays, région, ville — table `VisitorLocationStat`, toujours sans IP), comptée sur toutes les pages publiques (§16).
 - **Rôle auteur (3.5)** : statut `SUBMITTED` ajouté au cycle de vie des articles. L'auteur rédige et **soumet** (jamais de publication directe), ne voit et ne modifie que ses articles non publiés ; l'admin valide et publie. Promotion/rétrogradation depuis `/admin/membres` (auditée).
 - **Divulgation responsable (3.6)** : `/.well-known/security.txt` (RFC 9116, expiration glissante 6 mois, contact `SECURITY_CONTACT`) + page `/securite` (règles d'engagement).
 
@@ -445,8 +450,9 @@ sélection automatique de la langue du visiteur. Deux principes directeurs :
 - **`Accept-Language` plutôt que géolocalisation IP** : c'est la
   recommandation de la documentation Next.js, et c'est plus juste — un
   anglophone en France reçoit l'anglais, un francophone au Canada le français.
-  Aucune base GeoIP, aucune donnée personnelle traitée (l'en-tête est déjà
-  dans chaque requête).
+  Aucune géolocalisation IP pour choisir la langue, aucune donnée personnelle
+  traitée (l'en-tête est déjà dans chaque requête). La base GeoIP ajoutée en
+  v2.11 ne sert qu'aux statistiques de provenance (§16).
 - Ordre de priorité dans `src/proxy.ts` : **cookie `NEXT_LOCALE`** (posé par
   le sélecteur de langue, 1 an) → **négociation `Accept-Language`**
   (q-values) → français par défaut.
@@ -869,3 +875,80 @@ Risque accepté : l'adresse saisie n'est pas vérifiée, un commentaire non reti
 `tsc --noEmit` et ESLint sans erreur ; **192 tests unitaires** (preuve rejouée, envois simultanés, défi altéré, expiré ou signé avec une autre clé, validation du formulaire, abonnement différé, sélection de la suppression groupée). **50 tests E2E** réussis sur Chrome, build de production et base jetable : publication immédiate, masquage, réaffichage et suppression, suppression groupée, requête d'administration rejouée par un membre, un auteur et un anonyme, rejeu et fausses preuves, injection, quotas, accessibilité dans les deux thèmes. Parcours contrôlé une fois sur un vrai serveur : administrateurs prévenus à chaque commentaire, aucun e-mail vers l'adresse saisie, abonnement après 24 h sauf si le commentaire a été supprimé ou masqué, e-mail du nouvel article au seul abonné. Temps de résolution mesuré sur un ordinateur de bureau à 16 cœurs : 1,2 à 3 s.
 
 Non vérifié : le widget sous `next dev`, le temps de résolution sur téléphone, l'envoi réel des e-mails (SMTP désactivé pendant les tests : le courrier est écrit dans le journal du serveur).
+
+---
+
+## 16. Provenance des visiteurs — CyberSphere v2.11
+
+Les statistiques comptaient les vues d'articles et les référents, sans dire d'où venaient les lecteurs. La v2.11 ajoute leur provenance (pays, région, ville) sans stocker ni transmettre d'adresse IP : la géolocalisation se fait sur le serveur, dans une base locale, puis l'IP est oubliée.
+
+### 16.1 Base de géolocalisation
+
+| Élément | Choix |
+|---|---|
+| Base | DB-IP « IP to City Lite », format `.mmdb` (~127 Mo), mise à jour chaque mois par DB-IP |
+| Licence | CC BY 4.0 : attribution obligatoire, affichée dans l'administration (§16.5) |
+| Lecture | Paquet `maxmind` (`src/lib/geoip.ts`) ; base chargée en mémoire à la première visite (~130 Mo de RAM) |
+| Emplacement | `GEOIP_DB_PATH`, `geoip/dbip-city-lite.mmdb` par défaut (ignoré par git) |
+| Service externe | Aucun : l'IP ne quitte jamais le serveur |
+
+Sans fichier, la géolocalisation est désactivée : aucune visite n'est comptée et l'administration affiche un avertissement.
+
+### 16.2 Mise à jour de la base
+
+- **En local** : `npm run geoip` (`scripts/download-geoip.mjs`) télécharge le fichier du mois courant, ou celui du mois précédent s'il n'est pas encore publié.
+- **En production** : le Dockerfile télécharge la base au build, dans une étape dédiée. Le job CI `image` passe l'argument `GEOIP_MONTH` (`AAAA-MM`) : sa valeur change chaque mois et invalide le cache Docker de cette étape, si bien que la première image construite dans un nouveau mois embarque la base à jour.
+- **Entre deux builds**, la base vieillit. Risque accepté : les attributions d'adresses IP évoluent lentement.
+
+### 16.3 Comptage
+
+- **Où** : le composant serveur `src/components/visit-counter.tsx`, placé dans le layout public `src/app/[locale]/layout.tsx` : toutes les pages publiques comptent, pas seulement les articles.
+- **Quand** : enregistrement hors du chemin de réponse (`after()`), la page n'attend pas la géolocalisation.
+- **Qui** : ni les robots (même filtre de user-agent que les vues d'articles), ni le staff connecté (admins et auteurs).
+- **Combien** : `recordVisit` (`src/lib/stats.ts`) compte chaque visiteur une fois par jour UTC. Le dédoublonnage passe par le limiteur en mémoire existant, par IP ou préfixe IPv6 /64, jamais par la base.
+- **Lieu inconnu** : une IP absente de la base (réseau privé, par exemple) est comptée en « lieu inconnu ».
+- **Plafond** : 1 000 lieux distincts par jour. Au-delà, une visite n'est comptée que pour son pays (région et ville vides).
+
+### 16.4 Modèle de données
+
+Table `VisitorLocationStat` (migration `20261110090000_v2_11_provenance_visiteurs`) :
+
+| Champ | Contenu |
+|---|---|
+| `day` | Jour UTC (`@db.Date`) |
+| `country` | Code pays ISO 3166-1 alpha-2 |
+| `region`, `city` | Région et ville |
+| `count` | Nombre de visiteurs |
+
+Unicité sur `(day, country, region, city)`. Une valeur inconnue est enregistrée comme chaîne vide.
+
+### 16.5 Administration
+
+Section « Provenance des visiteurs » de `/admin/statistiques` :
+
+- **Visiteurs d'un jour** (aujourd'hui par défaut, navigation jour précédent / jour suivant par `?jour=AAAA-MM-JJ`) : liste par ville, avec région et pays.
+- **Pays les plus représentés** sur la période sélectionnée (7 / 30 / 90 / 365 jours, cf. §11.3).
+- **Attribution** : lien « Géolocalisation IP : DB-IP » vers https://db-ip.com, exigé par la licence CC BY 4.0.
+
+### 16.6 Données personnelles
+
+| Donnée | Traitement |
+|---|---|
+| Adresse IP | Lue en mémoire pour la géolocalisation et le dédoublonnage du jour, puis oubliée : jamais écrite, jamais transmise |
+| Lieu | Agrégé par jour, jamais plus fin que la ville, sans lien avec un visiteur ni cookie |
+
+Le traitement suit les recommandations de la CNIL pour les mesures d'audience exemptées de consentement : géolocalisation limitée à la ville, IP non conservée. La politique de confidentialité le décrit.
+
+### 16.7 Limites
+
+- **Précision** : le pays est fiable (~99 %), la ville indicative. Les opérateurs mobiles rattachent souvent leurs adresses à une grande ville (Paris…) ; VPN, iCloud Private Relay et Tor faussent la position.
+- **IP réelle requise** : `requestIp()` lit le dernier maillon de `X-Forwarded-For` (§13.2). En production, c'est le proxy en façade qui doit le poser, et non le service Caddy du dépôt, inutilisé : sans l'IP du client, la provenance mesurée n'est pas celle du visiteur.
+- **Dédoublonnage en mémoire** : un redémarrage du serveur dans la journée vide le limiteur, un visiteur peut alors être compté deux fois le même jour.
+
+### 16.8 Vérifications effectuées (v2.11)
+
+`tsc --noEmit` et ESLint sans erreur ; **240 tests unitaires**, dont 6 sur la provenance (un visiteur par jour et par lieu, nouveau jour UTC, préfixe IPv6 /64, lieu inconnu, ni IP ni base, plafond quotidien). **27 tests E2E** réussis sur Chrome, build de production et base jetable (administration, accessibilité, indexation), dont l'affichage de la provenance et la navigation entre les jours. Comptage contrôlé sur un serveur de production local avec la vraie base DB-IP : deux pages vues par la même IPv4 et une IPv6 du même opérateur donnent 2 visiteurs à Paris, une IP italienne 1 à Tivoli, une IP privée 1 en « lieu inconnu », Googlebot et curl rien. Le traçage de Next n'embarque pas la base dans `.next/standalone` (`outputFileTracingExcludes`).
+
+Étape Docker `geoip` construite seule : la base (127 Mo) est bien téléchargée dans `/geoip`.
+
+Non vérifié : le build complet de l'image et l'IP reçue derrière le proxy de production.

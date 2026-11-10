@@ -38,8 +38,9 @@ CSP à nonces, journal d'audit…).
 # 1. Base de données (PostgreSQL sur le port 5433)
 docker compose up -d
 
-# 2. Dépendances
+# 2. Dépendances (+ base GeoIP locale, facultative, ~127 Mo)
 npm install
+npm run geoip
 
 # 3. Schéma + données de démonstration
 npx prisma migrate dev
@@ -105,7 +106,7 @@ connexion (origine non approuvée).
 | Visiteur | Lecture, recherche full-text, RSS (global, par catégorie, par tag), newsletter, commentaires sans compte |
 | Membre (`user`) | + Commentaires sous son nom, réactions « utile », signets, signalements, profil, 2FA, passkeys, gestion de ses sessions, export et suppression de son compte (RGPD) |
 | Auteur (`author`) | + Rédaction d'articles (brouillon → soumission à validation, les admins sont prévenus par e-mail) |
-| Admin (`admin`) | + Publication immédiate ou **programmée**, catégories/tags/séries, modération + file de signalements (notification e-mail), membres & rôles, statistiques, journal d'audit |
+| Admin (`admin`) | + Publication immédiate ou **programmée**, catégories/tags/séries, modération + file de signalements (notification e-mail), membres & rôles, statistiques (dont provenance des visiteurs), journal d'audit |
 
 ## Sécurité
 
@@ -152,7 +153,9 @@ connexion (origine non approuvée).
   (`AUDIT_RETENTION_DAYS`, 365 j par
   défaut). L'empreinte d'IP d'un invité (HMAC, jamais l'IP en clair) est
   effacée après 30 jours ; son e-mail, jamais public et réservé aux admins, est
-  supprimé avec le commentaire.
+  supprimé avec le commentaire. La provenance des visiteurs (pays, région,
+  ville) est calculée sur le serveur avec une base GeoIP locale : l'IP n'est
+  ni stockée ni transmise.
 - **Divulgation responsable** : `/.well-known/security.txt` (RFC 9116) + `/securite`.
 
 ## Multilingue (FR/EN)
@@ -213,6 +216,17 @@ tiers. **Aucune configuration** : les clés sont dérivées de
 `BETTER_AUTH_SECRET` et il n'existe pas d'état désactivé. Les détails sont au
 §15 du [cahier des spécifications](docs/CAHIER-DES-SPECIFICATIONS.md).
 
+## Provenance des visiteurs (GeoIP)
+
+`/admin/statistiques` indique d'où viennent les visiteurs (pays, région, ville)
+grâce à une base locale [DB-IP](https://db-ip.com) « IP to City Lite »
+(CC BY 4.0) : aucune API externe, l'IP ne quitte jamais le serveur.
+`npm run geoip` la télécharge dans `geoip/dbip-city-lite.mmdb` (ignoré par
+git) ; `GEOIP_DB_PATH` change cet emplacement. Chargée à la première visite,
+elle occupe ~130 Mo de RAM. Sans fichier, rien n'est compté et
+l'administration le signale. Détails au §16 du
+[cahier des spécifications](docs/CAHIER-DES-SPECIFICATIONS.md).
+
 ## Déploiement Docker (production)
 
 `docker-compose.prod.yml` orchestre **Caddy** (TLS automatique Let's Encrypt +
@@ -248,7 +262,9 @@ Le déploiement se fait **en pull** depuis la VM : aucun port SSH n'est ouvert
 
 1. À chaque push sur `main` dont la CI est verte, le job `image` construit
    l'image de l'application et la publie sur
-   `ghcr.io/lamjarad-b/cybersphere` (tags `latest` et `sha-<commit>`).
+   `ghcr.io/lamjarad-b/cybersphere` (tags `latest` et `sha-<commit>`). La
+   base GeoIP y est téléchargée au build ; l'argument `GEOIP_MONTH` la
+   renouvelle avec la première image de chaque mois.
 2. Sur la VM, un script planifié télécharge l'image et ne relance le
    conteneur que si elle a changé — quelques secondes d'interruption :
 
@@ -307,6 +323,7 @@ Les parcours créent leurs propres comptes (adresses `e2e-…@cybersphere.test`)
 | `npm run db:migrate` | Migrations Prisma |
 | `npm run db:seed` | Données de démonstration |
 | `npm run db:studio` | Interface Prisma Studio |
+| `npm run geoip` | Télécharge la base GeoIP DB-IP du mois (provenance des visiteurs) |
 
 ## Structure
 
@@ -316,7 +333,8 @@ Les parcours créent leurs propres comptes (adresses `e2e-…@cybersphere.test`)
   commentaires, réactions, signalements, newsletter, membres, profil, sessions)
 - `src/app/api/` — auth (better-auth), export RGPD, désabonnement en un clic
 - `src/lib/` — db, auth, session, i18n, markdown (+ TOC), uploads (sharp), rss,
-  stats, newsletter, audit, draft-preview (liens signés), validations,
+  stats, geoip (provenance des visiteurs), newsletter, audit, draft-preview
+  (liens signés), validations,
   notifications (alertes, e-mails admin), maintenance (programmation, purge)
 - `src/i18n/` — dictionnaires FR/EN de l'interface (traduits à la main)
 - `src/proxy.ts` — négociation de langue + CSP à nonces + garde `/admin`, `/membre`
