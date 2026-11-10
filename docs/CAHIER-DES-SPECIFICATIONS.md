@@ -49,6 +49,9 @@
 > **Note v2.11** — Provenance des visiteurs (pays, région, ville) dans les
 > statistiques, sans stocker d'IP : géolocalisation par une base DB-IP locale,
 > l'adresse ne quitte jamais le serveur. Détails au §16.
+>
+> **Note v2.12** — Couverture propre à la version anglaise d'un article
+> (`ArticleTranslation.coverImage?`), avec repli sur la couverture française.
 
 ---
 
@@ -481,7 +484,7 @@ sélection automatique de la langue du visiteur. Deux principes directeurs :
 
 | Modèle | Mécanisme |
 |---|---|
-| `ArticleTranslation` | Nouvelle table : `articleId + locale` uniques, `title`, `excerpt`, `content`, `tsvector` **anglais** maintenu par trigger + index GIN |
+| `ArticleTranslation` | Nouvelle table : `articleId + locale` uniques, `title`, `excerpt`, `content`, `tsvector` **anglais** maintenu par trigger + index GIN ; `coverImage?` (v2.12) : couverture de la version anglaise, servie sous `/en` (page, cartes, Open Graph, JSON-LD) avec repli sur `Article.coverImage`, effacée du disque si remplacée, retirée ou supprimée avec la traduction |
 | `Category.nameEn` | Champ optionnel (repli : nom français) |
 | `Series.titleEn` / `descriptionEn` | Champs optionnels (repli : français) |
 | `NewsletterSubscriber.locale` | Langue du site au moment de l'inscription → langue des e-mails |

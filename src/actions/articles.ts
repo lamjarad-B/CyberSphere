@@ -62,6 +62,7 @@ async function deleteUnreferencedUploads(urls: string[]): Promise<void> {
             { content: { contains: url } },
             { coverImage: url },
             { translations: { some: { content: { contains: url } } } },
+            { translations: { some: { coverImage: url } } },
           ],
         },
         select: { id: true },
@@ -189,6 +190,7 @@ export async function saveArticle(
               excerpt: true,
               content: true,
               keyPoints: true,
+              coverImage: true,
               coverAlt: true,
             },
           },
@@ -217,17 +219,30 @@ export async function saveArticle(
     }
   }
 
+  // Couverture anglaise : portée par la traduction, elle n'existe pas sans elle
+  const coverEn = formData.get("coverEn");
+  const hasCoverEn = coverEn instanceof File && coverEn.size > 0;
+  if (hasCoverEn && !hasTranslation) {
+    return {
+      ok: false,
+      error: "Couverture anglaise : remplissez aussi la traduction anglaise (titre, extrait et contenu).",
+    };
+  }
+
   let coverImage: string | undefined;
+  let coverImageEn: string | undefined;
   const cover = formData.get("cover");
-  if (cover instanceof File && cover.size > 0) {
-    try {
+  try {
+    if (cover instanceof File && cover.size > 0) {
       coverImage = await saveImage(cover, { keepSvg: isAdmin });
-    } catch (error) {
-      return {
-        ok: false,
-        error: error instanceof Error ? error.message : "Upload impossible.",
-      };
     }
+    if (hasCoverEn) coverImageEn = await saveImage(coverEn, { keepSvg: isAdmin });
+  } catch (error) {
+    await deleteUpload(coverImage);
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Upload impossible.",
+    };
   }
 
   // Rapprochement par slug (unique) et non par nom : « Web » et « web », ou
@@ -247,6 +262,7 @@ export async function saveArticle(
   // Texte (français ou anglais) réellement modifié : à signaler aux moteurs
   let textChanged = false;
   let replacedCover: string | null = null;
+  let replacedCoverEn: string | null = null;
 
   try {
     if (id && existing) {
@@ -347,14 +363,23 @@ export async function saveArticle(
     // Réécrite seulement si elle change : son updatedAt date alors la
     // dernière modification du texte anglais.
     if (articleId) {
+      const storedTranslation = existing?.translations.find((t) => t.locale === "en");
+      const storedCoverEn = storedTranslation?.coverImage ?? null;
+      // Nouvelle image, retrait demandé (repli sur la française) ou image conservée
+      const translationCover =
+        coverImageEn ?? (formData.get("removeCoverEn") === "on" ? null : storedCoverEn);
       const translation = {
         title: data.titleEn,
         excerpt: data.excerptEn,
         content: data.contentEn,
         keyPoints: data.keyPointsEn || null,
+        coverImage: translationCover,
         coverAlt: data.coverAltEn || null,
       };
-      const storedTranslation = existing?.translations.find((t) => t.locale === "en");
+      // Remplacée, retirée ou supprimée avec la traduction : fichier à effacer
+      if (storedCoverEn && (!hasTranslation || translationCover !== storedCoverEn)) {
+        replacedCoverEn = storedCoverEn;
+      }
       if (hasTranslation) {
         if (!storedTranslation || contentChanged(storedTranslation, translation)) {
           await db.articleTranslation.upsert({
@@ -372,12 +397,14 @@ export async function saveArticle(
       }
     }
   } catch {
-    // La nouvelle couverture n'est référencée nulle part : on la retire
+    // Les nouvelles couvertures ne sont référencées nulle part : on les retire
     await deleteUpload(coverImage);
+    await deleteUpload(coverImageEn);
     return { ok: false, error: "Enregistrement impossible. Réessayez." };
   }
 
   await deleteUpload(replacedCover);
+  await deleteUpload(replacedCoverEn);
   // Images retirées du texte : l'article est déjà enregistré, celles qu'il
   // cite encore sont donc conservées par la vérification de références
   if (existing) await deleteUnreferencedUploads(bodyUploads(existing));
@@ -456,7 +483,7 @@ export async function deleteArticle(id: string): Promise<ActionResult> {
       title: true,
       coverImage: true,
       content: true,
-      translations: { select: { content: true } },
+      translations: { select: { content: true, coverImage: true } },
     },
   });
   if (!article) return { ok: false, error: "Article introuvable." };
@@ -482,6 +509,7 @@ export async function deleteArticle(id: string): Promise<ActionResult> {
     return { ok: false, error: "Suppression impossible." };
   }
   await deleteUpload(article.coverImage);
+  for (const translation of article.translations) await deleteUpload(translation.coverImage);
   await deleteUnreferencedUploads(bodyUploads(article));
 
   await logAudit({
