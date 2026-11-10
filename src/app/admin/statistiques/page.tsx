@@ -3,6 +3,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { formatDate } from "@/lib/format";
 import { geoipAvailable } from "@/lib/geoip";
+import { subscriberCountsByLocale } from "@/lib/newsletter";
 import { requireAdmin } from "@/lib/session";
 import { cardClass } from "@/components/ui";
 
@@ -66,7 +67,7 @@ export default async function AdminStatistiquesPage({
     dailyTotals,
     topArticles,
     referrers,
-    subscriberCount,
+    subscribers,
     reactionCount,
     places,
     countries,
@@ -93,7 +94,7 @@ export default async function AdminStatistiquesPage({
         orderBy: { _sum: { count: "desc" } },
         take: 10,
       }),
-      db.newsletterSubscriber.count({ where: { confirmed: true } }),
+      subscriberCountsByLocale(),
       db.reaction.count(),
       db.visitorLocationStat.findMany({
         where: { day },
@@ -154,7 +155,11 @@ export default async function AdminStatistiquesPage({
         {[
           { label: "Visiteurs aujourd'hui", value: todayVisitors._sum.count ?? 0 },
           { label: `Vues (${windowDays} j)`, value: totalViews },
-          { label: "Abonnés newsletter", value: subscriberCount },
+          {
+            label: "Abonnés newsletter",
+            value: subscribers.fr + subscribers.en,
+            detail: `${subscribers.fr} FR · ${subscribers.en} EN`,
+          },
           { label: "Réactions « utile »", value: reactionCount },
         ].map((item) => (
           <div key={item.label} className={`${cardClass} p-5`}>
@@ -162,6 +167,7 @@ export default async function AdminStatistiquesPage({
             <p className="mt-1 font-mono text-3xl font-bold text-accent">
               {item.value}
             </p>
+            {"detail" in item && <p className="mt-1 text-xs text-muted">{item.detail}</p>}
           </div>
         ))}
       </div>

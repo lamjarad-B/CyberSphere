@@ -365,15 +365,28 @@ describe("Newsletter : jeton reçu de l'extérieur", () => {
 });
 
 describe("E-mails : échappement HTML", () => {
-  it("échappe titre et extrait de la newsletter", () => {
+  it("échappe titre et message de la newsletter", () => {
     const { html } = newArticleEmail({
       title: '<b>Titre</b> "piégé"',
-      excerpt: "<img src=x onerror=alert(1)>",
+      message: "<img src=x onerror=alert(1)>",
       url: "https://site/a",
       unsubscribeUrl: "https://site/d",
     });
     expect(html).toContain("&lt;b&gt;Titre&lt;/b&gt; &quot;piégé&quot;");
     expect(html).not.toContain("<img src=x");
+  });
+
+  it("signale à un abonné anglophone un article non traduit", () => {
+    const en = newArticleEmail({
+      title: "Titre",
+      message: "Message",
+      frenchOnly: true,
+      url: "https://site/en/a",
+      unsubscribeUrl: "https://site/en/d",
+      locale: "en",
+    });
+    expect(en.text).toContain("Message\n\nThis article is only available in French for now.");
+    expect(en.html).toContain("only available in French");
   });
 
   it("échappe les détails d'une alerte de sécurité (user-agent contrôlé par le client)", () => {
