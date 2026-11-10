@@ -46,8 +46,8 @@ export function parseKeyPoints(raw: string | null | undefined): string[] {
 
 /**
  * Champs nécessaires aux cartes d'article des listes publiques.
- * La traduction anglaise (titre + extrait) est jointe : `localizeCard`
- * choisit la bonne langue avec repli sur le français.
+ * La traduction anglaise (titre, extrait, couverture) est jointe :
+ * `localizeCard` choisit la bonne langue avec repli sur le français.
  */
 export const articleCardSelect = {
   slug: true,
@@ -60,7 +60,7 @@ export const articleCardSelect = {
   author: { select: { name: true, slug: true } },
   translations: {
     where: { locale: "en" },
-    select: { title: true, excerpt: true },
+    select: { title: true, excerpt: true, coverImage: true },
   },
 } as const;
 
@@ -73,7 +73,7 @@ type ArticleCardRow = {
   publishedAt: Date | null;
   category: { name: string; nameEn: string | null; slug: string };
   author: { name: string; slug: string | null };
-  translations: { title: string; excerpt: string }[];
+  translations: { title: string; excerpt: string; coverImage: string | null }[];
 };
 
 /** Nom de catégorie dans la langue demandée (repli : français). */
@@ -92,7 +92,7 @@ export function localizeCard(row: ArticleCardRow, locale: Locale): ArticleCardDa
     title: translation?.title ?? row.title,
     excerpt: translation?.excerpt ?? row.excerpt,
     kind: kindLabel(row.kind, locale),
-    coverImage: row.coverImage,
+    coverImage: translation?.coverImage ?? row.coverImage,
     publishedAt: row.publishedAt,
     category: { name: categoryLabel(row.category, locale), slug: row.category.slug },
     author: { name: row.author.name, slug: row.author.slug },

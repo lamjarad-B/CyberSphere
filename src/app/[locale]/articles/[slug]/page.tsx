@@ -142,7 +142,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       tags: { orderBy: { name: "asc" }, select: { name: true } },
       translations: {
         where: { locale: "en" },
-        select: { title: true, excerpt: true, coverAlt: true, updatedAt: true },
+        select: { title: true, excerpt: true, coverImage: true, coverAlt: true, updatedAt: true },
       },
     },
   });
@@ -158,7 +158,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = translation?.excerpt ?? article.excerpt;
   const coverAlt = (translation ? translation.coverAlt : article.coverAlt) ?? undefined;
   // Couverture SVG : son aperçu PNG, les réseaux sociaux refusant le vectoriel
-  const cover = shareableImage(article.coverImage);
+  const cover = shareableImage(translation?.coverImage ?? article.coverImage);
   const coverSize = cover ? await shareableImageSize(cover) : null;
   return pageMetadata({
     locale,
@@ -202,6 +202,7 @@ export default async function ArticlePage({ params }: Props) {
             excerpt: true,
             content: true,
             keyPoints: true,
+            coverImage: true,
             coverAlt: true,
             updatedAt: true,
           },
@@ -283,6 +284,8 @@ export default async function ArticlePage({ params }: Props) {
   const excerpt = translation?.excerpt ?? article.excerpt;
   const content = translation?.content ?? article.content;
   const coverAlt = (translation ? translation.coverAlt : article.coverAlt) ?? "";
+  // Couverture anglaise si la traduction en a une, sinon la française
+  const coverImage = translation?.coverImage ?? article.coverImage;
   const keyPoints = translation ? translation.keyPoints : article.keyPoints;
 
   const [html, rawComments, viewerReaction, viewerBookmark, similar, coverSize] =
@@ -331,7 +334,7 @@ export default async function ArticlePage({ params }: Props) {
         select: articleCardSelect,
       }),
       // Dimensions de la couverture : sa place est réservée avant chargement
-      article.coverImage ? localImageSize(article.coverImage) : null,
+      coverImage ? localImageSize(coverImage) : null,
     ]);
 
   const toc = extractToc(content);
@@ -410,7 +413,7 @@ export default async function ArticlePage({ params }: Props) {
             authorName: article.author.name,
             authorPath,
             authorSameAs: parseProfileLinks(article.author.links),
-            image: shareableImage(article.coverImage),
+            image: shareableImage(coverImage),
             section: categoryName,
             keywords: article.tags.map((tag) => tag.name),
             wordCount: wordCount(content),
@@ -607,26 +610,26 @@ export default async function ArticlePage({ params }: Props) {
         </aside>
       )}
 
-      {article.coverImage &&
+      {coverImage &&
         (coverSize ? (
           // Image principale de l'article : préchargée, servie à la largeur
           // de la colonne (768 px au plus) plutôt qu'en taille d'origine
           <Image
-            src={article.coverImage}
+            src={coverImage}
             alt={coverAlt}
             lang={contentLang}
             width={coverSize.width}
             height={coverSize.height}
             sizes="(min-width: 768px) 768px, 100vw"
             preload
-            unoptimized={isVectorImage(article.coverImage)}
+            unoptimized={isVectorImage(coverImage)}
             className="w-full rounded-xl border border-border object-cover"
           />
         ) : (
           // Fichier introuvable ou illisible : dimensions inconnues
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={article.coverImage}
+            src={coverImage}
             alt={coverAlt}
             lang={contentLang}
             fetchPriority="high"

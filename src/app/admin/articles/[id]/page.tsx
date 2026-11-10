@@ -44,6 +44,7 @@ export default async function ModifierArticlePage({
           excerpt: article.excerpt,
           content: article.content,
           coverImage: article.coverImage,
+          coverImageEn: article.translations[0]?.coverImage ?? null,
           categoryId: article.categoryId,
           kind: article.kind,
           keyPoints: article.keyPoints ?? "",

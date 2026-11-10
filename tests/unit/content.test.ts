@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { extractToc, readingTimeMinutes, renderMarkdown } from "@/lib/markdown";
 import { slugify, uniqueSlug } from "@/lib/slug";
-import { kindLabel, parseKeyPoints, parseKindParam } from "@/lib/articles";
+import { kindLabel, localizeCard, parseKeyPoints, parseKindParam } from "@/lib/articles";
 import { localeHref, negotiateLocale, toLocale } from "@/lib/i18n";
 import { describeUserAgent } from "@/lib/user-agent";
 import { articleSchema } from "@/lib/validations";
@@ -11,6 +11,37 @@ describe("Texte alternatif des couvertures", () => {
     const description = "Un schéma décrit en détail. ".repeat(200);
     expect(articleSchema.shape.coverAlt.parse(description)).toBe(description.trim());
     expect(articleSchema.shape.coverAltEn.parse(description)).toBe(description.trim());
+  });
+});
+
+describe("Couverture anglaise des cartes", () => {
+  const row = {
+    slug: "rancongiciels",
+    title: "Rançongiciels",
+    excerpt: "Extrait",
+    kind: "ANALYSIS" as const,
+    coverImage: "/uploads/fr.webp",
+    publishedAt: null,
+    category: { name: "Menaces", nameEn: "Threats", slug: "menaces" },
+    author: { name: "Auteur", slug: null },
+  };
+
+  it("sert la couverture anglaise sous /en, la française sinon", () => {
+    const translated = {
+      ...row,
+      translations: [{ title: "Ransomware", excerpt: "Excerpt", coverImage: "/uploads/en.webp" }],
+    };
+    expect(localizeCard(translated, "en").coverImage).toBe("/uploads/en.webp");
+    expect(localizeCard(translated, "fr").coverImage).toBe("/uploads/fr.webp");
+  });
+
+  it("reprend la couverture française si la traduction n'en a pas", () => {
+    const translated = {
+      ...row,
+      translations: [{ title: "Ransomware", excerpt: "Excerpt", coverImage: null }],
+    };
+    expect(localizeCard(translated, "en").coverImage).toBe("/uploads/fr.webp");
+    expect(localizeCard({ ...row, translations: [] }, "en").coverImage).toBe("/uploads/fr.webp");
   });
 });
 

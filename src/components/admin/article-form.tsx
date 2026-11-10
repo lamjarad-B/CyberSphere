@@ -28,6 +28,8 @@ export type ArticleFormData = {
   excerpt: string;
   content: string;
   coverImage: string | null;
+  /** Couverture de la traduction anglaise (null : reprend la française) */
+  coverImageEn: string | null;
   categoryId: string;
   kind: ArticleKindValue;
   keyPoints: string;
@@ -667,6 +669,42 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                 defaultValue={article?.coverAlt}
                 className={inputClass}
               />
+              <p className="mt-1 text-xs text-muted">
+                Laissez vide si l&apos;image est purement décorative.
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="coverEn" className={labelClass}>
+                Image de couverture (EN){" "}
+                <span className="font-normal text-muted">(facultatif)</span>
+              </label>
+              {article?.coverImageEn && (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={article.coverImageEn}
+                    alt="Couverture anglaise actuelle"
+                    className="mb-2 aspect-video w-full rounded-md border border-border object-cover"
+                  />
+                  <label className="mb-2 flex items-center gap-2 text-sm text-muted">
+                    <input type="checkbox" name="removeCoverEn" />
+                    Retirer (reprendre la couverture française)
+                  </label>
+                </>
+              )}
+              <input
+                id="coverEn"
+                name="coverEn"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                className="block w-full text-sm text-muted file:mr-3 file:rounded-md file:border file:border-border file:bg-surface file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground"
+              />
+              <p className="mt-1 text-xs text-muted">
+                Version anglaise de l&apos;image, servie sous /en avec la traduction
+                (obligatoire pour l&apos;envoyer). Sans elle, la couverture française est
+                reprise.
+              </p>
               <label htmlFor="coverAltEn" className={`${labelClass} mt-3`}>
                 Texte alternatif (EN) <span className="font-normal text-muted">(facultatif)</span>
               </label>
@@ -677,9 +715,6 @@ export function ArticleForm({ categories, series, article, canPublish }: Article
                 defaultValue={article?.coverAltEn}
                 className={inputClass}
               />
-              <p className="mt-1 text-xs text-muted">
-                Laissez vide si l&apos;image est purement décorative.
-              </p>
             </div>
           </div>
 

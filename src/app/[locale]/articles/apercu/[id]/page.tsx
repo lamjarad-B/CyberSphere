@@ -53,7 +53,7 @@ export default async function ApercuPage({ params, searchParams }: Props) {
       tags: { orderBy: { name: "asc" } },
       translations: {
         where: { locale: "en" },
-        select: { title: true, excerpt: true, content: true, keyPoints: true },
+        select: { title: true, excerpt: true, content: true, keyPoints: true, coverImage: true },
       },
     },
   });
@@ -65,6 +65,7 @@ export default async function ApercuPage({ params, searchParams }: Props) {
     translation?.content ?? article.content,
     translation ? "en" : "fr",
   );
+  const coverImage = translation?.coverImage ?? article.coverImage;
 
   return (
     <article className="mx-auto max-w-3xl space-y-8">
@@ -93,10 +94,10 @@ export default async function ApercuPage({ params, searchParams }: Props) {
 
       <KeyPoints raw={translation ? translation.keyPoints : article.keyPoints} locale={locale} />
 
-      {article.coverImage && (
+      {coverImage && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={article.coverImage}
+          src={coverImage}
           alt=""
           className="w-full rounded-xl border border-border object-cover"
         />
