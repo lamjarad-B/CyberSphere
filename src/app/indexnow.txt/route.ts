@@ -8,6 +8,11 @@ export function GET() {
   const key = indexNowKey();
   if (!key) return new Response("Introuvable", { status: 404 });
   return new Response(key, {
-    headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=86400" },
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "public, max-age=86400",
+      // Fichier technique, sans intérêt dans les résultats de recherche
+      "X-Robots-Tag": "noindex",
+    },
   });
 }

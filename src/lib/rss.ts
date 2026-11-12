@@ -83,6 +83,9 @@ ${items}
     headers: {
       "Content-Type": "application/rss+xml; charset=utf-8",
       "Cache-Control": "public, max-age=3600",
+      // Les flux restent lus par les agrégateurs, mais ne doivent pas apparaître
+      // dans les résultats : sans canonique, Google les classe en doublons.
+      "X-Robots-Tag": "noindex",
     },
   });
 }
