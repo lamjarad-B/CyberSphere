@@ -6,7 +6,7 @@ import { localeHref, toLocale } from "@/lib/i18n";
 import { PAGE_SIZE, articleCardSelect, localizeCard, pageNumber } from "@/lib/articles";
 import {
   NOINDEX,
-  TAG_INDEX_MIN_ARTICLES,
+  LIST_INDEX_MIN_ARTICLES,
   breadcrumbJsonLd,
   pageMetadata,
   pagedTitle,
@@ -61,7 +61,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     title: pagedTitle(t.title(tag.name), page),
     description: t.description(tag.name),
     // Trop peu d'articles : la page ne ferait que répéter leurs cartes
-    robots: published < TAG_INDEX_MIN_ARTICLES ? NOINDEX : undefined,
+    robots: published < LIST_INDEX_MIN_ARTICLES ? NOINDEX : undefined,
     feed: { path: `/tags/${slug}/rss.xml`, title: `CyberSphere — #${tag.name}` },
   });
 }

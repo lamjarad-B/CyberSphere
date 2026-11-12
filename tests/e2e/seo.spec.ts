@@ -116,6 +116,17 @@ test.describe("Indexation", () => {
     }
   });
 
+  test("filtre par type : indexé seulement avec assez d'articles", async ({ request }) => {
+    for (const kind of ["ANALYSIS", "EXPLAINER", "OPINION", "BRIEF", "TUTORIAL"] as const) {
+      const published = await db.article.count({ where: { status: "PUBLISHED", kind } });
+      const path = `/articles?type=${kind.toLowerCase()}`;
+      const page = await seo(request, path);
+      expect(page.canonical, path).toBe(path);
+      if (published < 2) expect(page.robots, path).toContain("noindex");
+      else expect(page.robots, path).not.toContain("noindex");
+    }
+  });
+
   test("recherche et pages de compte hors index", async ({ request }) => {
     for (const path of ["/recherche?q=nis2", "/connexion", "/inscription", "/en/mot-de-passe-oublie"]) {
       expect((await seo(request, path)).robots, path).toContain("noindex");

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { localeHref, toLocale } from "@/lib/i18n";
-import { pageMetadata, pagedTitle, withQuery } from "@/lib/seo";
+import { LIST_INDEX_MIN_ARTICLES, NOINDEX, pageMetadata, pagedTitle, withQuery } from "@/lib/seo";
 import {
   ARTICLE_KINDS,
   PAGE_SIZE,
@@ -52,12 +52,17 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const page = pageNumber(pageParam);
   const kind = parseKindParam(typeParam);
   const label = kind ? kindLabel(kind, locale) : undefined;
+  // Type sans article ou presque : liste vide ou réduite à une carte
+  const thin =
+    kind !== undefined &&
+    (await db.article.count({ where: { status: "PUBLISHED", kind } })) < LIST_INDEX_MIN_ARTICLES;
   // Filtre et page valides seulement : ?utm_…, ?type=xyz ou ?page=1 → /articles
   return pageMetadata({
     locale,
     path: withQuery("/articles", { type: kind?.toLowerCase(), page }),
     title: pagedTitle(label ? `${label} — ${t.title}` : t.title, page),
     description: label ? t.kindDescription(label) : t.description,
+    robots: thin ? NOINDEX : undefined,
   });
 }
 

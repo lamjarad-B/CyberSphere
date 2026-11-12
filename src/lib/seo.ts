@@ -40,11 +40,13 @@ export const NOINDEX = { index: false, follow: true } as const;
 const INDEXABLE = { index: true, follow: true, "max-image-preview": "large" } as const;
 
 /**
- * Articles publiés qu'il faut à un tag pour être indexé (et listé dans le
- * sitemap) : en deçà, sa page ne fait que répéter la carte d'un article.
- * Une catégorie, rubrique de navigation, est indexée dès son premier article.
+ * Articles publiés qu'il faut à un tag ou à un filtre par type (?type=…) pour
+ * être indexé : en deçà, sa page ne fait que répéter la carte d'un article, et
+ * les filtres vides sont identiques entre eux. Un tag au-dessus du seuil est
+ * aussi listé dans le sitemap. Une catégorie, rubrique de navigation, est
+ * indexée dès son premier article.
  */
-export const TAG_INDEX_MIN_ARTICLES = 2;
+export const LIST_INDEX_MIN_ARTICLES = 2;
 
 export function absoluteUrl(path: string): string {
   return `${SITE_URL}${path}`;

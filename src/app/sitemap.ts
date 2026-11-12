@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { db } from "@/lib/db";
 import { localeHref, locales } from "@/lib/i18n";
-import { TAG_INDEX_MIN_ARTICLES, absoluteUrl } from "@/lib/seo";
+import { LIST_INDEX_MIN_ARTICLES, absoluteUrl } from "@/lib/seo";
 
 // Rendu à la requête : le contenu vient de la base, indisponible à la build
 // (la CI compile sans PostgreSQL). Sans ceci, `next build` tente de prérendre
@@ -130,7 +130,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }),
       ),
     ...tags
-      .filter((tag) => tag.articles.length >= TAG_INDEX_MIN_ARTICLES)
+      .filter((tag) => tag.articles.length >= LIST_INDEX_MIN_ARTICLES)
       .flatMap((tag) =>
         bilingual(`/tags/${tag.slug}`, {
           lastModified: latest(tag.articles.map((a) => a.publishedAt)),
