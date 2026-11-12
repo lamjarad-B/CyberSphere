@@ -163,6 +163,7 @@ test.describe("Auteurs, pages institutionnelles et moteurs", () => {
     const response = await request.get("/indexnow.txt");
     expect(response.status()).toBe(200);
     expect(await response.text()).toMatch(/^[0-9a-f]{32}$/);
+    expect(response.headers()["x-robots-tag"]).toBe("noindex");
   });
 
   test("couverture SVG : aperçu PNG pour les partages", async ({ request }) => {

@@ -100,6 +100,7 @@ test.describe("Site public", () => {
 
     const rss = await request.get("/rss.xml");
     expect(rss.headers()["content-type"]).toContain("application/rss+xml");
+    expect(rss.headers()["x-robots-tag"]).toBe("noindex");
   });
 
   test("téléversements : pas de traversée de répertoire", async ({ request }) => {
