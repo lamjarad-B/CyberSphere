@@ -147,8 +147,9 @@ objectif de premier rang : chaque choix d'implémentation est documenté au §5.
   Open Graph et carte Twitter, image de partage par défaut
   (`public/images/og-default.png`). Un article non traduit lu sur `/en` désigne
   l'original français comme canonique. Recherche, pages de compte, catégories
-  vides et tags isolés sont en `noindex, follow` ; une page de liste au-delà de
-  la dernière répond 404.
+  vides, ainsi que tags et filtres par type de moins de deux articles, sont en
+  `noindex, follow`. Les flux RSS et la clé IndexNow envoient
+  `X-Robots-Tag: noindex`. Une page de liste au-delà de la dernière répond 404.
 - **Données structurées** JSON-LD : `Organization` et `WebSite` sur l'accueil,
   `BlogPosting` et `BreadcrumbList` sur les articles, `BreadcrumbList` sur les
   catégories, tags et séries — uniquement des informations réellement connues.
