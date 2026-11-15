@@ -916,7 +916,8 @@ Sans fichier, la géolocalisation est désactivée : aucune visite n'est compté
 
 - **Où** : le composant serveur `src/components/visit-counter.tsx`, placé dans le layout public `src/app/[locale]/layout.tsx` : toutes les pages publiques comptent, pas seulement les articles.
 - **Quand** : enregistrement hors du chemin de réponse (`after()`), la page n'attend pas la géolocalisation.
-- **Qui** : ni les robots (même filtre de user-agent que les vues d'articles), ni le staff connecté (admins et auteurs).
+- **Qui** : ni les robots et programmes (même filtre de user-agent que les vues d'articles), ni le staff connecté (admins et auteurs).
+- **Filtre de user-agent** (`isBotUserAgent`, `src/lib/stats.ts`) : sont écartés un user-agent absent, un user-agent qui n'a pas la forme de celui d'un navigateur (`Mozilla/5.0 (…` ou `Opera/… (…` : curl, bibliothèques HTTP, scanners, lecteurs de flux, aperçus de liens) et un user-agent de forme navigateur qui porte la marque d'un robot (`compatible;`, une URL, `bot`, `crawl`, `spider`, `headless`, `PowerShell`…). Limite : un programme qui recopie le user-agent d'un navigateur n'est pas détecté.
 - **Combien** : `recordVisit` (`src/lib/stats.ts`) compte chaque visiteur une fois par jour UTC. Le dédoublonnage passe par le limiteur en mémoire existant, par IP ou préfixe IPv6 /64, jamais par la base.
 - **Lieu inconnu** : une IP absente de la base (réseau privé, par exemple) est comptée en « lieu inconnu ».
 - **Plafond** : 1 000 lieux distincts par jour. Au-delà, une visite n'est comptée que pour son pays (région et ville vides).
