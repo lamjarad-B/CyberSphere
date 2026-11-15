@@ -25,11 +25,20 @@ const MAX_LOCATIONS_PER_DAY = 1000;
 const HOST_PATTERN = /^[a-z0-9-]+(\.[a-z0-9-]+)*(:\d{1,5})?$/;
 
 /**
- * Robots d'indexation, aperçus de liens et clients HTTP : ils rendent la page
- * sans que personne ne la lise. « bot » hors « Cubot », marque de téléphones.
+ * Un navigateur s'annonce toujours « Mozilla/5.0 (plateforme… » (Opera Mini :
+ * « Opera/9.80 (… »). Tout autre user-agent est celui d'un programme : curl,
+ * script, bibliothèque HTTP, scanner, lecteur de flux, aperçu de lien.
+ */
+const BROWSER_PATTERN = /^(Mozilla\/5\.0|Opera\/[\d.]+) \(/;
+
+/**
+ * Robots et outils qui prennent la forme d'un navigateur : ils rendent la page
+ * sans que personne ne la lise. « compatible; » n'est plus envoyé par aucun
+ * navigateur depuis Internet Explorer 10, et aucun ne cite d'URL : ce sont les
+ * marques des robots déclarés. « bot » hors « Cubot », marque de téléphones.
  */
 const BOT_PATTERN =
-  /(?<!cu)bot|crawl|spider|slurp|scrape|preview|fetch|headless|lighthouse|facebookexternalhit|whatsapp|embedly|iframely|curl|wget|python|httpclient|axios|okhttp|go-http|java\//i;
+  /compatible;|https?:\/\/|(?<!cu)bot|crawl|spider|slurp|scrap|preview|fetch|headless|phantomjs|lighthouse|powershell|ptst|pingdom|synthetic/i;
 
 /** Jour courant en UTC (borne des agrégats quotidiens). */
 function today(): Date {
@@ -156,9 +165,13 @@ export async function externalReferrerHost(): Promise<string | null> {
   return referrerHostFrom(referer, new URL(SITE_URL).host.toLowerCase());
 }
 
-/** Vrai pour un robot ou un script : sans user-agent, ce n'est pas un navigateur. */
+/**
+ * Vrai pour un robot ou un programme : user-agent absent, qui n'a pas la forme
+ * de celui d'un navigateur, ou qui porte la marque d'un robot. Un programme qui
+ * recopie le user-agent d'un navigateur reste indétectable par ce seul en-tête.
+ */
 export function isBotUserAgent(userAgent: string | null): boolean {
-  return !userAgent || BOT_PATTERN.test(userAgent);
+  return !userAgent || !BROWSER_PATTERN.test(userAgent) || BOT_PATTERN.test(userAgent);
 }
 
 /** Vrai si la requête vient d'un robot. À appeler pendant le rendu. */
