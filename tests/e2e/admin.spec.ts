@@ -187,6 +187,39 @@ test.describe("Administration", () => {
     await db.visitorLocationStat.delete({ where: { id: place.id } });
   });
 
+  test("statistiques : robots et programmes écartés", async ({ page }) => {
+    // Jour passé : les requêtes des autres parcours ne s'y ajoutent pas
+    const now = new Date();
+    const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 3));
+    const hits = [
+      { kind: "robot", count: 41 },
+      { kind: "programme", count: 17 },
+    ];
+    for (const { kind, count } of hits) {
+      await db.botHitStat.upsert({
+        where: { day_kind: { day, kind } },
+        create: { day, kind, count },
+        update: { count },
+      });
+    }
+
+    const admin = await createUser(page.request, "admin");
+    await login(page, admin);
+    await enableTwoFactor(page, admin);
+    await page.goto("/admin/statistiques");
+    const table = page.getByRole("table", { name: /Robots et programmes écartés/ });
+    const label = new Intl.DateTimeFormat("fr-FR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "Europe/Paris",
+    }).format(day);
+    const row = table.getByRole("row").filter({ hasText: label });
+    await expect(row.getByRole("cell")).toHaveText([label, "41", "17", "0", "58"]);
+
+    await db.botHitStat.deleteMany({ where: { day } });
+  });
+
   test("API admin refusée sans session", async ({ request }) => {
     const response = await request.get("/api/auth/admin/list-users", {
       headers: { Origin: BASE_URL },

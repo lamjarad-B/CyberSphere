@@ -5,6 +5,7 @@ import { formatDate } from "@/lib/format";
 import { geoipAvailable } from "@/lib/geoip";
 import { subscriberCountsByLocale } from "@/lib/newsletter";
 import { requireAdmin } from "@/lib/session";
+import type { BotKind } from "@/lib/stats";
 import { cardClass } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Statistiques" };
@@ -12,6 +13,13 @@ export const metadata: Metadata = { title: "Statistiques" };
 const PERIODS = [7, 30, 90, 365] as const;
 const DEFAULT_PERIOD = 30;
 const DAY_MS = 24 * 3600 * 1000;
+
+/** Colonnes du tableau des robots écartés (types de lib/stats). */
+const BOT_COLUMNS: { kind: BotKind; label: string }[] = [
+  { kind: "robot", label: "Robots" },
+  { kind: "programme", label: "Programmes" },
+  { kind: "absent", label: "Sans user-agent" },
+];
 
 const countryNames = new Intl.DisplayNames(["fr"], { type: "region" });
 
@@ -73,6 +81,7 @@ export default async function AdminStatistiquesPage({
     countries,
     todayVisitors,
     geoip,
+    botHits,
   ] = await Promise.all([
       db.articleDailyView.groupBy({
         by: ["day"],
@@ -109,12 +118,22 @@ export default async function AdminStatistiquesPage({
       }),
       db.visitorLocationStat.aggregate({ where: { day: today }, _sum: { count: true } }),
       geoipAvailable(),
+      db.botHitStat.findMany({ where: { day: { gte: since } }, orderBy: { day: "desc" } }),
     ]);
 
   const totalViews = dailyTotals.reduce(
     (sum, day) => sum + (day._sum.views ?? 0),
     0,
   );
+  // Robots écartés : une ligne par jour (le plus récent d'abord), un compteur par type
+  const botDays = new Map<number, { byKind: Map<string, number>; total: number }>();
+  for (const hit of botHits) {
+    const row = botDays.get(hit.day.getTime()) ?? { byKind: new Map(), total: 0 };
+    row.byKind.set(hit.kind, hit.count);
+    row.total += hit.count;
+    botDays.set(hit.day.getTime(), row);
+  }
+  const botsToday = botDays.get(today.getTime())?.total ?? 0;
   const dayVisitors = places.reduce((sum, place) => sum + place.count, 0);
   const dayNavClass =
     "rounded-md border border-border px-2.5 py-1 font-mono text-xs text-muted transition-colors hover:border-accent hover:text-accent";
@@ -153,7 +172,11 @@ export default async function AdminStatistiquesPage({
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Visiteurs aujourd'hui", value: todayVisitors._sum.count ?? 0 },
+          {
+            label: "Visiteurs aujourd'hui",
+            value: todayVisitors._sum.count ?? 0,
+            detail: `${botsToday} requête${botsToday > 1 ? "s" : ""} de robots écartée${botsToday > 1 ? "s" : ""}`,
+          },
           { label: `Vues (${windowDays} j)`, value: totalViews },
           {
             label: "Abonnés newsletter",
@@ -373,6 +396,54 @@ export default async function AdminStatistiquesPage({
             ))}
           </tbody>
         </table>
+      </section>
+
+      <section className={`${cardClass} overflow-x-auto`}>
+        <h2 id="robots-ecartes" className="border-b border-border px-4 py-3 text-sm font-bold">
+          Robots et programmes écartés ({windowDays} j)
+        </h2>
+        <table aria-labelledby="robots-ecartes" className="w-full min-w-[32rem] text-sm">
+          <thead>
+            <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
+              <th className="px-4 py-3 font-medium">Jour</th>
+              {BOT_COLUMNS.map(({ kind, label }) => (
+                <th key={kind} className="px-4 py-3 text-right font-medium">
+                  {label}
+                </th>
+              ))}
+              <th className="px-4 py-3 text-right font-medium">Total</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {botDays.size === 0 && (
+              <tr>
+                <td colSpan={BOT_COLUMNS.length + 2} className="px-4 py-6 text-center text-muted">
+                  Aucune requête écartée sur la période.
+                </td>
+              </tr>
+            )}
+            {[...botDays].map(([time, row]) => (
+              <tr key={time}>
+                <td className="px-4 py-2 text-muted">{formatDate(new Date(time))}</td>
+                {BOT_COLUMNS.map(({ kind }) => (
+                  <td key={kind} className="px-4 py-2 text-right font-mono">
+                    {row.byKind.get(kind) ?? 0}
+                  </td>
+                ))}
+                <td className="w-20 px-4 py-2 text-right font-mono text-accent">{row.total}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="border-t border-border px-4 py-3 text-xs text-muted">
+          Requêtes de pages publiques écartées des vues et des visiteurs, sans
+          dédoublonnage : un robot qui charge dix pages compte dix fois.
+          Robots : le user-agent se déclare comme tel (bot, crawler, mention
+          « compatible; », adresse d&apos;un site…). Programmes : le user-agent
+          n&apos;a pas la forme de celui d&apos;un navigateur (curl, scripts,
+          scanners). Un programme qui imite un navigateur n&apos;est pas
+          détecté. Compteurs écrits chaque minute.
+        </p>
       </section>
     </div>
   );

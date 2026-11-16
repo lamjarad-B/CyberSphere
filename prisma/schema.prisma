@@ -399,6 +399,18 @@ model VisitorLocationStat {
   @@unique([day, country, region, city])
 }
 
+// Requêtes de pages publiques écartées des statistiques par le filtre de
+// user-agent (lib/stats) : un compteur par jour et par type, ni IP ni user-agent.
+model BotHitStat {
+  id    String   @id @default(cuid())
+  day   DateTime @db.Date
+  // "robot" (se déclare comme tel), "programme" (pas un navigateur), "absent"
+  kind  String
+  count Int      @default(0)
+
+  @@unique([day, kind])
+}
+
 // Appareils (navigateurs) déjà vus pour un compte : une connexion depuis un
 // appareil inconnu déclenche une alerte de sécurité par e-mail. Seule une
 // empreinte SHA-256 du user-agent est conservée.

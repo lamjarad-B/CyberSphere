@@ -40,6 +40,20 @@ const BROWSER_PATTERN = /^(Mozilla\/5\.0|Opera\/[\d.]+) \(/;
 const BOT_PATTERN =
   /compatible;|https?:\/\/|(?<!cu)bot|crawl|spider|slurp|scrap|preview|fetch|headless|phantomjs|lighthouse|powershell|ptst|pingdom|synthetic/i;
 
+/** Raison pour laquelle une requête est écartée des statistiques. */
+export type BotKind = "robot" | "programme" | "absent";
+
+/**
+ * Requêtes écartées en attente d'écriture (« jour|type » → nombre). Comptées
+ * en mémoire puis écrites chaque minute par la tâche de fond (lib/scheduler) :
+ * un robot qui enchaîne des milliers de pages ne coûte pas une écriture en
+ * base par page. Sur globalThis : la tâche de fond, lancée par
+ * instrumentation.ts, n'utilise pas forcément la même copie de ce module que
+ * le rendu des pages. Un redémarrage perd au plus la dernière minute.
+ */
+const globalForBotHits = globalThis as unknown as { cybersphereBotHits?: Map<string, number> };
+const pendingBotHits = (globalForBotHits.cybersphereBotHits ??= new Map<string, number>());
+
 /** Jour courant en UTC (borne des agrégats quotidiens). */
 function today(): Date {
   const now = new Date();
@@ -166,15 +180,60 @@ export async function externalReferrerHost(): Promise<string | null> {
 }
 
 /**
- * Vrai pour un robot ou un programme : user-agent absent, qui n'a pas la forme
- * de celui d'un navigateur, ou qui porte la marque d'un robot. Un programme qui
- * recopie le user-agent d'un navigateur reste indétectable par ce seul en-tête.
+ * Type de robot d'un user-agent, null pour un navigateur : absent, qui porte la
+ * marque d'un robot, ou qui n'a pas la forme de celui d'un navigateur. Un
+ * programme qui recopie le user-agent d'un navigateur reste indétectable par
+ * ce seul en-tête.
  */
+export function botKind(userAgent: string | null): BotKind | null {
+  if (!userAgent) return "absent";
+  if (BOT_PATTERN.test(userAgent)) return "robot";
+  if (!BROWSER_PATTERN.test(userAgent)) return "programme";
+  return null;
+}
+
+/** Vrai pour un robot ou un programme (voir botKind). */
 export function isBotUserAgent(userAgent: string | null): boolean {
-  return !userAgent || !BROWSER_PATTERN.test(userAgent) || BOT_PATTERN.test(userAgent);
+  return botKind(userAgent) !== null;
+}
+
+/** Type de robot de la requête, null pour un navigateur. À appeler pendant le rendu. */
+export async function requestBotKind(): Promise<BotKind | null> {
+  return botKind((await headers()).get("user-agent"));
 }
 
 /** Vrai si la requête vient d'un robot. À appeler pendant le rendu. */
 export async function isBotRequest(): Promise<boolean> {
-  return isBotUserAgent((await headers()).get("user-agent"));
+  return (await requestBotKind()) !== null;
+}
+
+/** Compte une requête écartée par le filtre de user-agent (écrite par flushBotHits). */
+export function recordBotHit(kind: BotKind): void {
+  const key = `${today().toISOString()}|${kind}`;
+  pendingBotHits.set(key, (pendingBotHits.get(key) ?? 0) + 1);
+}
+
+/**
+ * Écrit en base les requêtes écartées depuis le passage précédent. Un compteur
+ * dont l'écriture échoue est remis en attente pour le passage suivant.
+ */
+export async function flushBotHits(): Promise<void> {
+  const batch = [...pendingBotHits];
+  pendingBotHits.clear();
+  await Promise.all(
+    batch.map(async ([key, count]) => {
+      const [isoDay, kind] = key.split("|");
+      const day = new Date(isoDay);
+      try {
+        await db.botHitStat.upsert({
+          where: { day_kind: { day, kind } },
+          create: { day, kind, count },
+          update: { count: { increment: count } },
+        });
+      } catch (error) {
+        pendingBotHits.set(key, (pendingBotHits.get(key) ?? 0) + count);
+        throw error;
+      }
+    }),
+  );
 }

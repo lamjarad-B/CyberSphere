@@ -59,6 +59,10 @@
 > sous un commentaire), sans choix à faire. Abonné anglophone d'un article
 > non traduit : e-mail en anglais signalant que l'article n'existe qu'en
 > français. Répartition FR/EN des abonnés dans l'éditeur et les statistiques.
+>
+> **Note v2.14** — Robots et programmes écartés des statistiques comptés par
+> jour et par type (table `BotHitStat`), visibles dans `/admin/statistiques`
+> pour voir le filtre de user-agent travailler. Détails au §16.9.
 
 ---
 
@@ -702,7 +706,7 @@ Mise en œuvre des recommandations de la revue v2.3 (7 octobre 2026).
 
 ### 12.4 Tâches de fond
 
-`src/instrumentation.ts` démarre `src/lib/scheduler.ts` au lancement du serveur Node (jamais pendant la build ni en Edge) : publication programmée chaque minute, purge toutes les 6 h. Opérations idempotentes, sans cron externe ; `DISABLE_SCHEDULER=1` les désactive sur une instance.
+`src/instrumentation.ts` démarre `src/lib/scheduler.ts` au lancement du serveur Node (jamais pendant la build ni en Edge) : publication programmée chaque minute, purge toutes les 6 h, écriture des robots écartés des statistiques chaque minute (v2.14, §16.9). Opérations idempotentes, sans cron externe ; `DISABLE_SCHEDULER=1` les désactive sur une instance.
 
 ### 12.5 Autres améliorations
 
@@ -965,3 +969,25 @@ Le traitement suit les recommandations de la CNIL pour les mesures d'audience ex
 Étape Docker `geoip` construite seule : la base (127 Mo) est bien téléchargée dans `/geoip`.
 
 Non vérifié : le build complet de l'image et l'IP reçue derrière le proxy de production.
+
+### 16.9 Robots écartés (v2.14)
+
+Le filtre de user-agent (§16.3) travaille sans laisser de trace : rien ne montrait ce qu'il écarte. Les requêtes écartées sont désormais comptées.
+
+- **Où** : `VisitCounter` (layout public), donc chaque page publique affichée à un robot compte une fois. La page article ne compte rien de plus.
+- **Types** (`botKind`, `src/lib/stats.ts`) :
+
+| Type | Règle | Exemples |
+|---|---|---|
+| `robot` | Le user-agent porte la marque d'un robot (`compatible;`, une URL, `bot`, `crawl`…) | Googlebot, GPTBot, LinkedInBot, GoogleOther, Scrapy |
+| `programme` | Le user-agent n'a pas la forme de celui d'un navigateur | curl, Go, Python, Postman, sqlmap |
+| `absent` | Pas de user-agent | Scripts, scanners |
+
+- **Écriture** : compteurs en mémoire (`recordBotHit`), écrits chaque minute par la tâche de fond (`flushBotHits`, §12.4). Un robot qui charge des milliers de pages ne coûte donc pas une écriture en base par page. Les compteurs sont gardés sur `globalThis`, car la tâche de fond n'utilise pas forcément la même copie du module que le rendu des pages. Une écriture en échec est remise en attente pour le passage suivant ; un redémarrage perd au plus la dernière minute. Avec `DISABLE_SCHEDULER=1`, rien n'est écrit.
+- **Pas de dédoublonnage** : ce sont des requêtes, pas des visiteurs. Un robot qui lit dix pages compte dix fois.
+- **Staff connecté** (admins, auteurs) : compté nulle part, ni comme visiteur ni comme robot.
+- **Modèle** : table `BotHitStat` (migration `20261116090000_v2_14_robots_ecartes`), champs `day` (jour UTC, `@db.Date`), `kind`, `count`, unicité sur `(day, kind)`. Ni IP ni user-agent enregistrés.
+- **Administration** : sur `/admin/statistiques`, la carte « Visiteurs aujourd'hui » indique les requêtes de robots écartées du jour, et la section « Robots et programmes écartés » les détaille par jour et par type sur la période choisie.
+- **Limite** : un programme qui recopie le user-agent d'un navigateur n'est ni écarté ni compté ici.
+
+Vérifications : `tsc --noEmit`, ESLint et build de production sans erreur ; **316 tests unitaires**, dont le classement par type, le regroupement par jour UTC et par type, l'absence de double écriture et la remise en attente après un échec. Serveur de production local démarré sans base : après trois requêtes de robots, la tâche de fond a bien tenté d'écrire les compteurs, ce qui confirme qu'elle voit les requêtes comptées pendant le rendu. Test E2E ajouté (affichage d'une journée par type), non exécuté en local.
