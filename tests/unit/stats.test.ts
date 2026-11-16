@@ -1,8 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetRateLimits } from "@/lib/rate-limit";
-import { isBotUserAgent, recordArticleView, recordVisit } from "@/lib/stats";
+import {
+  botKind,
+  flushBotHits,
+  isBotUserAgent,
+  recordArticleView,
+  recordBotHit,
+  recordVisit,
+} from "@/lib/stats";
 
 type Place = { day: Date; country: string; region: string; city: string };
+
+// Robots écartés : compteur par « jour|type », écriture en échec sur demande
+const bots = vi.hoisted(() => ({ rows: new Map<string, number>(), fail: false }));
 
 // Base en mémoire : compteurs incrémentés (vues totales, du jour, référents)
 const counts = vi.hoisted(() => new Map<string, number>());
@@ -59,6 +69,19 @@ vi.mock("@/lib/db", () => {
         updateMany: async ({ where }: { where: { host: string } }) => {
           bump(`referent:${where.host}`);
           return { count: 1 };
+        },
+      },
+      botHitStat: {
+        upsert: async ({
+          where,
+          create,
+        }: {
+          where: { day_kind: { day: Date; kind: string } };
+          create: { count: number };
+        }) => {
+          if (bots.fail) throw new Error("base indisponible");
+          const key = `${where.day_kind.day.toISOString().slice(0, 10)}|${where.day_kind.kind}`;
+          bots.rows.set(key, (bots.rows.get(key) ?? 0) + create.count);
         },
       },
     },
@@ -279,5 +302,68 @@ describe("Statistiques : robots", () => {
     "Mozilla/5.0 (Linux; Android 14; SM-S918B Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0.6778.81 Mobile Safari/537.36 Instagram 359.0.0.59.89 Android (34/14; 480dpi; 1080x2316; samsung; SM-S918B; dm3q; qcom; fr_FR; 670000000)",
   ])("compte %j", (userAgent) => {
     expect(isBotUserAgent(userAgent)).toBe(false);
+  });
+});
+
+describe("Statistiques : robots écartés", () => {
+  beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-16T12:00:00Z"));
+    bots.fail = false;
+    // Vide ce qu'un test précédent aurait laissé en attente
+    await flushBotHits();
+    bots.rows.clear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it.each([
+    [null, "absent"],
+    ["", "absent"],
+    ["Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)", "robot"],
+    ["LinkedInBot/1.0 (compatible; Mozilla/5.0; Apache-HttpClient +http://www.linkedin.com)", "robot"],
+    ["curl/8.5.0", "programme"],
+    ["Go-http-client/2.0", "programme"],
+    [
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      null,
+    ],
+  ])("classe %j : %s", (userAgent, kind) => {
+    expect(botKind(userAgent)).toBe(kind);
+  });
+
+  it("regroupe les requêtes par jour (UTC) et par type, écrites au passage suivant", async () => {
+    recordBotHit("robot");
+    recordBotHit("robot");
+    recordBotHit("programme");
+    vi.setSystemTime(new Date("2026-11-17T00:30:00Z"));
+    recordBotHit("robot");
+    expect(bots.rows.size).toBe(0);
+
+    await flushBotHits();
+    const written = {
+      "2026-11-16|robot": 2,
+      "2026-11-16|programme": 1,
+      "2026-11-17|robot": 1,
+    };
+    expect(Object.fromEntries(bots.rows)).toEqual(written);
+
+    // Rien n'est écrit deux fois
+    await flushBotHits();
+    expect(Object.fromEntries(bots.rows)).toEqual(written);
+  });
+
+  it("remet en attente un compteur dont l'écriture échoue", async () => {
+    recordBotHit("absent");
+    bots.fail = true;
+    await expect(flushBotHits()).rejects.toThrow("base indisponible");
+    expect(bots.rows.size).toBe(0);
+
+    recordBotHit("absent");
+    bots.fail = false;
+    await flushBotHits();
+    expect(Object.fromEntries(bots.rows)).toEqual({ "2026-11-16|absent": 2 });
   });
 });

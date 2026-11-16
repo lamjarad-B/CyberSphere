@@ -1,7 +1,9 @@
 import { publishDueArticles, purgeStaleData } from "./maintenance";
+import { flushBotHits } from "./stats";
 
 const PUBLISH_EVERY_MS = 60 * 1000; // publication programmée : à la minute
 const PURGE_EVERY_MS = 6 * 3600 * 1000; // purge : 4 fois par jour
+const BOT_HITS_EVERY_MS = 60 * 1000; // robots écartés (lib/stats) : à la minute
 
 const globalForScheduler = globalThis as unknown as { cybersphereScheduler?: boolean };
 
@@ -31,6 +33,11 @@ export function startScheduler(): void {
       })
       .catch((error) => console.error("[maintenance] échec de la purge :", error));
 
+  const flushStats = () =>
+    flushBotHits().catch((error) =>
+      console.error("[stats] robots écartés non enregistrés :", error),
+    );
+
   // Premier passage peu après le démarrage (base potentiellement en cours de migration)
   setTimeout(() => {
     void publish();
@@ -38,4 +45,5 @@ export function startScheduler(): void {
   }, 15_000).unref();
   setInterval(publish, PUBLISH_EVERY_MS).unref();
   setInterval(purge, PURGE_EVERY_MS).unref();
+  setInterval(flushStats, BOT_HITS_EVERY_MS).unref();
 }

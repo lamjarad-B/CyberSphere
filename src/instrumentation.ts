@@ -1,7 +1,8 @@
 /**
  * Démarrage du serveur : en production, refuse une configuration dangereuse
  * (secret d'exemple ou trop court), puis lance les tâches de fond
- * (publication programmée, purge des données expirées). Node.js uniquement —
+ * (publication programmée, purge des données expirées, écriture des robots
+ * écartés des statistiques). Node.js uniquement —
  * jamais pendant la build ni dans le runtime Edge. DISABLE_SCHEDULER=1
  * désactive les tâches (ex. instances secondaires, tests).
  */

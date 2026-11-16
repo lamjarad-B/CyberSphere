@@ -227,6 +227,11 @@ elle occupe ~130 Mo de RAM. Sans fichier, rien n'est compté et
 l'administration le signale. Détails au §16 du
 [cahier des spécifications](docs/CAHIER-DES-SPECIFICATIONS.md).
 
+Robots et programmes (user-agent absent, déclaré comme robot ou qui n'est pas
+celui d'un navigateur) ne comptent ni en vues ni en visiteurs. La même page
+indique combien de leurs requêtes ont été écartées, par jour et par type
+(§16.9).
+
 ## Déploiement Docker (production)
 
 `docker-compose.prod.yml` orchestre **Caddy** (TLS automatique Let's Encrypt +
