@@ -24,6 +24,7 @@ const copy = {
     empty: "Aucun article publié pour le moment. Revenez bientôt !",
     latest: "Derniers articles",
     allArticles: "Tous les articles →",
+    moreArticles: "Voir tous les articles →",
   },
   en: {
     metaTitle: "CyberSphere — Cybersecurity blog",
@@ -37,6 +38,7 @@ const copy = {
     empty: "No articles published yet. Check back soon!",
     latest: "Latest articles",
     allArticles: "All articles →",
+    moreArticles: "See all articles →",
   },
 };
 
@@ -189,6 +191,11 @@ export default async function HomePage({ params }: Props) {
                 locale={locale}
               />
             ))}
+          </div>
+          <div className="flex justify-center pt-4">
+            <Link href={localeHref(locale, "/articles")} className={buttonClass}>
+              {t.moreArticles}
+            </Link>
           </div>
         </section>
       )}
