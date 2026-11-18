@@ -102,11 +102,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          cache:
+            npm
 
-      # Échoue sur toute vulnérabilité high/critical connue
+            # Échoue sur toute vulnérabilité high/critical connue
       - name: npm audit
-        run: npm audit --omit=dev --audit-level=high
+        run: node scripts/audit.mjs
 
   secrets:
     name: Scan de secrets (gitleaks)
